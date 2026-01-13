@@ -740,8 +740,9 @@ async def unmerge_individual_token_endpoint(
         if not remaining_child_tokens:
             all_affected_tokens = [parent_token] + child_tokens
             affected_count = await TokenMergeService._unmerge_single_operation(db, merge_op_id)
+            affected_token_variants = TokenMergeService._expand_numeric_variants(all_affected_tokens)
             unhidden_count = await TokenMergeService._unhide_children_of_grouped_parents(
-                db, project_id, all_affected_tokens
+                db, project_id, affected_token_variants
             )
             delete_merge_op_query = sql_text("""
                 DELETE FROM merge_operations
@@ -749,7 +750,7 @@ async def unmerge_individual_token_endpoint(
             """)
             await db.execute(delete_merge_op_query, {"merge_op_id": merge_op_id})
             grouped_count = await TokenMergeService._restructure_affected_keywords(
-                db, project_id, all_affected_tokens
+                db, project_id, affected_token_variants
             )
             
             await db.commit()
@@ -796,6 +797,7 @@ async def unmerge_individual_token_endpoint(
             
             affected_count = 0
             affected_tokens = [child_token, parent_token]
+            affected_token_variants = TokenMergeService._expand_numeric_variants(affected_tokens)
             
             for keyword_id, original_tokens, keyword_text in affected_keywords:
                 if original_tokens:
@@ -830,7 +832,7 @@ async def unmerge_individual_token_endpoint(
                         affected_count += 1
             
             unhidden_count = await TokenMergeService._unhide_children_of_grouped_parents(
-                db, project_id, affected_tokens
+                db, project_id, affected_token_variants
             )
             
             update_merge_op_query = sql_text("""
@@ -845,7 +847,7 @@ async def unmerge_individual_token_endpoint(
             })
             
             grouped_count = await TokenMergeService._restructure_affected_keywords(
-                db, project_id, affected_tokens
+                db, project_id, affected_token_variants
             )
             
             await db.commit()

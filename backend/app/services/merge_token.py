@@ -7,6 +7,47 @@ from app.models.keyword import  KeywordStatus
 
 class TokenMergeService:
     @staticmethod
+    def _normalize_token(token: str) -> str:
+        if token is None:
+            return ""
+        cleaned = str(token).lower().strip()
+        if not cleaned:
+            return ""
+        cleaned_no_commas = cleaned.replace(",", "")
+        if cleaned_no_commas.startswith("$"):
+            numeric_candidate = cleaned_no_commas[1:]
+            if numeric_candidate.isdigit():
+                return numeric_candidate
+            return cleaned
+        if cleaned_no_commas.isdigit():
+            return cleaned_no_commas
+        return cleaned
+
+    @staticmethod
+    def _expand_numeric_variants(tokens: List[str]) -> List[str]:
+        variants = set()
+        for token in tokens:
+            if token is None:
+                continue
+            cleaned = str(token).lower().strip()
+            if not cleaned:
+                continue
+            normalized = TokenMergeService._normalize_token(cleaned)
+            variants.add(cleaned)
+            if normalized:
+                variants.add(normalized)
+            if normalized.isdigit():
+                try:
+                    int_value = int(normalized)
+                except ValueError:
+                    continue
+                comma_variant = f"{int_value:,}"
+                variants.add(comma_variant)
+                variants.add(f"${normalized}")
+                variants.add(f"${comma_variant}")
+        return list(variants)
+
+    @staticmethod
     async def merge_tokens(
         db: AsyncSession, 
         project_id: int, 
@@ -114,12 +155,18 @@ class TokenMergeService:
                 WHERE k.project_id = :project_id
                 AND k.tokens ?| :child_tokens
             """)
+            child_tokens_lookup = TokenMergeService._expand_numeric_variants(final_child_tokens)
             result = await db.execute(find_keywords_query, {
                 "project_id": project_id,
-                "child_tokens": final_child_tokens
+                "child_tokens": child_tokens_lookup
             })
             keywords_to_process = result.fetchall()
             affected_count = 0
+            normalized_child_tokens = {
+                TokenMergeService._normalize_token(token)
+                for token in final_child_tokens
+                if token
+            }
 
             for keyword_id, current_tokens in keywords_to_process:
                 existing_entry_query = text("""
@@ -147,7 +194,12 @@ class TokenMergeService:
                     tokens_list = current_tokens
                 else:
                     tokens_list = json.loads(current_tokens) if current_tokens else []
-                updated_tokens = [parent_token if token in final_child_tokens else token for token in tokens_list]
+                updated_tokens = [
+                    parent_token
+                    if TokenMergeService._normalize_token(token) in normalized_child_tokens
+                    else token
+                    for token in tokens_list
+                ]
                 update_keyword_query = text("""
                     UPDATE keywords
                     SET tokens = :updated_tokens
@@ -159,8 +211,9 @@ class TokenMergeService:
                 })
                 affected_count += 1
 
-            grouped_count = await TokenMergeService._restructure_affected_keywords(db, project_id, final_child_tokens + [parent_token])
-            hidden_count = await TokenMergeService._handle_ungrouped_matching_grouped_parents(db, project_id, final_child_tokens + [parent_token])
+            affected_token_variants = TokenMergeService._expand_numeric_variants(final_child_tokens + [parent_token])
+            grouped_count = await TokenMergeService._restructure_affected_keywords(db, project_id, affected_token_variants)
+            hidden_count = await TokenMergeService._handle_ungrouped_matching_grouped_parents(db, project_id, affected_token_variants)
 
             return affected_count, grouped_count
 
@@ -220,7 +273,12 @@ class TokenMergeService:
                 total_affected += affected_count
 
             # STEP 4: Restore hidden children to their original state
-            unhidden_count = await TokenMergeService._unhide_children_of_grouped_parents(db, project_id, all_affected_tokens)
+            affected_token_variants = TokenMergeService._expand_numeric_variants(all_affected_tokens)
+            unhidden_count = await TokenMergeService._unhide_children_of_grouped_parents(
+                db,
+                project_id,
+                affected_token_variants
+            )
             print(f"Restored {unhidden_count} hidden children")
 
             # STEP 5: Now delete the merge operations (after restoration is complete)
@@ -235,7 +293,11 @@ class TokenMergeService:
             })
 
             # STEP 6: Restructure affected keywords
-            grouped_count = await TokenMergeService._restructure_affected_keywords(db, project_id, all_affected_tokens)
+            grouped_count = await TokenMergeService._restructure_affected_keywords(
+                db,
+                project_id,
+                affected_token_variants
+            )
 
             print(f"Unmerge completed: {total_affected} tokens restored, {unhidden_count} hidden children restored, {grouped_count} groups restructured")
             
@@ -312,7 +374,11 @@ class TokenMergeService:
                             tokens_list = json.loads(kw.tokens) if isinstance(kw.tokens, str) else []
                         
                         # Check if any of the affected tokens are in this keyword's tokens
-                        if any(token.lower().strip() in [t.lower().strip() for t in tokens_list] for token in affected_tokens):
+                        if any(
+                            TokenMergeService._normalize_token(token)
+                            in [TokenMergeService._normalize_token(t) for t in tokens_list]
+                            for token in affected_tokens
+                        ):
                             affected_keywords.append(kw)
                     except (json.JSONDecodeError, TypeError):
                         continue
@@ -324,10 +390,16 @@ class TokenMergeService:
             for kw in affected_keywords:
                 if kw.tokens:
                     if isinstance(kw.tokens, list):
-                        normalized_tokens = [str(token).lower().strip() for token in kw.tokens]
+                        normalized_tokens = [
+                            TokenMergeService._normalize_token(token)
+                            for token in kw.tokens
+                        ]
                     else:
                         tokens_list = json.loads(kw.tokens) if isinstance(kw.tokens, str) else kw.tokens
-                        normalized_tokens = [str(token).lower().strip() for token in tokens_list]
+                        normalized_tokens = [
+                            TokenMergeService._normalize_token(token)
+                            for token in tokens_list
+                        ]
                     
                     unique_sorted_tokens = sorted(list(set(normalized_tokens)))
                     
@@ -471,10 +543,16 @@ class TokenMergeService:
             
             for parent_id, parent_tokens, parent_group_id, parent_group_name, parent_volume in grouped_parents:
                 if isinstance(parent_tokens, list):
-                    parent_normalized_tokens = sorted(list(set([str(token).lower().strip() for token in parent_tokens])))
+                    parent_normalized_tokens = sorted(list(set([
+                        TokenMergeService._normalize_token(token)
+                        for token in parent_tokens
+                    ])))
                 else:
                     parent_tokens_list = json.loads(parent_tokens) if isinstance(parent_tokens, str) else parent_tokens
-                    parent_normalized_tokens = sorted(list(set([str(token).lower().strip() for token in parent_tokens_list])))
+                    parent_normalized_tokens = sorted(list(set([
+                        TokenMergeService._normalize_token(token)
+                        for token in parent_tokens_list
+                    ])))
 
                 matching_ungrouped_query = text("""
                     SELECT id, keyword, tokens, volume, difficulty, original_volume, status
@@ -493,10 +571,16 @@ class TokenMergeService:
                 for ungrouped_id, ungrouped_keyword, ungrouped_tokens, ungrouped_volume, ungrouped_difficulty, ungrouped_original_volume, ungrouped_status in ungrouped_keywords:
                     # Normalize ungrouped tokens
                     if isinstance(ungrouped_tokens, list):
-                        ungrouped_normalized_tokens = sorted(list(set([str(token).lower().strip() for token in ungrouped_tokens])))
+                        ungrouped_normalized_tokens = sorted(list(set([
+                            TokenMergeService._normalize_token(token)
+                            for token in ungrouped_tokens
+                        ])))
                     else:
                         ungrouped_tokens_list = json.loads(ungrouped_tokens) if isinstance(ungrouped_tokens, str) else ungrouped_tokens
-                        ungrouped_normalized_tokens = sorted(list(set([str(token).lower().strip() for token in ungrouped_tokens_list])))
+                        ungrouped_normalized_tokens = sorted(list(set([
+                            TokenMergeService._normalize_token(token)
+                            for token in ungrouped_tokens_list
+                        ])))
 
                     if ungrouped_normalized_tokens == parent_normalized_tokens:
                         original_state = {
