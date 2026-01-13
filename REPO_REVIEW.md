@@ -1,4 +1,5 @@
 # Repository Review: Architecture, Process, and User Flow
+_Last updated: 2025-01-13_
 
 ## 1) High-Level Architecture
 - **Backend:** FastAPI app exposing REST endpoints for authentication, projects, keyword ingestion/processing, grouping, token management, and notes. The main entrypoint wires routers and CORS, and initializes the database at startup.【F:backend/app/main.py†L1-L33】
