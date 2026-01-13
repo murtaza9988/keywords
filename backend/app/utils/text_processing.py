@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, Any
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.stem import LancasterStemmer
+from app.utils.token_normalization import normalize_compound_tokens
 
 # Download necessary NLTK resources
 try:
@@ -29,6 +30,7 @@ def tokenize_and_lemmatize(keyword: str) -> Tuple[List[str], List[str]]:
     try:
         # Tokenize
         tokens = word_tokenize(keyword.lower())
+        tokens = normalize_compound_tokens(tokens)
         
         # Lemmatize (using stemming as a simple approach)
         lemmatized_tokens = [stemmer.stem(token) for token in tokens]
