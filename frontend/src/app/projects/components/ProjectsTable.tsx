@@ -4,6 +4,10 @@ import { useRouter } from 'next/navigation';
 import { BarChart3, Calendar, Edit2, Trash2, Loader2, ArrowUpDown } from 'lucide-react';
 import { Project } from '@/lib/types';
 import { ProjectWithStats } from '../page';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Spinner } from '@/components/ui/Spinner';
 
 interface ProjectsTableProps {
   projects: ProjectWithStats[];
@@ -47,7 +51,7 @@ const formatNumber = (num: number | undefined): string => {
 };
 
 const StatsCell = ({ value }: { value: number | undefined }) => {
-  return <span className="text-gray-800 font-light text-[13px]">{formatNumber(value)}</span>;
+  return <span className="text-foreground font-light text-[13px]">{formatNumber(value)}</span>;
 };
 
 export default function ProjectsTable({
@@ -122,111 +126,111 @@ export default function ProjectsTable({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full">
+    <Card className="overflow-hidden w-full">
       {isLoadingProjects ? (
         <div className="flex justify-center items-center py-20">
           <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Loading projects...</p>
+            <Spinner size="lg" className="text-accent border-muted border-t-accent mx-auto mb-4" />
+            <p className="text-muted">Loading projects...</p>
           </div>
         </div>
       ) : projects.length === 0 ? (
         <div className="p-12 text-center">
-          <BarChart3 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No projects yet</h3>
-          <p className="text-gray-600">Create your first project to get started with keyword management.</p>
+          <BarChart3 className="h-16 w-16 text-muted mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">No projects yet</h3>
+          <p className="text-muted">Create your first project to get started with keyword management.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <div className="flex items-center justify-start gap-6 mb-6 px-6 pt-6">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900">Projects </h2>
-              <p className="text-gray-600 mt-1">Manage your [{filteredProjects.length}] SEO keyword projects</p>
+              <h2 className="text-2xl font-semibold text-foreground">Projects </h2>
+              <p className="text-muted mt-1">Manage your [{filteredProjects.length}] SEO keyword projects</p>
             </div>
             <div className="flex items-center mt-8 gap-4">
-              <input
+              <Input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search projects..."
-                className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400 w-64"
+                className="w-64"
               />
               
             </div>
           </div>
-          <table className="w-full divide-y divide-[#eaeaea]">
-            <thead className="bg-gray-50">
+          <table className="w-full divide-y divide-border">
+            <thead className="bg-surface-muted">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted uppercase tracking-wider w-1/4">
                   <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('name')}>
                     <BarChart3 className="h-4 w-4" />
                     Project Name
                     <ArrowUpDown className="h-4 w-4" />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted uppercase tracking-wider w-1/6">
                   <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('created_at')}>
                     <Calendar className="h-4 w-4" />
                     Date Created
                     <ArrowUpDown className="h-4 w-4" />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-xs font-medium text-muted uppercase tracking-wider w-1/8">
                   <div className="flex items-center justify-center gap-2 cursor-pointer" onClick={() => handleSort('totalParentKeywords')}>
                     Total Parent Keywords
                     <ArrowUpDown className="h-4 w-4" />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-xs font-medium text-muted uppercase tracking-wider w-1/8">
                   <div className="flex flex-col items-center cursor-pointer" onClick={() => handleSort('ungroupedCount')}>
                     <div className="flex items-center gap-2">
                       <span>Keywords</span>
                       <ArrowUpDown className="h-4 w-4" />
                     </div>
-                    <span className="text-xs text-gray-400 font-normal">(View 1)</span>
+                    <span className="text-xs text-muted font-normal">(View 1)</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-xs font-medium text-muted uppercase tracking-wider w-1/8">
                   <div className="flex flex-col items-center cursor-pointer" onClick={() => handleSort('groupedKeywordsCount')}>
                     <div className="flex items-center gap-2">
                       <span>Keywords</span>
                       <ArrowUpDown className="h-4 w-4" />
                     </div>
-                    <span className="text-xs text-gray-400 font-normal">(View 2)</span>
+                    <span className="text-xs text-muted font-normal">(View 2)</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-xs font-medium text-muted uppercase tracking-wider w-1/8">
                   <div className="flex flex-col items-center cursor-pointer" onClick={() => handleSort('confirmedKeywordsCount')}>
                     <div className="flex items-center gap-2">
                       <span>Keywords</span>
                       <ArrowUpDown className="h-4 w-4" />
                     </div>
-                    <span className="text-xs text-gray-400 font-normal">(View 3)</span>
+                    <span className="text-xs text-muted font-normal">(View 3)</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-xs font-medium text-muted uppercase tracking-wider w-1/8">
                   <div className="flex flex-col items-center cursor-pointer" onClick={() => handleSort('blockedCount')}>
                     <div className="flex items-center gap-2">
                       <span>Keywords</span>
                       <ArrowUpDown className="h-4 w-4" />
                     </div>
-                    <span className="text-xs text-gray-400 font-normal">(View 4)</span>
+                    <span className="text-xs text-muted font-normal">(View 4)</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-xs font-medium text-muted uppercase tracking-wider w-1/8">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#eaeaea]">
+            <tbody className="divide-y divide-border">
               {sortedProjects.map((project, index) => {
-                const rowBgClass = index % 2 === 0 ? 'bg-white' : 'bg-[#f4f4f4]';
+                const rowBgClass = index % 2 === 0 ? 'bg-table-row' : 'bg-table-row-alt';
                 const isCurrentlyEditing = editingProject?.id === project.id;
                 
                 return (
                   <tr 
                     key={project.id} 
-                    className={`${rowBgClass} ${!isCurrentlyEditing ? 'hover:bg-gray-50 cursor-pointer' : ''} transition-colors`}
+                    className={`${rowBgClass} ${!isCurrentlyEditing ? 'hover:bg-surface-muted cursor-pointer' : ''} transition-colors`}
                     onClick={(event) => handleRowClick(project, event)}
                   >
                     {isCurrentlyEditing ? (
@@ -235,17 +239,17 @@ export default function ProjectsTable({
                           onSubmit={(e) => handleEditSubmit(e, project.id)}
                           className="flex gap-2 items-center"
                         >
-                          <input
+                          <Input
                             type="text"
                             value={editProjectName}
                             onChange={(e) => setEditProjectName(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1"
                             required
                           />
-                          <button
+                          <Button
                             type="submit"
                             disabled={isEditing}
-                            className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="flex items-center gap-2"
                           >
                             {isEditing ? (
                               <>
@@ -255,14 +259,14 @@ export default function ProjectsTable({
                             ) : (
                               'Save'
                             )}
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
                             onClick={() => setEditingProject(null)}
-                            className="px-4 py-2 cursor-pointer bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                            variant="secondary"
                           >
                             Cancel
-                          </button>
+                          </Button>
                         </form>
                       </td>
                     ) : (
@@ -270,16 +274,16 @@ export default function ProjectsTable({
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center group">
                             <div>
-                              <div className="text-[14px] font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                              <div className="text-[14px] font-semibold text-foreground group-hover:text-accent transition-colors">
                                 {project.name}
                               </div>
-                              <div className="text-[13px] font-light text-gray-800">
+                              <div className="text-[13px] font-light text-muted">
                                 ID: {project.id}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-800 font-light text-[13px]">
+                        <td className="px-6 py-4 whitespace-nowrap text-foreground font-light text-[13px]">
                           {formatDate(project.created_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -309,26 +313,30 @@ export default function ProjectsTable({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <button
+                            <Button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditClick(project);
                               }}
-                              className="p-2 text-gray-500 hover:text-blue-600 cursor-pointer rounded-full hover:bg-blue-50 transition-colors"
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted hover:text-accent"
                               aria-label={`Edit project ${project.name}`}
                             >
                               <Edit2 size={16} />
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteClick(project);
                               }}
-                              className="p-2 text-gray-500 hover:text-red-600 cursor-pointer rounded-full hover:bg-red-50 transition-colors"
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted hover:text-red-400"
                               aria-label={`Delete project ${project.name}`}
                             >
                               <Trash2 size={16} />
-                            </button>
+                            </Button>
                           </div>
                         </td>
                       </>
@@ -341,24 +349,24 @@ export default function ProjectsTable({
         </div>
       )}
       {showDeleteModal && projectToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Deletion</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete the project &ldquo;<strong className='font-medium'>{projectToDelete.name}</strong>&ldquo;? This action cannot be undone and will permanently remove all associated data.
+        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl p-6 max-w-md w-full shadow-xl border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Confirm Deletion</h3>
+            <p className="text-muted mb-6">
+              Are you sure you want to delete the project &ldquo;<strong className='font-medium text-foreground'>{projectToDelete.name}</strong>&ldquo;? This action cannot be undone and will permanently remove all associated data.
             </p>
             <div className="flex justify-end gap-3">
-              <button
+              <Button
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-sm cursor-pointer font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                variant="secondary"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleDeleteConfirm}
                 disabled={isDeleting}
-                className="px-4 py-2 cursor-pointer text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-red-400 flex items-center gap-2 transition-colors"
+                variant="danger"
               >
                 {isDeleting ? (
                   <>
@@ -370,11 +378,11 @@ export default function ProjectsTable({
                     Delete
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

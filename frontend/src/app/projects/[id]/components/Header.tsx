@@ -10,13 +10,17 @@ export const Header: React.FC<HeaderProps> = ({ projectName }) => {
   const websiteUrl = `https://seo-front-git-develop-new-team-13.vercel.app/projects/${projectName}`;
 
   return (
-    <header className="bg-white  sticky top-0 z-30">
+    <header className="bg-surface/95 sticky top-0 z-30 border-b border-border backdrop-blur">
       <div className="w-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
         <div className="flex items-center space-x-4 min-w-0">
-          <Link href="/projects" className="text-blue-600 hover:text-blue-800 flex items-center p-2 rounded hover:bg-blue-50" aria-label="Back to projects">
-            <ArrowLeft className="h-5 w-5 mr-1" /> <span className="hidden sm:inline">Back</span>
+          <Link
+            href="/projects"
+            aria-label="Back to projects"
+            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-surface-muted transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" /> <span className="hidden sm:inline">Back</span>
           </Link>
-          <span className="mx-1 truncate">{websiteUrl}</span>
+          <span className="mx-1 truncate text-muted">{websiteUrl}</span>
         </div>
       </div>
     </header>

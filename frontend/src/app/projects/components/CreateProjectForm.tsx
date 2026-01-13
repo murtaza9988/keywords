@@ -1,6 +1,9 @@
 "use client";
 import React from 'react';
 import { Plus, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardTitle } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 
 interface CreateProjectFormProps {
   newProjectName: string;
@@ -22,64 +25,66 @@ export default function CreateProjectForm({
   return (
     <div className="mb-8">
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded-r-lg">
-          <div className="flex">
+        <div className="bg-red-500/10 border border-red-500/30 p-4 mb-6 rounded-lg">
+          <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-red-300" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error</h3>
-              <div className="mt-2 text-sm text-red-700">
+            <div>
+              <h3 className="text-sm font-medium text-red-200">Error</h3>
+              <div className="mt-2 text-sm text-red-100">
                 <p>{error}</p>
               </div>
               <div className="mt-4">
-                <button
+                <Button
                   onClick={() => setError('')}
-                  className="text-sm bg-red-100 px-3 py-1 rounded-md text-red-800 hover:bg-red-200 transition-colors"
+                  variant="outline"
+                  size="sm"
+                  className="border-red-500/40 text-red-100 hover:bg-red-500/20"
                 >
                   Dismiss
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         </div>
       )}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Create New Project</h3>
-        </div>
-        <form onSubmit={handleCreateProject} className="flex flex-col sm:flex-row gap-4">
-          <input
-            id="newProjectName"
-            type="text"
-            value={newProjectName}
-            onChange={(e) => setNewProjectName(e.target.value)}
-            placeholder="Enter project name"
-            className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400 disabled:bg-gray-100"
-            required
-            disabled={isCreating}
-          />
-          <button
-            type="submit"
-            disabled={isCreating || !newProjectName.trim()}
-            className="bg-blue-600 hover:bg-blue-700 cursor-pointer text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {isCreating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Project
-              </>
-            )}
-          </button>
-        </form>
-      </div>
+      <Card className="mb-8 p-6">
+        <CardTitle className="mb-4">Create New Project</CardTitle>
+        <CardContent>
+          <form onSubmit={handleCreateProject} className="flex flex-col sm:flex-row gap-4">
+            <Input
+              id="newProjectName"
+              type="text"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              placeholder="Enter project name"
+              className="w-full sm:w-64"
+              required
+              disabled={isCreating}
+            />
+            <Button
+              type="submit"
+              disabled={isCreating || !newProjectName.trim()}
+              className="w-full sm:w-auto"
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Project
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
