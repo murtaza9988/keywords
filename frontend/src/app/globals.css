@@ -2,24 +2,24 @@
 
 :root {
   color-scheme: dark;
-  --background: #0b0f1a;
-  --foreground: #f8fafc;
-  --surface: #111827;
-  --surface-muted: #0f172a;
-  --surface-strong: #1f2937;
-  --surface-stronger: #334155;
-  --border: #1f2937;
-  --muted: #94a3b8;
-  --accent: #8b5cf6;
-  --accent-strong: #7c3aed;
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --surface: #121c2b;
+  --surface-muted: #0c1626;
+  --surface-strong: #1b263a;
+  --surface-stronger: #263449;
+  --border: #253246;
+  --muted: #a5b4c8;
+  --accent: #9a7bff;
+  --accent-strong: #7f5af0;
   --danger: #ef4444;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --input: #0b1220;
-  --ring: #a78bfa;
-  --table-row: #0f172a;
-  --table-row-alt: #111827;
-  --overlay: rgba(2, 6, 23, 0.75);
+  --success: #34d399;
+  --warning: #fbbf24;
+  --input: #0e1a2b;
+  --ring: #b39bff;
+  --table-row: #0f1b2b;
+  --table-row-alt: #142235;
+  --overlay: rgba(2, 8, 23, 0.7);
 }
 
 @theme inline {
