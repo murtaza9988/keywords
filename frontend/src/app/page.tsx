@@ -11,6 +11,11 @@ import authService from '@/lib/authService';
 import { useAuth } from '@/components/AuthProvider';
 import { AppDispatch } from '@/store/store';
 import { Project } from '@/lib/types';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Spinner } from '@/components/ui/Spinner';
+import { cn } from '@/lib/cn';
 
 function isError(error: unknown): error is Error {
   return error instanceof Error;
@@ -76,18 +81,18 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#f3f4f6_1px,transparent_1px)] bg-[length:20px_20px] opacity-50"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[length:24px_24px] opacity-70" />
         <div className="flex items-center justify-center z-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          <Spinner size="lg" className="border-muted border-t-accent" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#f3f4f6_1px,transparent_1px)] bg-[length:20px_20px] opacity-50"></div>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[length:24px_24px] opacity-70" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -95,19 +100,21 @@ export default function Login() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md z-10"
       >
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-8 border border-gray-100">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text">
+        <Card className="bg-surface/80 backdrop-blur-md border border-border p-8">
+          <CardHeader className="text-center mb-8">
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
               Manager
-            </h1>
-            <p className="text-gray-500 mt-2">Advanced Keyword Processing</p>
-          </div>
+            </CardTitle>
+            <CardDescription className="mt-2 text-muted">
+              Advanced Keyword Processing
+            </CardDescription>
+          </CardHeader>
 
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-6 border border-red-100"
+              className="bg-red-500/10 text-red-200 px-4 py-3 rounded-lg mb-6 border border-red-500/30"
               role="alert"
             >
               {error}
@@ -116,41 +123,43 @@ export default function Login() {
 
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="username" className="block text-sm font-medium text-muted mb-2">
                 Username
               </label>
-              <input
+              <Input
                 type="text"
                 id="username"
                 value={username}
                 onChange={handleUsernameChange}
                 required
                 disabled={isSubmitting}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400 disabled:opacity-60"
+                className="px-4 py-3"
                 placeholder="Enter username"
                 autoComplete="username"
               />
             </div>
 
             <div className="mb-8 relative">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-muted mb-2">
                 Password
               </label>
-              <input
+              <Input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 value={password}
                 onChange={handlePasswordChange}
                 required
                 disabled={isSubmitting}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400 disabled:opacity-60"
+                className="px-4 py-3 pr-12"
                 placeholder="Enter password"
                 autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={toggleShowPassword}
-                className="absolute right-3 top-10 text-gray-500 hover:text-gray-700 disabled:opacity-60"
+                className={cn(
+                  "absolute right-3 top-10 text-muted hover:text-foreground transition-colors disabled:opacity-60",
+                )}
                 disabled={isSubmitting}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
@@ -158,27 +167,29 @@ export default function Login() {
               </button>
             </div>
 
-            <motion.button
+            <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 rounded-lg transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full"
             >
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Signing In...
-                </div>
-              ) : (
-                'Sign In'
-              )}
-            </motion.button>
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner size="sm" className="border-white/40 border-t-white" />
+                    Signing In...
+                  </span>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </motion.div>
           </form>
-        </div>
+        </Card>
       </motion.div>
     </div>
   );

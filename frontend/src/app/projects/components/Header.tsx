@@ -2,6 +2,7 @@
 import React from 'react';
 import { BarChart3, LogOut } from 'lucide-react';
 import authService from '@/lib/authService';
+import { Button } from '@/components/ui/Button';
 
 export default function Header() {
   const handleLogout = () => {
@@ -9,20 +10,21 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm w-full">
+    <header className="bg-surface/95 backdrop-blur border-b border-border sticky top-0 z-20 shadow-sm w-full">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <BarChart3 className="h-8 w-8 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-900">SEO Project Manager</h1>
+          <BarChart3 className="h-8 w-8 text-accent" />
+          <h1 className="text-2xl font-bold text-foreground">SEO Project Manager</h1>
         </div>
-        <button
+        <Button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          variant="ghost"
+          className="text-muted hover:text-foreground"
           aria-label="Logout"
         >
           <LogOut size={18} />
           Logout
-        </button>
+        </Button>
       </div>
     </header>
   );
