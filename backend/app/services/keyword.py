@@ -486,28 +486,46 @@ class KeywordService:
     async def update_status_by_ids_batched(
         db: AsyncSession, project_id: int, keyword_ids: List[int],
         update_data: Dict[str, Any], required_current_status: KeywordStatus,
-        batch_size: int = 100
+        batch_size: int = 5000  # Increased default batch size significantly
     ) -> int:
         """
-        Update keyword status by IDs using batch processing for better handling of large ID lists.
+        Update keyword status by IDs using optimized bulk update.
         """
         if not keyword_ids:
             return 0
         
+        # For updates < 10000, do it in one shot
+        if len(keyword_ids) <= 10000:
+            stmt = text("""
+                UPDATE keywords
+                SET status = :new_status
+                WHERE project_id = :project_id
+                AND id = ANY(:ids)
+                AND status = :current_status
+            """)
+
+            result = await db.execute(
+                stmt,
+                {
+                    "project_id": project_id,
+                    "ids": keyword_ids,
+                    "current_status": required_current_status.value,
+                    "new_status": update_data.get("status")
+                }
+            )
+            return result.rowcount
+
+        # Fallback to large batches for massive updates to avoid query size limits
         total_updated = 0
-        
-        # Process in batches
         for i in range(0, len(keyword_ids), batch_size):
             batch_ids = keyword_ids[i:i+batch_size]
             
-            # Use text-based SQL for more control
             stmt = text("""
                 UPDATE keywords
                 SET status = :new_status
                 WHERE project_id = :project_id
                 AND id = ANY(:batch_ids)
                 AND status = :current_status
-                RETURNING id
             """)
             
             result = await db.execute(
@@ -520,11 +538,8 @@ class KeywordService:
                 }
             )
             
-            # Count the number of updated rows in this batch
-            batch_updated = result.rowcount
-            total_updated += batch_updated
-            
-            print(f"Batch {i//batch_size + 1}: Updated {batch_updated} of {len(batch_ids)} keywords")
+            total_updated += result.rowcount
+            print(f"Batch {i//batch_size + 1}: Updated {result.rowcount} keywords")
         
         return total_updated
     @staticmethod
