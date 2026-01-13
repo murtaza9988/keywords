@@ -66,7 +66,7 @@ export function TokenManagement({
   const [selectedTokenNames, setSelectedTokenNames] = useState<Set<string>>(new Set());
   const [hoveredToken, setHoveredToken] = useState<string | null>(null);
   const [expandedTokens, setExpandedTokens] = useState<Set<string>>(new Set());
-  const fetchTrigger = useRef(0);
+  const [fetchTrigger, setFetchTrigger] = useState(0);
   const [showCreateToken, setShowCreateToken] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
   const [isCreatingToken, setIsCreatingToken] = useState(false);
@@ -128,7 +128,7 @@ export function TokenManagement({
       return [...ungroupedKeywords, ...groupedKeywords, ...blockedKeywords];
     }
     return [];
-  }, [activeTokenView, activeView, activeViewKeywords, ungroupedKeywords, groupedKeywords, blockedKeywords]);
+  }, [activeTokenView, activeView, activeViewKeywords, ungroupedKeywords, groupedKeywords, blockedKeywords, projectId]);
   const fetchTokens = useCallback(
     async (view: TokenActiveView, page: number, limit: number, search: string) => {
       if (!projectId) return;
@@ -327,17 +327,17 @@ export function TokenManagement({
   useEffect(() => {
     console.log('Triggering fetchTokens with:', { activeTokenView, page: pagination.page, limit: pagination.limit, effectiveSearchTerm });
     fetchTokens(activeTokenView, pagination.page, pagination.limit, effectiveSearchTerm);
-  }, [fetchTrigger.current, activeTokenView, pagination.page, pagination.limit, effectiveSearchTerm, fetchTokens]);
+  }, [fetchTrigger, activeTokenView, pagination.page, pagination.limit, effectiveSearchTerm, fetchTokens]);
 
   useEffect(() => {
-    fetchTrigger.current += 1;
+    setFetchTrigger(prev => prev + 1);
   }, []);
 
   const debouncedSearch = useMemo(
     () => debounce((value: string) => {
       if (value.length >= MINIMUM_SEARCH_LENGTH || value === '') {
         setEffectiveSearchTerm(value);
-        fetchTrigger.current += 1;
+        setFetchTrigger(prev => prev + 1);
       }
     }, 500),
     []
@@ -354,7 +354,7 @@ export function TokenManagement({
     searchInputRef.current = '';
     setEffectiveSearchTerm('');
     setPagination(prev => ({ ...prev, page: 1 }));
-    fetchTrigger.current += 1;
+    setFetchTrigger(prev => prev + 1);
   };
 
   const handleMergeSelected = async () => {
@@ -375,7 +375,7 @@ export function TokenManagement({
       addSnackbarMessage(`Successfully merged ${childTokens.length + 1} tokens under "${parentToken}".`, 'success');
       setSelectedTokenNames(new Set());
       setIsLoading(true);
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
       onTokenDataChange();
     } catch (error) {
       addSnackbarMessage(`Error merging tokens: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
@@ -388,14 +388,14 @@ export function TokenManagement({
     if (activeTokenView !== newView) {
       setActiveTokenView(newView);
       setPagination(prev => ({ ...prev, page: 1 }));
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
     }
   };
 
   const handlePageChange = (newPage: number) => {
     if (newPage !== pagination.page && newPage >= 1 && newPage <= pagination.pages && !isLoading) {
       setPagination(prev => ({ ...prev, page: newPage }));
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
     }
   };
 
@@ -403,7 +403,7 @@ export function TokenManagement({
     const newLimit = parseInt(event.target.value, 10);
     if (!isNaN(newLimit) && newLimit !== pagination.limit) {
       setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
     }
   };
 
@@ -445,7 +445,7 @@ export function TokenManagement({
       addSnackbarMessage(`Successfully blocked ${response.count} keywords for ${tokensToBlock.length} token(s).`, 'success');
       setSelectedTokenNames(new Set());
       setIsLoading(true);
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
       onBlockTokenSuccess();
       onTokenDataChange();
     } catch (error) {
@@ -467,7 +467,7 @@ export function TokenManagement({
       addSnackbarMessage(`Successfully unblocked ${(await response).count} token(s).`, 'success');
       setSelectedTokenNames(new Set());
       setIsLoading(true);
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
       onUnblockTokenSuccess();
       onTokenDataChange();
     } catch (error) {
@@ -483,7 +483,7 @@ export function TokenManagement({
               const response = await apiClient.blockTokens(projectId, [tokenName]);
       addSnackbarMessage(`Successfully blocked ${response.count} keywords for token "${tokenName}".`, 'success');
       setIsLoading(true);
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
       onBlockTokenSuccess();
     } catch (error) {
       addSnackbarMessage(`Error blocking token "${tokenName}": ${isError(error) ? error.message : 'Unknown error'}`, 'error');
@@ -521,14 +521,14 @@ export function TokenManagement({
       setShowCreateToken(false);
       setNewTokenName('');
       setIsLoading(true);
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
       onTokenDataChange();
     } catch (error) {
       addSnackbarMessage(`Error creating token: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsCreatingToken(false);
     }
-  }, [projectId, searchTerm, newTokenName, addSnackbarMessage, fetchTrigger, onTokenDataChange]);
+  }, [projectId, searchTerm, newTokenName, addSnackbarMessage, onTokenDataChange]);
 
   const handleCancelCreateToken = () => {
     setShowCreateToken(false);
@@ -541,7 +541,7 @@ export function TokenManagement({
               const response = await apiClient.unblockTokens(projectId, [tokenName]);
       addSnackbarMessage(`Successfully unblocked token "${tokenName}".`, 'success');
       setIsLoading(true);
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
       onUnblockTokenSuccess();
       onTokenDataChange();
     } catch (error) {
@@ -558,7 +558,7 @@ export function TokenManagement({
               const response = await apiClient.unmergeToken(projectId, tokenName);
       addSnackbarMessage(`Successfully unmerged token "${tokenName}".`, 'success');
       setIsLoading(true);
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
       onTokenDataChange();
       setExpandedTokens(prev => {
         const newSet = new Set(prev);
@@ -580,7 +580,7 @@ export function TokenManagement({
       return { column, direction: 'asc' };
     });
     setIsLoading(true);
-    fetchTrigger.current += 1;
+    setFetchTrigger(prev => prev + 1);
   };
 
   const handleTokenClick = (tokenName: string) => {
@@ -639,7 +639,7 @@ export function TokenManagement({
               const response = await apiClient.unmergeIndividualToken(projectId, parentToken, childToken);
       addSnackbarMessage(`Successfully unmerged "${childToken}" from "${parentToken}".`, 'success');
       setIsLoading(true);
-      fetchTrigger.current += 1;
+      setFetchTrigger(prev => prev + 1);
       onTokenDataChange();
     } catch (error) {
       addSnackbarMessage(`Error unmerging token: ${isError(error) ? error.message : 'Unknown error'}`, 'error');

@@ -1,6 +1,6 @@
 import apiClient from "@/lib/apiClient";
 import { debounce } from "lodash";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
   const [note1, setNote1] = useState("");
@@ -74,33 +74,42 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
     element.style.height = `${newHeight}px`;
   }, []);
 
-  const debouncedSaveNote1 = useCallback(
-    debounce(async (note: string) => {
-      try {
-        setIsSavingNote1(true);
-        await apiClient.saveNotes(projectId, note, note2);
-      } catch (error) {
-        console.error("Error saving note 1:", error);
-      } finally {
-        setIsSavingNote1(false);
-      }
-    }, 1000),
-    [projectId, authToken, note2]
+  const debouncedSaveNote1 = useMemo(
+    () =>
+      debounce(async (note: string) => {
+        try {
+          setIsSavingNote1(true);
+          await apiClient.saveNotes(projectId, note, note2);
+        } catch (error) {
+          console.error("Error saving note 1:", error);
+        } finally {
+          setIsSavingNote1(false);
+        }
+      }, 1000),
+    [projectId, note2]
   );
 
-  const debouncedSaveNote2 = useCallback(
-    debounce(async (note: string) => {
-      try {
-        setIsSavingNote2(true);
-        await apiClient.saveNotes(projectId, note1, note);
-      } catch (error) {
-        console.error("Error saving note 2:", error);
-      } finally {
-        setIsSavingNote2(false);
-      }
-    }, 1000),
-    [projectId, authToken, note1]
+  const debouncedSaveNote2 = useMemo(
+    () =>
+      debounce(async (note: string) => {
+        try {
+          setIsSavingNote2(true);
+          await apiClient.saveNotes(projectId, note1, note);
+        } catch (error) {
+          console.error("Error saving note 2:", error);
+        } finally {
+          setIsSavingNote2(false);
+        }
+      }, 1000),
+    [projectId, note1]
   );
+
+  useEffect(() => {
+    return () => {
+      debouncedSaveNote1.cancel();
+      debouncedSaveNote2.cancel();
+    };
+  }, [debouncedSaveNote1, debouncedSaveNote2]);
 
   useEffect(() => {
     const fetchNotes = async () => {
