@@ -186,6 +186,9 @@ export default function ProjectDetail() {
   const [isProcessingAction, setIsProcessingAction] = useState<boolean>(false);
   const [snackbarMessages, setSnackbarMessages] = useState<SnackbarMessage[]>([]);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
+  const [processingStage, setProcessingStage] = useState<string | undefined>(undefined);
+  const [processingQueueLength, setProcessingQueueLength] = useState<number>(0);
+  const [processingCurrentFile, setProcessingCurrentFile] = useState<string | undefined>(undefined);
   const prevActiveViewRef = useRef(activeView);
   const [displayProgress, setDisplayProgress] = useState<number>(0);
   const targetProgressRef = useRef<number>(0);
@@ -1825,6 +1828,15 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         const normalizedProgress = Math.max(0, Math.min(100, data.progress));
         setProcessingProgress(normalizedProgress);
       }
+      if (data.stage !== undefined) {
+        setProcessingStage(data.stage);
+      }
+      if (data.queueLength !== undefined) {
+        setProcessingQueueLength(data.queueLength);
+      }
+      if (data.currentFile !== undefined) {
+        setProcessingCurrentFile(data.currentFile || undefined);
+      }
 
       if (data.status === 'complete') {
         setProcessingStatus('complete');
@@ -1995,9 +2007,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         if (initialData.pagination) {
           setPagination(initialData.pagination);
         }
-        if (initialData.processingStatus?.status === 'processing') {
+        if (initialData.processingStatus?.status === 'processing' || initialData.processingStatus?.status === 'queued') {
           setProcessingStatus(initialData.processingStatus.status);
           setProcessingProgress(initialData.processingStatus.progress || 0);
+          setProcessingStage(initialData.processingStatus.stage);
+          setProcessingQueueLength(initialData.processingStatus.queueLength || 0);
+          setProcessingCurrentFile(initialData.processingStatus.currentFile);
           startProcessingCheck();
         }
       }
@@ -2024,19 +2039,22 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     }
   }, [projectIdStr, router, pagination.limit, activeView, dispatch, projectIdNum, startProcessingCheck, addSnackbarMessage, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter]);
   
-  const handleUploadStart = useCallback(() => {
+  const handleUploadStart = useCallback((totalFiles: number) => {
     setIsUploading(true);
     setProcessingStatus('queued');
     setProcessingProgress(0);
+    setProcessingStage('queued');
+    setProcessingQueueLength(totalFiles);
     startProcessingCheck();
   }, [startProcessingCheck]);  
   const handleUploadSuccess = useCallback(
-    (status: ProcessingStatus, message?: string) => {
+    (status: ProcessingStatus, message?: string, fileName?: string) => {
       setProcessingStatus(status);
       if (status === 'complete') {
         setIsUploading(false);
         setUploadSuccess(true);
         setProcessingProgress(100);
+        setProcessingStage('complete');
         stopProcessingCheck();
         addSnackbarMessage(message || 'File uploaded and processed successfully', 'success');
         fetchProjectStats();
@@ -2074,15 +2092,35 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   );
 
   const handleUploadError = useCallback(
-    (message: string) => {
+    (message: string, fileName?: string) => {
+      const displayMessage = fileName ? `${fileName}: ${message}` : message;
       setIsUploading(false);
       setProcessingStatus('error');
       setProcessingProgress(0);
+      setProcessingStage('error');
       setDisplayProgress(0);
-      addSnackbarMessage(message, 'error');
+      addSnackbarMessage(displayMessage, 'error');
       stopProcessingCheck();
     },
     [addSnackbarMessage, stopProcessingCheck]
+  );
+
+  const handleUploadComplete = useCallback(
+    ({ totalFiles, successCount, failureCount }: { totalFiles: number; successCount: number; failureCount: number }) => {
+      if (successCount > 0) {
+        addSnackbarMessage(
+          `Upload complete for ${successCount} of ${totalFiles} file${totalFiles > 1 ? 's' : ''}. Processing will continue in the background.`,
+          'success'
+        );
+      }
+      if (failureCount > 0) {
+        addSnackbarMessage(
+          `${failureCount} file${failureCount > 1 ? 's' : ''} failed to upload. Please retry.`,
+          'error'
+        );
+      }
+    },
+    [addSnackbarMessage]
   );
 
   useEffect(() => {
@@ -2521,6 +2559,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             handleUploadStart={handleUploadStart}
             handleUploadSuccess={handleUploadSuccess}
             handleUploadError={handleUploadError}
+            handleUploadComplete={handleUploadComplete}
             handleIncludeFilterChange={handleIncludeFilterChange}
             handleExcludeFilterChange={handleExcludeFilterChange}
             setGroupName={setGroupName}
@@ -2535,6 +2574,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             excludeMatchType={excludeMatchType}
             handleConfirmKeywords={handleConfirmKeywords}
             handleUnconfirmKeywords={handleUnconfirmKeywords}
+            processingStage={processingStage}
+            processingQueueLength={processingQueueLength}
+            processingCurrentFile={processingCurrentFile}
           />
           <MainContent
             activeView={activeView}

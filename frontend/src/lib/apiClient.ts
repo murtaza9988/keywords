@@ -327,7 +327,7 @@ class ApiClient {
     projectId: string,
     formData: FormData,
     onUploadProgress?: (progress: number) => void
-  ): Promise<{ message: string; status: 'processing' | 'complete' | 'error'; file_name?: string }> {
+  ): Promise<{ message: string; status: 'processing' | 'complete' | 'error'; file_name?: string; stage?: string }> {
     try {
       this.cache.invalidate(`/api/projects/${projectId}`);
       const chunkIndex = formData.get('chunkIndex');

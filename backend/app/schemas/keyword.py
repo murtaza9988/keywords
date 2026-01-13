@@ -133,6 +133,9 @@ class ProcessingStatus(BaseModel):
     complete: bool = Field(False, alias="complete")
     total_rows: int = Field(0, alias="totalRows")
     progress: float = Field(0.0, alias="progress")
+    stage: Optional[str] = Field(None, alias="stage")
+    queue_length: int = Field(0, alias="queueLength")
+    current_file: Optional[str] = Field(None, alias="currentFile")
     
     model_config = {
         "populate_by_name": True

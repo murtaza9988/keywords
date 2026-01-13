@@ -23,7 +23,15 @@ from app.schemas.keyword import (
 )
 from app.utils.security import get_current_user
 from app.models.keyword import Keyword, KeywordStatus
-from app.routes.keyword_processing import process_csv_file, processing_tasks, processing_results
+from app.routes.keyword_processing import (
+    enqueue_csv_processing,
+    process_csv_queue,
+    processing_current_file,
+    processing_queue,
+    processing_results,
+    processing_stage,
+    processing_tasks
+)
 from app.utils.keyword_utils import keyword_cache
 from fastapi.responses import StreamingResponse
 import io
@@ -44,8 +52,12 @@ async def get_processing_status(
         "keywords": [],
         "complete": False,
         "total_rows": 0,
-        "progress": 0.0
+        "progress": 0.0,
+        "stage": "idle"
     })
+    stage = processing_stage.get(project_id, result.get("stage", "idle"))
+    queue_length = len(processing_queue.get(project_id, []))
+    current_file = processing_current_file.get(project_id)
 
     progress = max(0, min(100, result.get("progress", 0.0)))
 
@@ -59,7 +71,10 @@ async def get_processing_status(
             "keywords": result.get("keywords", []),
             "complete": True,
             "totalRows": result.get("total_rows", 0),
-            "progress": 100.0
+            "progress": 100.0,
+            "stage": "complete",
+            "queueLength": queue_length,
+            "currentFile": current_file
         }
     elif status == "idle":
         count = await KeywordService.count_parents_by_project(db, project_id)
@@ -72,7 +87,10 @@ async def get_processing_status(
                 "keywords": result.get("keywords", []),
                 "complete": True,
                 "totalRows": result.get("total_rows", 0),
-                "progress": 100.0
+                "progress": 100.0,
+                "stage": "complete",
+                "queueLength": queue_length,
+                "currentFile": current_file
             }
 
     return {
@@ -83,7 +101,10 @@ async def get_processing_status(
         "keywords": result.get("keywords", []),
         "complete": result.get("complete", False),
         "totalRows": result.get("total_rows", 0),
-        "progress": progress
+        "progress": progress,
+        "stage": stage,
+        "queueLength": queue_length,
+        "currentFile": current_file
     }
 @router.post("/projects/{project_id}/upload", status_code=status.HTTP_202_ACCEPTED)
 async def upload_keywords(
@@ -103,9 +124,6 @@ async def upload_keywords(
     
     if not file.filename or not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
-    if processing_tasks.get(project_id) == "processing" and (chunkIndex is None or int(chunkIndex) == 0):
-        raise HTTPException(status_code=409, detail="A file is already being processed for this project.")
-    
     is_chunked_upload = chunkIndex is not None and totalChunks is not None and originalFilename is not None
     
     if is_chunked_upload:
@@ -168,22 +186,25 @@ async def upload_keywords(
             db.add(csv_upload)
             await db.commit()
             
-            processing_tasks[project_id] = "queued"
-            processing_results[project_id] = {
-                "processed_count": 0,
-                "skipped_count": 0,
-                "keywords": [],
-                "complete": False, 
-                "total_rows": 0,
-                "progress": 0.0
-            }
+            if processing_tasks.get(project_id) not in {"processing", "queued"}:
+                processing_results[project_id] = {
+                    "processed_count": 0,
+                    "skipped_count": 0,
+                    "keywords": [],
+                    "complete": False,
+                    "total_rows": 0,
+                    "progress": 0.0
+                }
             
-            background_tasks.add_task(process_csv_file, final_path, project_id)
+            should_start = enqueue_csv_processing(project_id, final_path, originalFilename)
+            if should_start:
+                background_tasks.add_task(process_csv_queue, project_id)
             
             return {
-                "message": "CSV upload complete and processing started in background.",
+                "message": f"Upload complete for {originalFilename}. Added to processing queue.",
                 "status": "processing",
-                "file_name": originalFilename
+                "file_name": originalFilename,
+                "stage": "queued"
             }
         except Exception as e:
             if os.path.exists(chunks_dir):
@@ -217,22 +238,25 @@ async def upload_keywords(
         db.add(csv_upload)
         await db.commit()
         
-        processing_tasks[project_id] = "queued"
-        processing_results[project_id] = {
-            "processed_count": 0,
-            "skipped_count": 0,
-            "keywords": [],
-            "complete": False, 
-            "total_rows": 0,
-            "progress": 0.0
-        }
+        if processing_tasks.get(project_id) not in {"processing", "queued"}:
+            processing_results[project_id] = {
+                "processed_count": 0,
+                "skipped_count": 0,
+                "keywords": [],
+                "complete": False,
+                "total_rows": 0,
+                "progress": 0.0
+            }
         
-        background_tasks.add_task(process_csv_file, file_path, project_id)
+        should_start = enqueue_csv_processing(project_id, file_path, file.filename)
+        if should_start:
+            background_tasks.add_task(process_csv_queue, project_id)
         
         return {
-            "message": "CSV upload received and processing started in background.",
+            "message": f"Upload complete for {file.filename}. Added to processing queue.",
             "status": "processing",
-            "file_name": file.filename
+            "file_name": file.filename,
+            "stage": "queued"
         }
     
 @router.get("/projects/{project_id}/csv-uploads", response_model=List[CSVUploadResponse])
@@ -584,7 +608,10 @@ async def get_project_initial_data(
         "processingStatus": {
             "status": processing_tasks.get(project_id, "idle"),
             "progress": processing_results.get(project_id, {}).get("progress", 100.0),
-            "complete": processing_results.get(project_id, {}).get("complete", True)
+            "complete": processing_results.get(project_id, {}).get("complete", True),
+            "stage": processing_stage.get(project_id, "idle"),
+            "queueLength": len(processing_queue.get(project_id, [])),
+            "currentFile": processing_current_file.get(project_id)
         }
     }
     

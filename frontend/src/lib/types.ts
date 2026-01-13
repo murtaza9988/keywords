@@ -75,6 +75,9 @@ export interface ProcessingStatusResponse {
   complete?: boolean;
   totalRows?: number; 
   progress?: number; 
+  stage?: string;
+  queueLength?: number;
+  currentFile?: string;
 }
 export interface GroupKeywordsResponse {
     message: string;

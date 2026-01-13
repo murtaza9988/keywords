@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import FileUploader from './FileUploader';
+import ProcessingProgressBar from './ProcessingProgressBar';
 import { Loader2 } from 'lucide-react';
 import { ActiveKeywordView, ProcessingStatus } from './types';
 import apiClient from '@/lib/apiClient';
@@ -17,9 +18,10 @@ interface FiltersSectionProps {
   selectedKeywordIds: Set<number>;
   isProcessingAction: boolean;
   selectedTokens: string[];
-  handleUploadStart: () => void;
-  handleUploadSuccess: (status: ProcessingStatus, message?: string) => void;
-  handleUploadError: (message: string) => void;
+  handleUploadStart: (totalFiles: number) => void;
+  handleUploadSuccess: (status: ProcessingStatus, message?: string, fileName?: string) => void;
+  handleUploadError: (message: string, fileName?: string) => void;
+  handleUploadComplete: (summary: { totalFiles: number; successCount: number; failureCount: number }) => void;
   handleIncludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleExcludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   setGroupName: (value: string) => void;
@@ -29,6 +31,9 @@ interface FiltersSectionProps {
   removeToken: (token: string) => void;
   handleClearAllFilters: () => void;
   processingProgress?: number;
+  processingStage?: string;
+  processingQueueLength?: number;
+  processingCurrentFile?: string;
   setIncludeMatchType: (value: 'any' | 'all') => void;
   setExcludeMatchType: (value: 'any' | 'all') => void;
   includeMatchType: 'any' | 'all';
@@ -51,6 +56,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
   handleUploadStart,
   handleUploadSuccess,
   handleUploadError,
+  handleUploadComplete,
   handleIncludeFilterChange,
   handleExcludeFilterChange,
   setGroupName,
@@ -65,6 +71,10 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
   excludeMatchType,
   handleConfirmKeywords,
   handleUnconfirmKeywords,
+  processingProgress,
+  processingStage,
+  processingQueueLength,
+  processingCurrentFile
 }) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -233,6 +243,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
               onUploadStart={handleUploadStart}
               onUploadSuccess={handleUploadSuccess}
               onUploadError={handleUploadError}
+              onUploadComplete={handleUploadComplete}
             />
           </div>
         </div>
@@ -381,6 +392,13 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
             </div>
           </div>
         )}
+        <ProcessingProgressBar
+          status={processingStatus}
+          progress={processingProgress || 0}
+          stage={processingStage}
+          currentFile={processingCurrentFile}
+          queueLength={processingQueueLength}
+        />
         {processingStatus === 'error' && !isUploading && !isProcessing && (
           <div className="text-red-600 h-6 flex items-center">
             Processing failed. Try uploading again.

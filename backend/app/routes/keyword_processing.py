@@ -7,6 +7,7 @@ import unicodedata
 import string
 import re
 import nltk
+from collections import deque
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -51,6 +52,10 @@ lemmatizer = WordNetLemmatizer()
 EXTENDED_PUNCTUATION = string.punctuation + "®–—™"
 processing_tasks: Dict[int, str] = {}
 processing_results: Dict[int, Dict] = {}
+processing_queue: Dict[int, deque] = {}
+processing_queue_running: Set[int] = set()
+processing_stage: Dict[int, str] = {}
+processing_current_file: Dict[int, str] = {}
 question_words = {'what', 'why', 'how', 'when', 'where', 'who', 'which', 'whose', 'whom','can'}
 
 def get_synonyms(word: str) -> Set[str]:
@@ -171,8 +176,10 @@ async def process_csv_file(file_path: str, project_id: int):
         "keywords": [],
         "complete": False,
         "total_rows": 0,
-        "progress": 0.0
+        "progress": 0.0,
+        "stage": "starting"
     }
+    processing_stage[project_id] = "starting"
 
     try:
         async with get_db_context() as db:
@@ -241,6 +248,7 @@ async def process_csv_file(file_path: str, project_id: int):
                 detected_encoding = 'utf-8'
                 detected_delimiter = ','
             
+            processing_stage[project_id] = "counting_rows"
             # Count total rows
             row_count = 0
             with open(file_path, 'r', encoding=detected_encoding) as f:
@@ -284,6 +292,7 @@ async def process_csv_file(file_path: str, project_id: int):
                 processing_results[project_id]["complete"] = True
                 return
             
+            processing_stage[project_id] = "processing_rows"
             # Processing variables
             batch_size = 200 
             processed_count = 0
@@ -440,10 +449,12 @@ async def process_csv_file(file_path: str, project_id: int):
                         
                         current_chunk = []
             
+            processing_stage[project_id] = "finalizing"
             # Mark processing as complete
             processing_results[project_id]["complete"] = True
             processing_results[project_id]["progress"] = 100.0
             processing_tasks[project_id] = "complete"
+            processing_stage[project_id] = "complete"
             
             # Final grouping pass for any remaining ungrouped keywords
             await group_remaining_ungrouped_keywords(db, project_id)
@@ -460,6 +471,7 @@ async def process_csv_file(file_path: str, project_id: int):
         processing_tasks[project_id] = "error"
         processing_results[project_id]["complete"] = True
         processing_results[project_id]["progress"] = 0.0
+        processing_stage[project_id] = "error"
         try:
             async with get_db_context() as db:
                 drop_index_query = f"DROP INDEX IF EXISTS temp_tokens_idx_{project_id}"
@@ -474,6 +486,43 @@ async def process_csv_file(file_path: str, project_id: int):
                 print(f"Removed temporary file: {file_path}")
             except OSError as e:
                 print(f"Error removing file {file_path}: {e}")
+
+async def process_csv_queue(project_id: int):
+    """Process queued CSV uploads sequentially for a project."""
+    queue = processing_queue.get(project_id)
+    if not queue:
+        processing_queue_running.discard(project_id)
+        processing_tasks[project_id] = "idle"
+        processing_stage[project_id] = "idle"
+        return
+
+    while queue:
+        file_path, original_filename = queue.popleft()
+        processing_current_file[project_id] = original_filename
+        processing_tasks[project_id] = "processing"
+        processing_stage[project_id] = "processing"
+        await process_csv_file(file_path, project_id)
+        if queue:
+            processing_tasks[project_id] = "queued"
+            processing_stage[project_id] = "queued"
+            processing_results[project_id]["complete"] = False
+            processing_results[project_id]["progress"] = 0.0
+
+    processing_queue_running.discard(project_id)
+    processing_current_file.pop(project_id, None)
+    if not processing_queue.get(project_id):
+        processing_queue.pop(project_id, None)
+
+def enqueue_csv_processing(project_id: int, file_path: str, original_filename: str) -> bool:
+    """Enqueue a CSV file for processing. Returns True if a worker should start."""
+    queue = processing_queue.setdefault(project_id, deque())
+    queue.append((file_path, original_filename))
+    processing_tasks[project_id] = "queued"
+    processing_stage[project_id] = "queued"
+    if project_id not in processing_queue_running:
+        processing_queue_running.add(project_id)
+        return True
+    return False
 
 async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int):
     """Group any remaining ungrouped keywords with identical tokens."""
@@ -571,7 +620,8 @@ def get_processing_results(project_id: int) -> Dict:
         "keywords": [],
         "complete": False,
         "total_rows": 0,
-        "progress": 0.0
+        "progress": 0.0,
+        "stage": "idle"
     })
 
 def cleanup_processing_data(project_id: int):
@@ -580,3 +630,11 @@ def cleanup_processing_data(project_id: int):
         del processing_tasks[project_id]
     if project_id in processing_results:
         del processing_results[project_id]
+    if project_id in processing_queue:
+        del processing_queue[project_id]
+    if project_id in processing_queue_running:
+        processing_queue_running.discard(project_id)
+    if project_id in processing_stage:
+        del processing_stage[project_id]
+    if project_id in processing_current_file:
+        del processing_current_file[project_id]
