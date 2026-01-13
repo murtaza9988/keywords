@@ -4,7 +4,7 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db
-from app.routes import auth, keyword_tokens, notes, projects, keyword_routes
+from app.routes import auth, keyword_tokens, notes, projects, keyword_routes, project_activity_log
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -30,6 +30,7 @@ app.include_router(projects.router, prefix=settings.API_V1_STR)
 app.include_router(keyword_routes.router, prefix=settings.API_V1_STR)
 app.include_router(keyword_tokens.router, prefix=settings.API_V1_STR)
 app.include_router(notes.router, prefix=settings.API_V1_STR)
+app.include_router(project_activity_log.router, prefix=settings.API_V1_STR)
 @app.get("/")
 async def root():
     return {"message": "Welcome to SEO Project Manager API. See /docs for API documentation."}

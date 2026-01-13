@@ -15,6 +15,7 @@ import {
   TokenListResponse,
   Note,
   CSVUpload,
+  ProjectActivityLogResponse,
 } from './types';
 import authService from './authService';
 
@@ -321,6 +322,20 @@ class ApiClient {
     const url = `/api/projects/${projectId}/csv-uploads`;
     const data = await this.request<CSVUpload[]>('get', url, undefined, undefined, true);
     return data;
+  }
+
+  async fetchProjectLogs(
+    projectId: string,
+    params: { page?: number; limit?: number; sort?: string; direction?: 'asc' | 'desc' }
+  ): Promise<ProjectActivityLogResponse> {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.set('page', params.page.toString());
+    if (params.limit) queryParams.set('limit', params.limit.toString());
+    if (params.sort) queryParams.set('sort', params.sort);
+    if (params.direction) queryParams.set('direction', params.direction);
+    const queryString = queryParams.toString();
+    const url = `/api/projects/${projectId}/logs${queryString ? `?${queryString}` : ''}`;
+    return await this.request<ProjectActivityLogResponse>('get', url, undefined, undefined, false);
   }
 
   async uploadCSV(

@@ -10,6 +10,7 @@ from app.database import get_db
 from app.services.keyword import KeywordService
 from app.services.merge_token import TokenMergeService
 from app.services.project import ProjectService
+from app.services.project_activity_log import ProjectActivityLogService
 from app.utils.security import get_current_user
 from app.models.keyword import KeywordStatus
 from app.schemas.keyword import (
@@ -109,6 +110,24 @@ async def get_tokens(
     cached_result = _get_cached_result(cache_key)
     if cached_result:
         return cached_result
+    if search:
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="token_search",
+            entity_type="token",
+            details={
+                "search": search,
+                "view": view,
+                "sort": sort,
+                "direction": direction,
+                "page": page,
+                "limit": limit,
+                "show_merged": show_merged,
+                "blocked_by": blocked_by,
+            },
+        )
     if view == "blocked":
         try:
             check_column_query = sql_text("""
@@ -436,6 +455,14 @@ async def block_tokens(
             updated_count = len(result.fetchall())
             total_updated += updated_count
         
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="tokens_blocked",
+            entity_type="token",
+            details={"tokens": tokens_to_block, "count": total_updated},
+        )
         await db.commit()
         
         # Invalidate cache for this project
@@ -505,6 +532,14 @@ async def unblock_tokens(
                 )
                 total_updated += updated_count
         
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="tokens_unblocked",
+            entity_type="token",
+            details={"tokens": tokens_to_unblock, "count": total_updated},
+        )
         await db.commit()
         
         # Invalidate cache for this project
@@ -562,6 +597,15 @@ async def merge_tokens_endpoint(
             task_id,
             merge_tokens_background(project_id, parent_token, child_tokens, user_id)
         )
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="tokens_merge_started",
+            entity_type="token_merge",
+            entity_id=task_id,
+            details={"parent_token": parent_token, "child_tokens": child_tokens, "background": True},
+        )
         
         return {
             "message": f"Merging {len(child_tokens)} tokens into '{parent_token}' in background",
@@ -573,6 +617,19 @@ async def merge_tokens_endpoint(
     try:
         affected_count, grouped_count = await TokenMergeService.merge_tokens(
             db, project_id, parent_token, child_tokens, user_id
+        )
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="tokens_merged",
+            entity_type="token_merge",
+            details={
+                "parent_token": parent_token,
+                "child_tokens": child_tokens,
+                "affected_keywords": affected_count,
+                "grouped_keywords": grouped_count,
+            },
         )
         await db.commit()
         
@@ -658,6 +715,15 @@ async def unmerge_token_endpoint(
             task_id,
             unmerge_token_background(project_id, parent_token)
         )
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="token_unmerge_started",
+            entity_type="token_merge",
+            entity_id=task_id,
+            details={"parent_token": parent_token, "background": True},
+        )
         
         return {
             "message": f"Unmerging token '{parent_token}' in background",
@@ -669,6 +735,18 @@ async def unmerge_token_endpoint(
     try:
         affected_count, unmerged_groups = await TokenMergeService.unmerge_token(
             db, project_id, parent_token
+        )
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="token_unmerged",
+            entity_type="token_merge",
+            details={
+                "parent_token": parent_token,
+                "affected_keywords": affected_count,
+                "unmerged_groups": unmerged_groups,
+            },
         )
         
         await db.commit()
@@ -751,7 +829,20 @@ async def unmerge_individual_token_endpoint(
             grouped_count = await TokenMergeService._restructure_affected_keywords(
                 db, project_id, all_affected_tokens
             )
-            
+            await ProjectActivityLogService.record_action(
+                db=db,
+                project_id=project_id,
+                username=current_user["username"],
+                action="token_unmerged_individual",
+                entity_type="token_merge",
+                details={
+                    "parent_token": parent_token,
+                    "child_token": child_token,
+                    "operation_destroyed": True,
+                    "affected_keywords": affected_count + unhidden_count,
+                    "unmerged_groups": grouped_count,
+                },
+            )
             await db.commit()
             
             # Invalidate cache for this project
@@ -847,7 +938,21 @@ async def unmerge_individual_token_endpoint(
             grouped_count = await TokenMergeService._restructure_affected_keywords(
                 db, project_id, affected_tokens
             )
-            
+            await ProjectActivityLogService.record_action(
+                db=db,
+                project_id=project_id,
+                username=current_user["username"],
+                action="token_unmerged_individual",
+                entity_type="token_merge",
+                details={
+                    "parent_token": parent_token,
+                    "child_token": child_token,
+                    "operation_destroyed": False,
+                    "remaining_child_tokens": remaining_child_tokens,
+                    "affected_keywords": affected_count + unhidden_count,
+                    "unmerged_groups": grouped_count,
+                },
+            )
             await db.commit()
 
             # Invalidate cache for this project
@@ -901,6 +1006,18 @@ async def create_token(
         print(f"Step 2 (add_token_to_keywords) took {step2_duration:.2f} seconds, affected {affected_count} rows")
         
         commit_start = time.time()
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="token_created",
+            entity_type="token",
+            entity_id=request.token_name,
+            details={
+                "search_term": request.search_term,
+                "affected_keywords": affected_count,
+            },
+        )
         await db.commit()
         commit_duration = time.time() - commit_start
         print(f"Commit took {commit_duration:.2f} seconds")

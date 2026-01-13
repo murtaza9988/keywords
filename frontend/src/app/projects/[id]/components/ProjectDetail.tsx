@@ -13,6 +13,7 @@ import { MainContent } from './MainContent';
 import { Snackbar } from './Snackbar';
 import { TokenManagement } from './token/TokenManagement';
 import {TextAreaInputs} from './TextAreaInputs'; 
+import { ProjectLogTable } from './ProjectLogTable';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import {
@@ -150,6 +151,7 @@ export default function ProjectDetail() {
 
   // Component state
   const [activeView, setActiveView] = useState<ActiveKeywordView>('ungrouped');
+  const [activeTab, setActiveTab] = useState<'keywords' | 'log'>('keywords');
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
   const [includeFilter, setIncludeFilter] = useState('');
   const [excludeFilter, setExcludeFilter] = useState('');
@@ -2506,80 +2508,102 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         </aside>
       <main className="flex-1 flex flex-col max-w-[1150px]">
         <div className="bg-white  shadow border border-gray-200 p-4 sm:p-6 flex flex-col flex-grow h-full">
-          <FiltersSection
-            projectIdStr={projectIdStr}
-            isUploading={isUploading}
-            processingStatus={processingStatus}
-            processingProgress={displayProgress}
-            includeFilter={includeFilter}
-            excludeFilter={excludeFilter}
-            groupName={groupName}
-            activeView={activeView}
-            selectedKeywordIds={selectedKeywordIds}
-            isProcessingAction={isProcessingAction}
-            selectedTokens={selectedTokens}
-            handleUploadStart={handleUploadStart}
-            handleUploadSuccess={handleUploadSuccess}
-            handleUploadError={handleUploadError}
-            handleIncludeFilterChange={handleIncludeFilterChange}
-            handleExcludeFilterChange={handleExcludeFilterChange}
-            setGroupName={setGroupName}
-            handleGroupKeywords={handleGroupKeywords}
-            handleUngroupKeywords={handleUngroupKeywords}
-            handleUnblockKeywords={handleUnblockKeywords}
-            removeToken={removeToken}
-            handleClearAllFilters={clearAllFilters}
-            setIncludeMatchType={setIncludeMatchType}
-            setExcludeMatchType={setExcludeMatchType}
-            includeMatchType={includeMatchType}
-            excludeMatchType={excludeMatchType}
-            handleConfirmKeywords={handleConfirmKeywords}
-            handleUnconfirmKeywords={handleUnconfirmKeywords}
-          />
-          <MainContent
-            activeView={activeView}
-            isTableLoading={isTableLoading}
-            keywordsToDisplay={formatDataForDisplay}
-            pagination={pagination}
-            isLoadingData={isLoadingData}
-            loadingChildren={loadingChildren}
-            expandedGroups={expandedGroups}
-            selectedKeywordIds={selectedKeywordIds}
-            selectedTokens={selectedTokens}
-            sortParams={sortParams}
-            isAllSelected={isAllSelected}
-            isAnySelected={isAnySelected}
-            projectIdStr={projectIdStr}
-            minVolume={minVolume}
-            maxVolume={maxVolume}
-            minLength={minLength}
-            maxLength={maxLength}
-            minRating={minRating}
-            maxRating={maxRating}
-            minDifficulty={minDifficulty}
-            maxDifficulty={maxDifficulty}
-            handleViewChange={handleViewChange}
-            handlePageChange={handlePageChange}
-            handleLimitChange={handleLimitChange}
-            handleMinVolumeChange={handleMinVolumeChange}
-            handleMaxVolumeChange={handleMaxVolumeChange}
-            handleMinLengthChange={handleMinLengthChange}
-            handleMaxLengthChange={handleMaxLengthChange}
-            handleMinDifficultyChange={handleMinDifficultyChange}
-            handleMaxDifficultyChange={handleMaxDifficultyChange}
-            handleMinRatingChange={handleMinRatingChange}
-            handleMaxRatingChange={handleMaxRatingChange}
-            toggleGroupExpansion={toggleGroupExpansion}
-            toggleKeywordSelection={toggleKeywordSelection}
-            toggleTokenSelection={handleAdvancedTokenSelection}
-            removeToken={removeToken}
-            handleSort={handleSort}
-            handleSelectAllClick={handleSelectAllClick}
-            handleMiddleClickGroup={handleMiddleClickGroup}
-            stats={stats}
-            selectedSerpFeatures={selectedSerpFeatures}
-            handleSerpFilterChange={handleSerpFilterChange}
-          />
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setActiveTab('keywords')}
+              className={`px-3 py-2 text-sm rounded ${activeTab === 'keywords' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              Keywords
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('log')}
+              className={`px-3 py-2 text-sm rounded ${activeTab === 'log' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              Log
+            </button>
+          </div>
+          {activeTab === 'keywords' ? (
+            <>
+              <FiltersSection
+                projectIdStr={projectIdStr}
+                isUploading={isUploading}
+                processingStatus={processingStatus}
+                processingProgress={displayProgress}
+                includeFilter={includeFilter}
+                excludeFilter={excludeFilter}
+                groupName={groupName}
+                activeView={activeView}
+                selectedKeywordIds={selectedKeywordIds}
+                isProcessingAction={isProcessingAction}
+                selectedTokens={selectedTokens}
+                handleUploadStart={handleUploadStart}
+                handleUploadSuccess={handleUploadSuccess}
+                handleUploadError={handleUploadError}
+                handleIncludeFilterChange={handleIncludeFilterChange}
+                handleExcludeFilterChange={handleExcludeFilterChange}
+                setGroupName={setGroupName}
+                handleGroupKeywords={handleGroupKeywords}
+                handleUngroupKeywords={handleUngroupKeywords}
+                handleUnblockKeywords={handleUnblockKeywords}
+                removeToken={removeToken}
+                handleClearAllFilters={clearAllFilters}
+                setIncludeMatchType={setIncludeMatchType}
+                setExcludeMatchType={setExcludeMatchType}
+                includeMatchType={includeMatchType}
+                excludeMatchType={excludeMatchType}
+                handleConfirmKeywords={handleConfirmKeywords}
+                handleUnconfirmKeywords={handleUnconfirmKeywords}
+              />
+              <MainContent
+                activeView={activeView}
+                isTableLoading={isTableLoading}
+                keywordsToDisplay={formatDataForDisplay}
+                pagination={pagination}
+                isLoadingData={isLoadingData}
+                loadingChildren={loadingChildren}
+                expandedGroups={expandedGroups}
+                selectedKeywordIds={selectedKeywordIds}
+                selectedTokens={selectedTokens}
+                sortParams={sortParams}
+                isAllSelected={isAllSelected}
+                isAnySelected={isAnySelected}
+                projectIdStr={projectIdStr}
+                minVolume={minVolume}
+                maxVolume={maxVolume}
+                minLength={minLength}
+                maxLength={maxLength}
+                minRating={minRating}
+                maxRating={maxRating}
+                minDifficulty={minDifficulty}
+                maxDifficulty={maxDifficulty}
+                handleViewChange={handleViewChange}
+                handlePageChange={handlePageChange}
+                handleLimitChange={handleLimitChange}
+                handleMinVolumeChange={handleMinVolumeChange}
+                handleMaxVolumeChange={handleMaxVolumeChange}
+                handleMinLengthChange={handleMinLengthChange}
+                handleMaxLengthChange={handleMaxLengthChange}
+                handleMinDifficultyChange={handleMinDifficultyChange}
+                handleMaxDifficultyChange={handleMaxDifficultyChange}
+                handleMinRatingChange={handleMinRatingChange}
+                handleMaxRatingChange={handleMaxRatingChange}
+                toggleGroupExpansion={toggleGroupExpansion}
+                toggleKeywordSelection={toggleKeywordSelection}
+                toggleTokenSelection={handleAdvancedTokenSelection}
+                removeToken={removeToken}
+                handleSort={handleSort}
+                handleSelectAllClick={handleSelectAllClick}
+                handleMiddleClickGroup={handleMiddleClickGroup}
+                stats={stats}
+                selectedSerpFeatures={selectedSerpFeatures}
+                handleSerpFilterChange={handleSerpFilterChange}
+              />
+            </>
+          ) : (
+            <ProjectLogTable projectId={projectIdStr} />
+          )}
         </div>
       </main>
       <aside className="w-1/3 flex flex-col min-w-[350px] max-w-[450px]">

@@ -16,6 +16,7 @@ from app.schemas.csv_upload import CSVUploadResponse
 from app.services.merge_token import TokenMergeService
 from app.services.project import ProjectService
 from app.services.keyword import KeywordService
+from app.services.project_activity_log import ProjectActivityLogService
 from app.schemas.keyword import (
     KeywordListResponse, GroupRequest, ProcessingStatus,
     BlockTokenRequest,  UnblockRequest, KeywordResponse,
@@ -166,6 +167,20 @@ async def upload_keywords(
                 
             csv_upload = CSVUpload(project_id=project_id, file_name=originalFilename)
             db.add(csv_upload)
+            await ProjectActivityLogService.record_action(
+                db=db,
+                project_id=project_id,
+                username=current_user["username"],
+                action="csv_uploaded",
+                entity_type="csv_upload",
+                entity_id=originalFilename,
+                details={
+                    "file_name": originalFilename,
+                    "file_size": fileSize,
+                    "chunked": True,
+                    "total_chunks": totalChunks,
+                },
+            )
             await db.commit()
             
             processing_tasks[project_id] = "queued"
@@ -215,6 +230,53 @@ async def upload_keywords(
             
         csv_upload = CSVUpload(project_id=project_id, file_name=file.filename)
         db.add(csv_upload)
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="csv_uploaded",
+            entity_type="csv_upload",
+            entity_id=file.filename,
+            details={
+                "file_name": file.filename,
+                "file_size": fileSize,
+                "chunked": False,
+            },
+        )
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="keywords_regrouped",
+            entity_type="keyword_group",
+            entity_id=group_id,
+            details={
+                "group_name": group_request.group_name,
+                "keyword_ids": group_request.keyword_ids,
+                "count": updated_count,
+                "added_to_existing": existing_group is not None,
+            },
+        )
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="keywords_ungrouped",
+            entity_type="keyword_group",
+            details={
+                "keyword_ids": unblock_request.keyword_ids,
+                "count": updated_count,
+                "children_restored": children_restored,
+            },
+        )
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="keywords_confirmed",
+            entity_type="keyword_group",
+            details={"keyword_ids": confirm_request.keyword_ids, "count": updated_count},
+        )
         await db.commit()
         
         processing_tasks[project_id] = "queued"
@@ -299,6 +361,50 @@ async def get_keywords(
     
     fetch_limit = None if (limit == 0 or include_terms or exclude_terms or serpFeatures) else limit
     skip = (page - 1) * limit if fetch_limit is not None else 0
+
+    should_log_search = any([
+        tokens,
+        include_terms,
+        exclude_terms,
+        serpFeatures,
+        minVolume is not None,
+        maxVolume is not None,
+        minLength is not None,
+        maxLength is not None,
+        minDifficulty is not None,
+        maxDifficulty is not None,
+        minRating is not None,
+        maxRating is not None,
+    ])
+    if should_log_search:
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="keyword_search",
+            entity_type="keyword",
+            details={
+                "status": status.value if hasattr(status, "value") else str(status),
+                "tokens": tokens,
+                "include": include_terms,
+                "exclude": exclude_terms,
+                "include_match_type": includeMatchType,
+                "exclude_match_type": excludeMatchType,
+                "min_volume": minVolume,
+                "max_volume": maxVolume,
+                "min_length": minLength,
+                "max_length": maxLength,
+                "min_difficulty": minDifficulty,
+                "max_difficulty": maxDifficulty,
+                "min_rating": minRating,
+                "max_rating": maxRating,
+                "serp_features": serpFeatures,
+                "sort": sort,
+                "direction": direction,
+                "page": page,
+                "limit": limit,
+            },
+        )
 
     total_parents_task = asyncio.create_task(
         KeywordService.count_parents_by_project(
@@ -722,6 +828,14 @@ async def group_keywords(
             
         
         # Commit the original state storage to ensure it's persisted
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="keywords_unconfirmed",
+            entity_type="keyword_group",
+            details={"keyword_ids": unconfirm_request.keyword_ids, "count": updated_count},
+        )
         await db.commit()
             
         for kw in keywords_to_group:
@@ -793,6 +907,20 @@ async def group_keywords(
             if not row or not row['original_state']:
                 raise Exception(f"Verification failed for keyword {kw.keyword}")
         
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="keywords_grouped",
+            entity_type="keyword_group",
+            entity_id=group_id,
+            details={
+                "group_name": group_request.group_name,
+                "keyword_ids": group_request.keyword_ids,
+                "added_to_existing": existing_group is not None,
+                "count": updated_count,
+            },
+        )
         await db.commit()
         
         return {
@@ -1006,6 +1134,15 @@ async def block_keywords_by_token(
                 blocked_by="user"
             )
             
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="keywords_blocked_by_token",
+            entity_type="keyword",
+            entity_id=token_to_block,
+            details={"token": token_to_block, "count": updated_count},
+        )
         await db.commit()
         return {"message": f"Blocked {updated_count} keywords containing token '{token_to_block}'", "count": updated_count}
     except Exception as e:
@@ -1061,6 +1198,14 @@ async def unblock_keywords(
                 update_data, required_current_status=KeywordStatus.blocked
             )
             
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="keywords_unblocked",
+            entity_type="keyword",
+            details={"keyword_ids": unblock_request.keyword_ids, "count": updated_count},
+        )
         await db.commit()
         return {"message": f"Unblocked {updated_count} keywords", "count": updated_count}
     except Exception as e:
@@ -1606,6 +1751,14 @@ async def export_keywords_csv(
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d")
     filename = f"{view}_keywords_{project_id}_{timestamp}.csv"
+    await ProjectActivityLogService.record_action(
+        db=db,
+        project_id=project_id,
+        username=current_user["username"],
+        action="keywords_exported",
+        entity_type="keyword_export",
+        details={"view": view, "file_name": filename},
+    )
     
     return StreamingResponse(
         iter([output.getvalue()]),
@@ -1756,6 +1909,14 @@ async def export_parent_keywords_csv(
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d")
     filename = f"parent_keywords_{project_id}_{timestamp}.csv"
+    await ProjectActivityLogService.record_action(
+        db=db,
+        project_id=project_id,
+        username=current_user["username"],
+        action="parent_keywords_exported",
+        entity_type="keyword_export",
+        details={"file_name": filename},
+    )
     
     return StreamingResponse(
         iter([output.getvalue()]),
@@ -1818,6 +1979,14 @@ async def import_parent_keywords_csv(
                 if result.rowcount > 0:
                     updates_count += 1
         
+        await ProjectActivityLogService.record_action(
+            db=db,
+            project_id=project_id,
+            username=current_user["username"],
+            action="parent_keywords_imported",
+            entity_type="keyword_import",
+            details={"file_name": file.filename, "updates_count": updates_count},
+        )
         await db.commit()
         
         return {

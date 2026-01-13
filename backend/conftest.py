@@ -7,22 +7,30 @@ from typing import Dict, List, Any, Generator
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.testclient import TestClient
 
+# Ensure test environment before app imports
+os.environ["TESTING"] = "True"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+
 from app.models.keyword import Keyword, KeywordStatus
 from app.models.project import Project
 from app.config import settings
 from app.main import app
-
-# Ensure test environment
-os.environ["TESTING"] = "True"
-
-# Temporarily set to avoid any side effects during tests
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 
 # Create global test client
 @pytest.fixture
 def client():
     """Return a FastAPI TestClient."""
     return TestClient(app)
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_db():
+    """Remove test database before and after the test session."""
+    db_path = "./test.db"
+    if os.path.exists(db_path):
+        os.remove(db_path)
+    yield
+    if os.path.exists(db_path):
+        os.remove(db_path)
 
 # Fixtures for common mock data
 @pytest.fixture
