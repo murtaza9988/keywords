@@ -1,0 +1,19 @@
+{
+  "name": "keywords",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w frontend",
+    "build": "npm run build -w frontend",
+    "vercel-build": "npm run build -w frontend",
+    "start": "npm run start -w frontend",
+    "lint": "npm run lint -w frontend"
+  },
+  "dependencies": {
+    "next": "15.2.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
