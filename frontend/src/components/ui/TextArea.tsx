@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/cn";
 
-export interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+export type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 export function TextArea({ className, ...props }: TextAreaProps) {
   return (
