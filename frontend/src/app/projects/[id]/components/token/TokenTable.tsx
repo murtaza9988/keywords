@@ -118,7 +118,7 @@ export function TokenTable({
           <tbody className="divide-y divide-gray-200">
             {tokens.length === 0 ? <EmptyState /> : (
               tokens.map((token, index) => {
-                const rowBgClass = index % 2 === 0 ? 'bg-white' : 'bg-[#f4f4f4]';
+                const rowBgClass = index % 2 === 0 ? 'bg-table-row' : 'bg-table-row-alt';
                 const isSelected = selectedTokenNames.has(token.tokenName);
                 const isExpanded = expandedTokens.has(token.tokenName);
                 const hasChildren = token.hasChildren || (token.childTokens && token.childTokens.length > 0);
@@ -126,7 +126,7 @@ export function TokenTable({
                 return (
                   <React.Fragment key={token.tokenName}>
                     <tr
-                      className={`${rowBgClass} ${isSelected ? 'bg-blue-50' : ''} hover:bg-gray-50 ${
+                      className={`${rowBgClass} ${isSelected ? 'bg-surface-muted' : ''} hover:bg-surface-muted ${
                         hasChildren ? 'border-b-0' : ''
                       }`}
                     >

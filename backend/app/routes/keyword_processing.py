@@ -335,6 +335,7 @@ async def process_csv_file(file_path: str, project_id: int):
                                 if token_key in existing_token_groups:
                                     processed_keyword_data["group_id"] = existing_token_groups[token_key]
                                     processed_keyword_data["is_parent"] = False
+                                    processed_keyword_data["status"] = KeywordStatus.grouped
                                 elif token_key in token_groups:
                                     token_groups[token_key].append(processed_keyword_data)
                                 else:
@@ -378,10 +379,11 @@ async def process_csv_file(file_path: str, project_id: int):
                                 new_group_id = f"group_{project_id}_{uuid.uuid4().hex}"
                                 
                                 if len(group_members) == 1:
-                                    # Single keyword group
+                                    # Single keyword stays ungrouped
                                     keyword = group_members[0]
                                     keyword["is_parent"] = True
-                                    keyword["group_id"] = new_group_id
+                                    keyword["group_id"] = None
+                                    keyword["status"] = KeywordStatus.ungrouped
                                     keyword["original_state"] = json.dumps({
                                         "keyword": keyword["keyword"],
                                         "volume": keyword["original_volume"],
@@ -401,6 +403,7 @@ async def process_csv_file(file_path: str, project_id: int):
                                     
                                     for j, keyword in enumerate(group_members):
                                         keyword["group_id"] = new_group_id
+                                        keyword["status"] = KeywordStatus.grouped
                                         if j == 0:
                                             keyword["is_parent"] = True
                                             keyword["volume"] = total_volume
@@ -526,7 +529,8 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int):
                             'group_id': new_group_id,
                             'is_parent': is_parent,
                             'volume': volume_to_use,
-                            'difficulty': difficulty_to_use
+                            'difficulty': difficulty_to_use,
+                            'status': KeywordStatus.grouped.value
                         })
             
             # Apply updates in batches
@@ -541,7 +545,8 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int):
                             SET group_id = :group_id, 
                                 is_parent = :is_parent,
                                 volume = :volume,
-                                difficulty = :difficulty
+                                difficulty = :difficulty,
+                                status = :status
                             WHERE id = :id
                         """
                         await db.execute(sql_text(update_query), {
@@ -549,7 +554,8 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int):
                             'group_id': update['group_id'],
                             'is_parent': update['is_parent'],
                             'volume': update['volume'],
-                            'difficulty': update['difficulty']
+                            'difficulty': update['difficulty'],
+                            'status': update['status']
                         })
                     
                     await db.commit()

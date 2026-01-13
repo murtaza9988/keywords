@@ -120,13 +120,13 @@ export const KeywordRow: React.FC<{
       }
     };
     const keywordPaddingClass = isChild ? 'pl-6' : 'pl-1';
-    const rowBgClass = index % 2 === 0 ? 'bg-white' : 'bg-[#f4f4f4]';
+    const rowBgClass = index % 2 === 0 ? 'bg-table-row' : 'bg-table-row-alt';
     const showCheckbox = currentView !== 'ungrouped' || !isChild;
     const showRatingColumn = currentView === 'ungrouped' || currentView === 'grouped';
   
     return (
       <tr
-        className={`${rowBgClass} hover:bg-blue-50/30 transition-colors duration-100 ${expandable ? 'cursor-pointer' : ''} ${isSelected ? 'bg-blue-50' : ''} h-8`}
+        className={`${rowBgClass} hover:bg-surface-muted transition-colors duration-100 ${expandable ? 'cursor-pointer' : ''} ${isSelected ? 'bg-surface-muted' : ''} h-8`}
         onMouseDown={handleMouseDown}
       >
         <td className="w-1 px-3 py-1 whitespace-nowrap" onClick={e => e.stopPropagation()}>
@@ -186,12 +186,12 @@ export const KeywordRow: React.FC<{
         </td>
         <td className="w-[10%] px-2 py-1 text-[13px] text-gray-800 overflow-hidden group relative">
           {keyword.serpFeatures && keyword.serpFeatures.length > 0 ? (
-            <div 
-              className="truncate max-w-full cursor-default relative" 
+            <div
+              className="truncate max-w-full cursor-default relative"
               title={keyword.serpFeatures.join(', ')}
             >
               {keyword.serpFeatures.join(', ')}
-              <div className="fixed z-[9999] bg-white shadow-lg rounded p-2 max-w-xs hidden group-hover:block border border-gray-200"
+              <div className="fixed z-[9999] bg-surface text-foreground shadow-lg rounded p-2 max-w-xs hidden group-hover:block border border-border"
                   style={{
                     left: 'auto',
                     right: 'auto',
