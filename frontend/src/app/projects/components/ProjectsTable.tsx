@@ -18,7 +18,10 @@ interface ProjectsTableProps {
   handleEditSubmit: (e: React.FormEvent<HTMLFormElement>, projectId: number) => void;
   handleDeleteClick: (project: Project) => void;
   showDeleteModal: boolean;
-  projectToDelete: Project | null;
+  projectsToDelete: Project[];
+  setProjectsToDelete: (projects: Project[]) => void;
+  selectedIds: number[];
+  setSelectedIds: (ids: number[]) => void;
   isDeleting: boolean;
   handleDeleteConfirm: () => void;
   setShowDeleteModal: (value: boolean) => void;
@@ -62,7 +65,10 @@ export default function ProjectsTable({
   handleEditSubmit,
   handleDeleteClick,
   showDeleteModal,
-  projectToDelete,
+  projectsToDelete,
+  setProjectsToDelete,
+  selectedIds,
+  setSelectedIds,
   isDeleting,
   handleDeleteConfirm,
   setShowDeleteModal,
@@ -109,7 +115,7 @@ export default function ProjectsTable({
   const handleRowClick = (project: Project, event: React.MouseEvent) => {
     if (
       event.target instanceof Element && 
-      (event.target.closest('button') || event.target.closest('form'))
+      (event.target.closest('button') || event.target.closest('form') || event.target.closest('input[type="checkbox"]'))
     ) {
       return;
     }
@@ -121,8 +127,50 @@ export default function ProjectsTable({
     router.push(`/projects/${project.id}`);
   };
 
+  const areAllFilteredSelected = filteredProjects.length > 0 && filteredProjects.every(p => selectedIds.includes(p.id));
+
+  const handleSelectAll = () => {
+    if (areAllFilteredSelected) {
+      // Deselect currently visible/filtered projects
+      const visibleIds = new Set(filteredProjects.map(p => p.id));
+      setSelectedIds(selectedIds.filter(id => !visibleIds.has(id)));
+    } else {
+      // Select currently visible/filtered projects (merge with existing)
+      const visibleIds = filteredProjects.map(p => p.id);
+      const newSelection = Array.from(new Set([...selectedIds, ...visibleIds]));
+      setSelectedIds(newSelection);
+    }
+  };
+
+  const handleSelectRow = (projectId: number) => {
+    if (selectedIds.includes(projectId)) {
+      setSelectedIds(selectedIds.filter(id => id !== projectId));
+    } else {
+      setSelectedIds([...selectedIds, projectId]);
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    const projectsToDeleteList = projects.filter(p => selectedIds.includes(p.id));
+    setProjectsToDelete(projectsToDeleteList);
+    setShowDeleteModal(true);
+  };
+
   return (
-    <div className="overflow-hidden w-full text-[13px] text-foreground">
+    <div className="w-full text-[13px] text-foreground">
+      <div className="mb-4 flex justify-end items-center h-9">
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={handleBulkDeleteClick}
+          className="flex items-center gap-2"
+          disabled={selectedIds.length === 0}
+        >
+          <Trash2 size={16} />
+          {selectedIds.length > 0 ? `Delete Selected (${selectedIds.length})` : 'Delete Selected'}
+        </Button>
+      </div>
+
       {isLoadingProjects ? (
         <div className="flex justify-center items-center py-20">
           <div className="text-center">
@@ -137,10 +185,18 @@ export default function ProjectsTable({
           <p className="text-muted">Create your first project to get started with keyword management.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full divide-y divide-border text-[13px]">
+        <div className="">
+          <table className="w-full divide-y divide-border text-[13px] table-fixed">
             <thead className="bg-surface-muted">
               <tr>
+                <th className="px-4 py-4 w-[50px] text-center">
+                  <input
+                    type="checkbox"
+                    checked={areAllFilteredSelected}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
+                  />
+                </th>
                 <th className="px-6 py-4 text-left text-[11px] font-semibold text-muted uppercase tracking-wider w-1/4">
                   <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('name')}>
                     <BarChart3 className="h-4 w-4" />
@@ -206,15 +262,29 @@ export default function ProjectsTable({
               {sortedProjects.map((project, index) => {
                 const rowBgClass = index % 2 === 0 ? 'bg-table-row' : 'bg-table-row-alt';
                 const isCurrentlyEditing = editingProject?.id === project.id;
+                const isSelected = selectedIds.includes(project.id);
                 
                 return (
                   <tr 
                     key={project.id} 
-                    className={`${rowBgClass} ${!isCurrentlyEditing ? 'hover:bg-surface-muted cursor-pointer' : ''} transition-colors`}
+                    className={`${rowBgClass} ${!isCurrentlyEditing ? 'hover:bg-surface-muted cursor-pointer' : ''} ${isSelected ? 'bg-surface-muted' : ''} transition-colors`}
                     onClick={(event) => handleRowClick(project, event)}
                   >
+                    {!isCurrentlyEditing && (
+                      <td
+                        className="px-4 py-4 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectRow(project.id)}
+                          className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
+                        />
+                      </td>
+                    )}
                     {isCurrentlyEditing ? (
-                      <td className="px-6 py-4 whitespace-nowrap" colSpan={8}>
+                      <td className="px-6 py-4" colSpan={9}>
                         <form
                           onSubmit={(e) => handleEditSubmit(e, project.id)}
                           className="flex gap-2 items-center"
@@ -251,10 +321,10 @@ export default function ProjectsTable({
                       </td>
                     ) : (
                       <>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4 break-words whitespace-normal">
                           <div className="flex items-center group">
                             <div>
-                              <div className="text-[13px] font-semibold text-foreground group-hover:text-accent transition-colors">
+                              <div className="text-[13px] font-semibold text-foreground group-hover:text-accent transition-colors break-words">
                                 {project.name}
                               </div>
                               <div className="text-[12px] font-normal text-muted">
@@ -263,35 +333,35 @@ export default function ProjectsTable({
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-foreground font-normal text-[13px]">
+                        <td className="px-6 py-4 whitespace-normal text-foreground font-normal text-[13px]">
                           {formatDate(project.created_at)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <td className="px-6 py-4 whitespace-normal text-center">
                           <StatsCell 
                             value={project.stats?.totalParentKeywords}
                           />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <td className="px-6 py-4 whitespace-normal text-center">
                           <StatsCell 
                             value={project.stats?.ungroupedCount}
                           />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <td className="px-6 py-4 whitespace-normal text-center">
                           <StatsCell 
                             value={project.stats?.groupedKeywordsCount}
                           />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <td className="px-6 py-4 whitespace-normal text-center">
                           <StatsCell 
                             value={project.stats?.confirmedKeywordsCount}
                           />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <td className="px-6 py-4 whitespace-normal text-center">
                           <StatsCell 
                             value={project.stats?.blockedCount}
                           />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <td className="px-6 py-4 whitespace-normal text-center">
                           <div className="flex items-center justify-center gap-2">
                             <Button
                               onClick={(e) => {
@@ -328,16 +398,25 @@ export default function ProjectsTable({
           </table>
         </div>
       )}
-      {showDeleteModal && projectToDelete && (
+      {showDeleteModal && projectsToDelete.length > 0 && (
         <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
           <div className="bg-surface rounded-2xl p-6 max-w-md w-full shadow-xl border border-border">
             <h3 className="text-lg font-semibold text-foreground mb-4">Confirm Deletion</h3>
             <p className="text-muted mb-6">
-              Are you sure you want to delete the project &ldquo;<strong className='font-medium text-foreground'>{projectToDelete.name}</strong>&ldquo;? This action cannot be undone and will permanently remove all associated data.
+              {projectsToDelete.length === 1 ? (
+                <>Are you sure you want to delete the project &ldquo;<strong className='font-medium text-foreground'>{projectsToDelete[0].name}</strong>&ldquo;?</>
+              ) : (
+                <>Are you sure you want to delete these <strong className='font-medium text-foreground'>{projectsToDelete.length} projects</strong>?</>
+              )}
+               {' '}This action cannot be undone and will permanently remove all associated data.
             </p>
             <div className="flex justify-end gap-3">
               <Button
-                onClick={() => setShowDeleteModal(false)}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  // If we were in bulk delete mode but cancelled, we might want to clear selection or just modal
+                  // The parent handles closing.
+                }}
                 disabled={isDeleting}
                 variant="secondary"
               >

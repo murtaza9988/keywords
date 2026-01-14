@@ -27,7 +27,8 @@ export default function Projects() {
   const [error, setError] = useState<string>('');
   const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(true);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [projectsToDelete, setProjectsToDelete] = useState<Project[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [projects, setLocalProjects] = useState<ProjectWithStats[]>([]);
@@ -121,26 +122,35 @@ export default function Projects() {
   };
 
   const handleDeleteClick = (project: Project) => {
-    setProjectToDelete(project);
+    setProjectsToDelete([project]);
     setShowDeleteModal(true);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!projectToDelete || isDeleting) return;
+    if (projectsToDelete.length === 0 || isDeleting) return;
 
     setIsDeleting(true);
     setError('');
     try {
-      await deleteProject(projectToDelete.id);
-      dispatch(removeProject({ projectId: projectToDelete.id }));
-      setLocalProjects((prev) => prev.filter((p) => p.id !== projectToDelete.id));
+      // Use Promise.all to delete all selected projects in parallel
+      await Promise.all(projectsToDelete.map(p => deleteProject(p.id)));
+
+      // Update Redux and local state for each deleted project
+      projectsToDelete.forEach(project => {
+        dispatch(removeProject({ projectId: project.id }));
+      });
+
+      const deletedIds = new Set(projectsToDelete.map(p => p.id));
+      setLocalProjects((prev) => prev.filter((p) => !deletedIds.has(p.id)));
+
       setShowDeleteModal(false);
-      setProjectToDelete(null);
+      setProjectsToDelete([]);
+      setSelectedIds([]);
     } catch (deletionError: unknown) {
-      const message = isError(deletionError) ? deletionError.message : 'Failed to delete project.';
+      const message = isError(deletionError) ? deletionError.message : 'Failed to delete project(s).';
       setError(message);
       setShowDeleteModal(false);
-      console.error("Error deleting project:", deletionError);
+      console.error("Error deleting project(s):", deletionError);
     } finally {
       setIsDeleting(false);
     }
@@ -199,7 +209,10 @@ export default function Projects() {
               handleEditSubmit={handleEditSubmit}
               handleDeleteClick={handleDeleteClick}
               showDeleteModal={showDeleteModal}
-              projectToDelete={projectToDelete}
+              projectsToDelete={projectsToDelete}
+              setProjectsToDelete={setProjectsToDelete}
+              selectedIds={selectedIds}
+              setSelectedIds={setSelectedIds}
               isDeleting={isDeleting}
               handleDeleteConfirm={handleDeleteConfirm}
               setShowDeleteModal={setShowDeleteModal}
