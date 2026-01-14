@@ -19,3 +19,6 @@
 ## Documentation and maintenance
 - Keep this file updated with new failure modes observed in CI/Vercel.
 - When a production incident is fixed, document the root cause and prevention steps here.
+
+## Incident log
+- 2026-01-14: Vercel build failed due to duplicate React state declaration (`activeTab`) in `ProjectDetail.tsx`, triggering a client component SSR error. Prevention: enable `react/jsx-no-duplicate-props` lint rule, review for duplicate declarations/props during edits, and keep lint/typecheck required before commits.
