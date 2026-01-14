@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import projectReducer from '@/store/projectSlice';
 import Login from '@/app/login/page';
-import apiClient from '@/lib/apiClient';
+import * as projectsApi from '@/lib/api/projects';
 import authService from '@/lib/authService';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -16,7 +16,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
 }));
 
-jest.mock('@/lib/apiClient');
+jest.mock('@/lib/api/projects');
 jest.mock('@/lib/authService');
 jest.mock('@/components/AuthProvider');
 
@@ -27,14 +27,14 @@ const createTestStore = () =>
     },
   });
 
-const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const mockProjectsApi = projectsApi as jest.Mocked<typeof projectsApi>;
 const mockAuthService = authService as jest.Mocked<typeof authService>;
 const mockUseAuth = useAuth as jest.Mock;
 
 describe('Login page', () => {
   beforeEach(() => {
     mockPush.mockReset();
-    mockApiClient.fetchProjects.mockResolvedValue([]);
+    mockProjectsApi.fetchProjects.mockResolvedValue([]);
     mockAuthService.login.mockReset();
     mockUseAuth.mockReturnValue({ isAuthenticated: false, isLoading: false });
     localStorage.clear();
@@ -63,7 +63,7 @@ describe('Login page', () => {
 
     expect(localStorage.getItem('access_token')).toBe('access-token');
     expect(localStorage.getItem('refresh_token')).toBe('refresh-token');
-    expect(mockApiClient.fetchProjects).toHaveBeenCalled();
+    expect(mockProjectsApi.fetchProjects).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith('/projects');
   });
 

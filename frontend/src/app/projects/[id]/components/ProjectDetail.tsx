@@ -5,7 +5,23 @@ import { useParams } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store/store';
 import { setKeywordsForView, setChildrenForGroup, setProjectStats } from '@/store/projectSlice';
-import apiClient from '@/lib/apiClient';
+import {
+  blockToken,
+  checkProcessingStatus as checkProcessingStatusApi,
+  confirmKeywords,
+  exportGroupedKeywords,
+  exportParentKeywords,
+  fetchInitialData as fetchInitialDataApi,
+  fetchKeywordChildren,
+  fetchKeywords as fetchKeywordsApi,
+  groupKeywords,
+  importParentKeywords,
+  regroupKeywords,
+  unconfirmKeywords,
+  unblockKeywords,
+  ungroupKeywords,
+} from '@/lib/api/keywords';
+import { fetchProjectStats as fetchProjectStatsApi } from '@/lib/api/projects';
 import { Header } from './Header';
 import { FiltersSection } from './FiltersSection';
 import { MainContent } from './MainContent';
@@ -386,6 +402,8 @@ export default function ProjectDetail(): React.ReactElement {
   const fetchProjectStats = useCallback(async () => {
     if (!projectIdStr) return;
     try {
+      const statsData = await fetchProjectStatsApi(projectIdStr);
+      setStats({
       const statsData = await apiClient.fetchSingleProjectStats(projectIdStr);
       detailDispatch({
         type: 'setStats',
@@ -525,7 +543,7 @@ export default function ProjectDetail(): React.ReactElement {
         if (filters.serpFeatures?.length > 0) {
           filters.serpFeatures.forEach(feature => largeQueryParams.append('serpFeatures', feature));
         }
-        const largeData = await apiClient.fetchKeywords(projectIdStr, largeQueryParams, true);
+        const largeData = await fetchKeywordsApi(projectIdStr, largeQueryParams, true);
         let allKeywords: Keyword[] = [];
         if ((view as string) === 'ungrouped') allKeywords = largeData.ungroupedKeywords || [];
         else if (view === 'grouped') allKeywords = largeData.groupedKeywords || [];
@@ -689,7 +707,7 @@ export default function ProjectDetail(): React.ReactElement {
       if (filters.serpFeatures?.length > 0) {
         filters.serpFeatures.forEach(feature => queryParams.append('serpFeatures', feature));
       }
-      const data = await apiClient.fetchKeywords(projectIdStr, queryParams, false);
+      const data = await fetchKeywordsApi(projectIdStr, queryParams, false);
       let keywords: Keyword[] = [];
       if (view === 'ungrouped') keywords = data.ungroupedKeywords || [];
       else if (view === 'grouped') keywords = data.groupedKeywords || [];
@@ -771,7 +789,7 @@ export default function ProjectDetail(): React.ReactElement {
     if (!projectIdStr) return [];
     try {
       const timestamp = new Date().getTime();
-      const data = await apiClient.fetchChildren(projectIdStr, groupId);
+      const data = await fetchKeywordChildren(projectIdStr, groupId);
       return data.children;
     } catch (error) {
       console.error('Error fetching children:', error);
@@ -793,7 +811,7 @@ export default function ProjectDetail(): React.ReactElement {
     addSnackbarMessage('Starting export, please wait...', 'success');
 
     try {
-      const blobData = await apiClient.exportGroupedKeywords(projectIdStr, activeView);
+      const blobData = await exportGroupedKeywords(projectIdStr, activeView);
       const url = window.URL.createObjectURL(blobData);
       const link = document.createElement('a');
       link.href = url;
@@ -829,7 +847,7 @@ export default function ProjectDetail(): React.ReactElement {
     addSnackbarMessage('Starting parent keywords export, please wait...', 'success');
 
     try {
-      const blobData = await apiClient.exportParentKeywords(projectIdStr);
+      const blobData = await exportParentKeywords(projectIdStr);
       const url = window.URL.createObjectURL(blobData);
       const link = document.createElement('a');
       link.href = url;
@@ -869,7 +887,7 @@ export default function ProjectDetail(): React.ReactElement {
       const formData = new FormData();
       formData.append('file', file);
       
-      await apiClient.importParentKeywords(projectIdStr, formData);
+      await importParentKeywords(projectIdStr, formData);
       addSnackbarMessage('Parent keywords imported successfully', 'success');
       
       await fetchKeywords(
@@ -1199,7 +1217,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         const maxDifficultyBackup = maxDifficulty;
         const serpFeaturesBackup = [...selectedSerpFeatures];
         const currentPage = pagination.page;
-        const data = await apiClient.blockToken(projectIdStr, token);
+        const data = await blockToken(projectIdStr, token);
         addSnackbarMessage('Blockd ' + data.count + ' keywords with token "' + token + '"', 'success');
         apiCache.invalidate(projectIdStr + '-' + activeView + '-total-');
         await fetchProjectStats();
@@ -1476,7 +1494,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId, children: [] }));
       });
 
-      const data = await apiClient.confirmKeywords(projectIdStr, keywordIds);
+      const data = await confirmKeywords(projectIdStr, keywordIds);
       addSnackbarMessage('Confirmed ' + data.count + ' keywords', 'success');
 
       await Promise.all([
@@ -1555,7 +1573,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId, children: [] }));
       });
 
-      const data = await apiClient.unconfirmKeywords(projectIdStr, keywordIds);
+      const data = await unconfirmKeywords(projectIdStr, keywordIds);
       addSnackbarMessage('Unconfirmed ' + data.count + ' keywords', 'success');
 
       await Promise.all([
@@ -1653,7 +1671,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         const totalSelected = selectedParents.length + selectedChildren.length;
           
         if (totalSelected > 0) {
-          data = await apiClient.regroupKeywords(projectIdStr, keywordIds, trimmedGroupName);
+          data = await regroupKeywords(projectIdStr, keywordIds, trimmedGroupName);
           
           if (selectedParents.length > 1) {
             messagePrefix = 'merged';
@@ -1682,7 +1700,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           return;
         }
       } else {
-        data = await apiClient.groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
+        data = await groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
         addSnackbarMessage(
           'Successfully ' + messagePrefix + ' ' + data.count + ' keywords as "' + trimmedGroupName + '"',
           'success'
@@ -1706,7 +1724,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       
       const refreshData = async () => {
         try {
-          const statsData = await apiClient.fetchSingleProjectStats(projectIdStr);
+          const statsData = await fetchProjectStatsApi(projectIdStr);
           if (statsData) {
             detailDispatch({
               type: 'setStats',
@@ -1926,7 +1944,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId, children: [] }));
       });
       
-              const data = await apiClient.ungroupKeywords(projectIdStr, keywordIds);
+              const data = await ungroupKeywords(projectIdStr, keywordIds);
       addSnackbarMessage('Ungrouped ' + data.count + ' keywords', 'success');
       
       await Promise.all([
@@ -1983,7 +2001,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     });
     
     try {
-              const data = await apiClient.unblockKeywords(projectIdStr, keywordIds);
+              const data = await unblockKeywords(projectIdStr, keywordIds);
       addSnackbarMessage('Unblocked ' + data.count + ' keywords', 'success');
       
       await Promise.all([
@@ -2060,7 +2078,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       payload: { isProcessingAction: true },
     });
     try {
-              const data = await apiClient.groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
+              const data = await groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
       addSnackbarMessage('Grouped ' + keywordInfo + ' as "' + trimmedGroupName + '"', 'success');
   
       await fetchKeywords(
@@ -2102,7 +2120,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     if (!projectIdStr) return;
 
     try {
-              const data = await apiClient.checkProcessingStatus(projectIdStr);
+              const data = await checkProcessingStatusApi(projectIdStr);
       
       if (data.progress !== undefined) {
         const normalizedProgress = Math.max(0, Math.min(100, data.progress));
@@ -2300,7 +2318,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         status: activeView
       });
       
-              const initialData = await apiClient.fetchInitialData(projectIdStr + '?' + queryParams.toString());
+              const initialData = await fetchInitialDataApi(projectIdStr + '?' + queryParams.toString());
       
       if (initialData) {
         if (initialData.stats) {
