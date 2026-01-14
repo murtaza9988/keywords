@@ -160,7 +160,21 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           }
         }
 
-        onUploadSuccess(lastStatus, lastMessage);
+        const uploadCount = filesToUpload.length;
+        const pluralSuffix = uploadCount === 1 ? '' : 's';
+        let summaryMessage = lastMessage;
+
+        if (uploadCount > 0) {
+          if (lastStatus === 'complete') {
+            summaryMessage = `All ${uploadCount} CSV${pluralSuffix} uploaded and processed.`;
+          } else if (lastStatus === 'processing') {
+            summaryMessage = `All ${uploadCount} CSV${pluralSuffix} uploaded. Processing started.`;
+          } else if (!lastMessage) {
+            summaryMessage = `CSV upload finished for ${uploadCount} file${pluralSuffix}.`;
+          }
+        }
+
+        onUploadSuccess(lastStatus, summaryMessage);
         if (lastStatus === 'complete' || lastStatus === 'processing') {
           setTimeout(() => {
             window.location.reload();
