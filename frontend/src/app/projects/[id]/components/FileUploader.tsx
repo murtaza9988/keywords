@@ -211,23 +211,23 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           className={`relative flex items-center justify-center w-full h-10 border border-dashed rounded cursor-pointer transition-colors duration-200 ${
             dragActive
               ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+              : 'border-border bg-white hover:bg-surface-muted'
           } ${isUploadingInternal ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           <div className="flex items-center gap-1 w-full justify-center">
             {isUploadingInternal ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                <span className="text-xs text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin text-muted" />
+                <span className="text-xs text-muted">
                   Uploading{totalFiles > 0 ? ` ${currentFileIndex}/${totalFiles}` : ''}... {uploadProgress}%
                 </span>
               </>
             ) : (
               <>
                 <UploadCloud
-                  className={`w-4 h-4 ${dragActive ? 'text-blue-500' : 'text-gray-400'}`}
+                  className={`w-4 h-4 ${dragActive ? 'text-blue-500' : 'text-muted'}`}
                 />
-                <span className="text-xs text-gray-500">Upload CSVs</span>
+                <span className="text-xs text-muted">Upload CSVs</span>
               </>
             )}
           </div>

@@ -14,7 +14,7 @@ export default function Header() {
 
   return (
     <header className="bg-surface/95 backdrop-blur border-b border-border sticky top-0 z-20 shadow-sm w-full">
-      <div className="container mx-auto px-4 py-4 flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
+      <div className="container mx-auto px-4 py-4 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center">
         <div className="flex items-center gap-3">
           <BarChart3 className="h-8 w-8 text-accent" />
           <h1 className="text-2xl font-bold text-foreground">SEO Project Manager</h1>
@@ -29,7 +29,7 @@ export default function Header() {
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
                   isActive
                     ? 'bg-accent text-white border-accent shadow-sm'
                     : 'text-muted border-transparent hover:text-foreground hover:bg-surface-muted'

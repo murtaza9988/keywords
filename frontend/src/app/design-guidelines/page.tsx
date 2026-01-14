@@ -19,9 +19,10 @@ export default function DesignGuidelinesPage() {
             <section className="space-y-3">
               <h3 className="text-[15px] font-semibold text-foreground">Layout & Spacing</h3>
               <ul className="list-disc pl-5 text-[13px] text-muted space-y-2">
-                <li>Keep primary content containers at ~1100px width for legibility.</li>
+                <li>Keep primary content containers within a 1600px max width and center them.</li>
                 <li>Reserve space for dynamic UI elements to prevent layout shifts.</li>
                 <li>Use consistent vertical rhythm (8px increments) across sections.</li>
+                <li>Avoid horizontal scrolling; layouts should fit within a single screen width.</li>
               </ul>
             </section>
             <section className="space-y-3">
@@ -29,15 +30,15 @@ export default function DesignGuidelinesPage() {
               <ul className="list-disc pl-5 text-[13px] text-muted space-y-2">
                 <li>Body and table text should default to 13px.</li>
                 <li>Headers use 11–13px uppercase in tables for clarity.</li>
-                <li>Use muted color for secondary metadata.</li>
+                <li>Use theme tokens (foreground/muted) for consistent coloration.</li>
               </ul>
             </section>
             <section className="space-y-3">
               <h3 className="text-[15px] font-semibold text-foreground">Tables</h3>
               <ul className="list-disc pl-5 text-[13px] text-muted space-y-2">
                 <li>Use fixed table layouts to keep columns stable.</li>
-                <li>Shorten SERP columns and prioritize Keyword/Tokens width.</li>
-                <li>Avoid horizontal scroll wherever possible.</li>
+                <li>Prioritize Keyword and Tokens columns; keep SERP width ~50px.</li>
+                <li>Ensure all columns (through Rt) are visible without horizontal scrolling.</li>
               </ul>
             </section>
             <section className="space-y-3">
@@ -46,6 +47,7 @@ export default function DesignGuidelinesPage() {
                 <li>Maintain consistent element positions during filtering and searching.</li>
                 <li>Show clear active states for tabs and primary actions.</li>
                 <li>Use subtle hover styles rather than large shifts or animations.</li>
+                <li>Keep grouped action areas visually aligned and centered within shaded containers.</li>
               </ul>
             </section>
           </div>

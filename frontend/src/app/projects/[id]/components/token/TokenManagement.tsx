@@ -651,8 +651,8 @@ export function TokenManagement({
   const showMinimumCharInfo = searchTerm.length > 0 && searchTerm.length < MINIMUM_SEARCH_LENGTH;
 
   return (
-    <div className="flex flex-col bg-gray-50 lg:h-[calc(130vh-400px)]">
-      <h2 className="text-lg font-semibold mb-5 text-gray-800">Token Management</h2>
+    <div className="flex flex-col h-full">
+      <h2 className="text-[15px] font-semibold mb-4 text-foreground">Token Management</h2>
 
       <div className="relative">
         <TokenSearchBar 
@@ -663,7 +663,7 @@ export function TokenManagement({
         />
         
         {showMinimumCharInfo && (
-          <div className="text-xs text-gray-500 mt-1 absolute top-full left-0">
+          <div className="text-xs text-muted mt-1 absolute top-full left-0">
             Type at least {MINIMUM_SEARCH_LENGTH} characters to search...
           </div>
         )}
@@ -686,7 +686,7 @@ export function TokenManagement({
         onLimitChange={handleLimitChange} 
       />
 
-      <div className="flex-grow overflow-y-auto overflow-x-hidden border border-gray-200 rounded-md relative min-h-[400px]">
+      <div className="flex-grow overflow-y-auto overflow-x-hidden border border-border rounded-md relative min-h-[400px] bg-white">
         {isLoading ? (
           <div className="flex justify-center items-center h-full w-full bg-white absolute inset-0 z-20">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -715,7 +715,7 @@ export function TokenManagement({
           />
         ) : (
           <div className="flex justify-center items-center h-full">
-            <p className="text-gray-500">No tokens found</p>
+            <p className="text-muted">No tokens found</p>
           </div>
         )}
       </div>
