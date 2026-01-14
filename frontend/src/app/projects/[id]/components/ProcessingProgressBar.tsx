@@ -92,7 +92,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
     if (status === 'queued') return 3;
     if (status === 'processing') return processingStageToStepIndex(stage);
     if (status === 'complete') return 7;
-    if (status === 'error') return status === 'processing' ? processingStageToStepIndex(stage) : 4;
+    if (status === 'error') return stage ? processingStageToStepIndex(stage) : 4;
     return 0;
   })();
   const queuedCount = queuedFiles?.length ?? 0;
