@@ -259,27 +259,50 @@ async def process_csv_file(
             with open(file_path, 'r', encoding=detected_encoding) as f:
                 reader = csv.reader(f, delimiter=detected_delimiter)
                 headers = next(reader)
-                headers = [str(col).strip() for col in headers]
-                valid_columns = [col for col in headers if not col.isdigit()]
-                
-                if not valid_columns:
+                headers = [str(col).strip().lstrip("\ufeff") for col in headers]
+
+                # IMPORTANT: keep ORIGINAL header indexes to avoid index drift.
+                searchable_headers = [
+                    (idx, header)
+                    for idx, header in enumerate(headers)
+                    if header and not header.isdigit()
+                ]
+                if not searchable_headers:
                     raise ValueError(f"No valid non-numeric column headers found. Found: {headers}")
-                
-                lower_headers = [h.lower() for h in valid_columns]
-                potential_keyword_cols = [i for i, c in enumerate(lower_headers) if 'keyword' in c or 'phrase' in c]
-                potential_volume_cols = [i for i, c in enumerate(lower_headers) if 
-                    'volume' in c or 'vol' in c or 'search' in c or 
-                    c == 'search volume' or c == 'search_volume' or
-                    'traffic' in c or 'impressions' in c]
-                potential_difficulty_cols = [i for i, c in enumerate(lower_headers) if 
-                    'difficulty' in c or 'diff' in c or 'kd' in c or 
-                    c == 'overall' or c == 'overall difficulty' or
-                    'competition' in c or 'competition level' in c]
-                potential_serp_cols = [i for i, c in enumerate(lower_headers) if c == 'serp features']
+
+                lower_headers = [(idx, header.lower()) for idx, header in searchable_headers]
+                potential_keyword_cols = [idx for idx, c in lower_headers if "keyword" in c or "phrase" in c]
+                potential_volume_cols = [
+                    idx
+                    for idx, c in lower_headers
+                    if "volume" in c
+                    or "vol" in c
+                    or "search" in c
+                    or c == "search volume"
+                    or c == "search_volume"
+                    or "traffic" in c
+                    or "impressions" in c
+                ]
+                potential_difficulty_cols = [
+                    idx
+                    for idx, c in lower_headers
+                    if "difficulty" in c
+                    or "diff" in c
+                    or "kd" in c
+                    or c == "overall"
+                    or c == "overall difficulty"
+                    or "competition" in c
+                    or "competition level" in c
+                ]
+                potential_serp_cols = [idx for idx, c in lower_headers if c == "serp features"]
 
                 if not potential_keyword_cols:
-                    raise ValueError(f"CSV must contain a 'keyword' or 'phrase' column. Found: {valid_columns}")
-                
+                    available_headers = [h for _, h in searchable_headers]
+                    raise ValueError(
+                        "CSV must contain a 'keyword' or 'phrase' column. "
+                        f"Found: {available_headers}"
+                    )
+
                 keyword_idx = potential_keyword_cols[0]
                 volume_idx = potential_volume_cols[0] if potential_volume_cols else -1
                 difficulty_idx = potential_difficulty_cols[0] if potential_difficulty_cols else -1
