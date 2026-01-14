@@ -8,9 +8,10 @@ import { cn } from '@/lib/cn';
 type SortColumn = 'createdAt' | 'user' | 'action' | 'projectId' | 'id';
 
 interface LogsTableProps {
-  projectId: string;
-  isActive: boolean;
-  refreshKey: number;
+  projectId?: string;
+  isActive?: boolean;
+  refreshKey?: number;
+  scope?: 'project' | 'global';
 }
 
 const formatDetails = (details?: Record<string, unknown> | null) => {
@@ -22,25 +23,42 @@ const formatDetails = (details?: Record<string, unknown> | null) => {
   }
 };
 
-export function LogsTable({ projectId, isActive, refreshKey }: LogsTableProps) {
+export function LogsTable({
+  projectId,
+  isActive = true,
+  refreshKey = 0,
+  scope = 'project',
+}: LogsTableProps) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
   const [sortColumn, setSortColumn] = useState<SortColumn>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const pageSize = 200;
 
   useEffect(() => {
     let isMounted = true;
     const fetchLogs = async () => {
-      if (!projectId || !isActive) return;
+      if (!isActive) return;
+      if (scope === 'project' && !projectId) return;
       setIsLoading(true);
       setErrorMessage('');
       try {
-        const data = await apiClient.fetchProjectLogs(projectId);
-        if (isMounted) {
-          setLogs(data);
+        if (scope === 'project' && projectId) {
+          const data = await apiClient.fetchProjectLogs(projectId);
+          if (isMounted) {
+            setLogs(data);
+            setTotalCount(data.length);
+          }
+        } else {
+          const data = await apiClient.fetchAllActivityLogs({ page: 1, limit: pageSize });
+          if (isMounted) {
+            setLogs(data.logs);
+            setTotalCount(data.pagination.total);
+          }
         }
       } catch (error) {
         if (isMounted) {
@@ -57,7 +75,7 @@ export function LogsTable({ projectId, isActive, refreshKey }: LogsTableProps) {
     return () => {
       isMounted = false;
     };
-  }, [projectId, isActive, refreshKey]);
+  }, [projectId, isActive, refreshKey, scope]);
 
   const actionOptions = useMemo(() => {
     const uniqueActions = new Set(logs.map((log) => log.action));
@@ -161,7 +179,7 @@ export function LogsTable({ projectId, isActive, refreshKey }: LogsTableProps) {
           </select>
         </div>
         <div className="text-xs text-muted ml-auto">
-          Showing {sortedLogs.length.toLocaleString()} of {logs.length.toLocaleString()} entries
+          Showing {sortedLogs.length.toLocaleString()} of {(totalCount ?? logs.length).toLocaleString()} entries
         </div>
       </div>
 
