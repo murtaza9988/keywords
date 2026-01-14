@@ -3,6 +3,8 @@
 import React from 'react';
 import { ProcessingPanel } from './ProcessingPanel';
 import { ProcessingStatus } from './types';
+import apiClient from '@/lib/apiClient';
+import { Button } from '@/components/ui/Button';
 
 interface ProjectStatsSummary {
   totalKeywords: number;
@@ -19,6 +21,8 @@ interface ProjectDetailOverviewProps {
   isUploading: boolean;
   processingStatus: ProcessingStatus;
   processingMessage: string;
+  processingStage?: string | null;
+  processingStageDetail?: string | null;
   displayProgress: number;
   processingCurrentFile: string | null;
   processingQueue: string[];
@@ -36,6 +40,8 @@ export function ProjectDetailOverview({
   isUploading,
   processingStatus,
   processingMessage,
+  processingStage,
+  processingStageDetail,
   displayProgress,
   processingCurrentFile,
   processingQueue,
@@ -45,6 +51,20 @@ export function ProjectDetailOverview({
   onUploadSuccess,
   onUploadError,
 }: ProjectDetailOverviewProps): React.ReactElement {
+  const downloadOutput = async (view: 'grouped' | 'confirmed') => {
+    const blobData = await apiClient.exportGroupedKeywords(projectId, view);
+    const url = window.URL.createObjectURL(blobData);
+    const link = document.createElement('a');
+    link.href = url;
+    const filename =
+      `${view}_keywords_${projectId}_` + new Date().toISOString().slice(0, 10) + '.csv';
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <ProcessingPanel
@@ -52,6 +72,8 @@ export function ProjectDetailOverview({
         isUploading={isUploading}
         processingStatus={processingStatus}
         processingMessage={processingMessage}
+        processingStage={processingStage}
+        processingStageDetail={processingStageDetail}
         displayProgress={displayProgress}
         processingCurrentFile={processingCurrentFile}
         processingQueue={processingQueue}
@@ -61,6 +83,25 @@ export function ProjectDetailOverview({
         onUploadSuccess={onUploadSuccess}
         onUploadError={onUploadError}
       />
+      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Downloads</p>
+            <p className="text-xs text-muted">
+              Uploaded CSVs (including combined batch CSVs) are downloadable via the “CSV Uploads” dropdown. Final output
+              CSV is generated from the database via Export.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={() => downloadOutput('grouped')}>
+              Download grouped output CSV
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => downloadOutput('confirmed')}>
+              Download confirmed output CSV
+            </Button>
+          </div>
+        </div>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total keywords uploaded</p>

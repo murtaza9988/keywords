@@ -113,6 +113,8 @@ export interface ProcessingStatusResponse {
   complete?: boolean;
   totalRows?: number; 
   progress?: number; 
+  stage?: string | null;
+  stageDetail?: string | null;
   currentFileName?: string | null;
   queuedFiles?: string[];
   queueLength?: number;
