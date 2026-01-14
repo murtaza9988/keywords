@@ -136,3 +136,128 @@ def test_upload_keywords_batch_enqueues_all_files(
     # After start_next_processing, one item is current and remaining are queued.
     assert 1 in mock_processing_queue
     assert len(list(mock_processing_queue[1])) == 2
+
+
+def test_reset_for_new_batch_clears_all_state():
+    """
+    Test that reset_for_new_batch properly clears all processing state.
+    This prevents stale state from blocking new uploads.
+    """
+    project_id = 996
+    processing_queue_service.cleanup(project_id)
+    
+    # Set up various states
+    processing_queue_service.enqueue(project_id, "/path/file1.csv", "file1.csv")
+    processing_queue_service.enqueue(project_id, "/path/file2.csv", "file2.csv")
+    processing_queue_service.set_status(project_id, "processing")
+    processing_queue_service.register_upload(project_id, "file1.csv")
+    processing_queue_service.register_upload(project_id, "file2.csv")
+    
+    # Verify state is set
+    assert processing_queue_service.get_status(project_id) == "processing"
+    assert len(processing_queue_service.get_queue(project_id)) == 2
+    
+    # Reset for new batch
+    processing_queue_service.reset_for_new_batch(project_id)
+    
+    # Verify all state is cleared
+    assert processing_queue_service.get_status(project_id) == "idle"
+    assert len(processing_queue_service.get_queue(project_id)) == 0
+    assert processing_queue_service.get_current_file(project_id) is None
+    result = processing_queue_service.get_result(project_id)
+    assert result.get("uploaded_files", []) == []
+    assert result.get("processed_files", []) == []
+    
+    processing_queue_service.cleanup(project_id)
+
+
+def test_start_next_after_error_continues_queue():
+    """
+    Test that start_next can continue processing after an error state.
+    This ensures the queue doesn't get stuck after failures.
+    """
+    project_id = 995
+    processing_queue_service.cleanup(project_id)
+    
+    # Enqueue multiple files
+    processing_queue_service.enqueue(project_id, "/path/file1.csv", "file1.csv")
+    processing_queue_service.enqueue(project_id, "/path/file2.csv", "file2.csv")
+    processing_queue_service.enqueue(project_id, "/path/file3.csv", "file3.csv")
+    
+    # Start processing first file
+    first_item = processing_queue_service.start_next(project_id)
+    assert first_item is not None
+    assert first_item["file_name"] == "file1.csv"
+    assert processing_queue_service.get_status(project_id) == "processing"
+    
+    # Simulate error
+    processing_queue_service.mark_error(
+        project_id,
+        message="Processing failed",
+        file_name="file1.csv",
+    )
+    assert processing_queue_service.get_status(project_id) == "error"
+    
+    # Should be able to start next file even after error
+    second_item = processing_queue_service.start_next(project_id)
+    assert second_item is not None
+    assert second_item["file_name"] == "file2.csv"
+    assert processing_queue_service.get_status(project_id) == "processing"
+    
+    processing_queue_service.cleanup(project_id)
+
+
+def test_mark_error_clears_current_file():
+    """
+    Test that mark_error clears the current file tracking.
+    This prevents stale current_file from blocking start_next.
+    """
+    project_id = 994
+    processing_queue_service.cleanup(project_id)
+    
+    # Enqueue and start a file
+    processing_queue_service.enqueue(project_id, "/path/test.csv", "test.csv")
+    processing_queue_service.start_next(project_id)
+    
+    # Verify current file is set
+    assert processing_queue_service.get_current_file(project_id) is not None
+    
+    # Mark error
+    processing_queue_service.mark_error(
+        project_id,
+        message="Test error",
+        file_name="test.csv",
+    )
+    
+    # Current file should be cleared
+    assert processing_queue_service.get_current_file(project_id) is None
+    
+    processing_queue_service.cleanup(project_id)
+
+
+def test_mark_complete_clears_current_file():
+    """
+    Test that mark_complete clears the current file tracking.
+    """
+    project_id = 993
+    processing_queue_service.cleanup(project_id)
+    
+    # Enqueue and start a file
+    processing_queue_service.enqueue(project_id, "/path/test.csv", "test.csv")
+    processing_queue_service.start_next(project_id)
+    
+    # Verify current file is set
+    assert processing_queue_service.get_current_file(project_id) is not None
+    
+    # Mark complete
+    processing_queue_service.mark_complete(
+        project_id,
+        message="Done",
+        file_name="test.csv",
+        has_more_in_queue=False,
+    )
+    
+    # Current file should be cleared
+    assert processing_queue_service.get_current_file(project_id) is None
+    
+    processing_queue_service.cleanup(project_id)

@@ -37,8 +37,20 @@ class ProcessingQueueService:
         self._touch(project_id)
 
     def start_next(self, project_id: int) -> Optional[Dict[str, Any]]:
-        if self.processing_tasks.get(project_id) == "processing":
-            return None
+        current_status = self.processing_tasks.get(project_id)
+        
+        # Only block if actively processing - allow starting after error/complete
+        if current_status == "processing":
+            # Check if processing might be stuck (no current file)
+            current_file = self.processing_current_files.get(project_id)
+            if current_file is None:
+                # Status says processing but no current file - this is a stale state
+                # Reset to allow processing to continue
+                self.processing_tasks[project_id] = "queued"
+            else:
+                # Actually processing a file - don't interrupt
+                return None
+        
         queue = self.processing_queue.get(project_id)
         if queue and len(queue) > 0:
             next_item = queue.popleft()
@@ -47,8 +59,9 @@ class ProcessingQueueService:
             self._touch(project_id)
             return next_item
 
+        # No more items in queue
         self.processing_current_files.pop(project_id, None)
-        if self.processing_tasks.get(project_id) not in {"complete", "error"}:
+        if current_status not in {"complete", "error"}:
             self.processing_tasks[project_id] = "idle"
         return None
 
@@ -94,7 +107,19 @@ class ProcessingQueueService:
         self.processing_results[project_id] = self._default_result()
 
     def reset_for_new_batch(self, project_id: int) -> None:
+        """Reset processing state for a new batch upload."""
+        # Clear the queue - leftover files from previous failures are discarded
+        self.processing_queue.pop(project_id, None)
+        # Clear current file tracking
+        self.processing_current_files.pop(project_id, None)
+        # Reset results to defaults
         self.processing_results[project_id] = self._default_result()
+        # Clear batch uploads state
+        self.batch_uploads.pop(project_id, None)
+        # Reset timestamp
+        self.last_update_time.pop(project_id, None)
+        # Set status to idle - this is a fresh start
+        self.processing_tasks[project_id] = "idle"
 
     def start_file_processing(self, project_id: int, *, message: Optional[str] = None) -> None:
         existing = self.processing_results.get(project_id, self._default_result())
@@ -171,7 +196,10 @@ class ProcessingQueueService:
         result["message"] = message
         if keywords is not None:
             result["keywords"] = keywords
+        # Clear current file - this file is done
+        self.processing_current_files.pop(project_id, None)
         self.processing_tasks[project_id] = "complete" if not has_more_in_queue else "queued"
+        self._touch(project_id)
 
     def mark_error(
         self,
@@ -187,7 +215,10 @@ class ProcessingQueueService:
         result["complete"] = True
         result["progress"] = 0.0
         result["message"] = message
+        # Clear current file - this file failed, move on
+        self.processing_current_files.pop(project_id, None)
         self.processing_tasks[project_id] = "error"
+        self._touch(project_id)
 
     def set_status(self, project_id: int, status: str) -> None:
         self.processing_tasks[project_id] = status

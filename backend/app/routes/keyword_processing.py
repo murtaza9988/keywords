@@ -158,13 +158,14 @@ def enqueue_processing_file(
     )
 
 async def start_next_processing(project_id: int) -> None:
+    """Start processing the next file in the queue for the given project."""
     next_item = processing_queue_service.start_next(project_id)
     if not next_item:
+        # No more items in queue - processing is complete or queue is empty
         return
-    processing_queue_service.start_file_processing(
-        project_id,
-        message=f"Processing {next_item.get('file_name')}" if next_item.get("file_name") else "Processing CSV",
-    )
+    
+    # Start the async processing task
+    # Note: process_csv_file will call start_file_processing internally
     asyncio.create_task(
         process_csv_file(
             next_item["file_path"],
