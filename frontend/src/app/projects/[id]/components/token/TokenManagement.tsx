@@ -97,7 +97,6 @@ export function TokenManagement({
           .flatMap((token) => {
             const tokenList = Array.isArray(token.tokens) ? token.tokens : [];
             return tokenList.map((t): Keyword => ({
-            return tokenList.map((t) => ({
               id: 0,
               keyword: t,
               volume: token.volume || 0,

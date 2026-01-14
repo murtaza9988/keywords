@@ -693,18 +693,6 @@ export default function ProjectDetail(): React.ReactElement {
       }
     }
     return [];
-  const getSerpFeatures = (keyword: SerpFeatureCarrier | null | undefined): string[] => {
-  if (!keyword || !keyword.serpFeatures) return [];
-  if (Array.isArray(keyword.serpFeatures)) return keyword.serpFeatures;
-  if (typeof keyword.serpFeatures === 'string') {
-    try {
-      const parsed = JSON.parse(keyword.serpFeatures);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
-  }
-  return [];
   };
   const fetchChildren = useCallback(async (groupId: string) => {
     if (!projectIdStr) return [];
