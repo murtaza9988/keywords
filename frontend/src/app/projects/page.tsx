@@ -173,7 +173,7 @@ export default function Projects() {
                   <li className="text-foreground">Projects</li>
                 </ol>
               </nav>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex flex-col gap-4">
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">Projects</h2>
                   <p className="text-[13px] text-muted mt-1">
@@ -185,7 +185,7 @@ export default function Projects() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search projects..."
-                  className="w-full lg:w-64 text-[13px]"
+                  className="w-full max-w-[240px] text-[13px]"
                 />
               </div>
               <CreateProjectForm
