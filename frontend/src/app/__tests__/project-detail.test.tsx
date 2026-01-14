@@ -29,15 +29,15 @@ jest.mock('../projects/[id]/components/FiltersSection', () => ({
 
 jest.mock('../projects/[id]/components/MainContent', () => {
   const MockMainContent = ({
-    pagination,
-    handlePageChange,
+    tableState,
+    tableHandlers,
   }: {
-    pagination: { page: number };
-    handlePageChange: (page: number) => void;
+    tableState: { pagination: { page: number } };
+    tableHandlers: { onPageChange: (page: number) => void };
   }) => (
     <div>
-      <div data-testid="page">Page {pagination.page}</div>
-      <button type="button" onClick={() => handlePageChange(2)}>
+      <div data-testid="page">Page {tableState.pagination.page}</div>
+      <button type="button" onClick={() => tableHandlers.onPageChange(2)}>
         Next Page
       </button>
     </div>
