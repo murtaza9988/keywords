@@ -1,11 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { memo, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { Keyword, GroupedKeywordsDisplay, ActiveKeywordView, SortParams } from './types';
 import { KeywordRow } from './KeywordRow';
-import fetchSerpFeatures  from '@/lib/apiClient';
 import apiClient from '@/lib/apiClient';
 import authService from '@/lib/authService';
 import { cn } from '@/lib/cn';
@@ -36,6 +33,10 @@ interface KeywordTableProps {
 interface FilterState {
   serpFeatures: string[];
 }
+
+type SerpFeatureSource = {
+  serpFeatures?: string[] | string | null;
+};
 
 const TableScroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
@@ -120,7 +121,7 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
     fetchSerpFeaturesData();
   }, [projectId]);
 
-  const getSerpFeatures = (item: any): string[] => {
+  const getSerpFeatures = (item: SerpFeatureSource | null | undefined): string[] => {
     if (!item || !item.serpFeatures) return [];
     if (Array.isArray(item.serpFeatures)) return item.serpFeatures;
     if (typeof item.serpFeatures === 'string') {
