@@ -399,11 +399,45 @@ async def upload_keywords(
                     combined_filename = f"combined_batch_{batchId}.csv"
                     combined_path = os.path.join(settings.UPLOAD_DIR, f"{project_id}_{combined_filename}")
                     
-                    combine_csv_files(file_entries, combined_path)
+                    await ActivityLogService.log_activity(
+                        db,
+                        project_id=project_id,
+                        action="batch_merge_start",
+                        details={
+                            "batch_id": batchId,
+                            "file_count": len(file_entries)
+                        },
+                        user=current_user.get("username", "admin"),
+                    )
+                    
+                    # Retry logic for combining files (handle transient IO errors)
+                    max_retries = 3
+                    for attempt in range(max_retries):
+                        try:
+                            # Run in executor to avoid blocking event loop
+                            await asyncio.to_thread(combine_csv_files, file_entries, combined_path)
+                            break
+                        except Exception as e:
+                            print(f"Attempt {attempt+1}/{max_retries} failed to combine CSVs: {e}")
+                            if attempt == max_retries - 1:
+                                raise e
+                            await asyncio.sleep(0.5 * (attempt + 1))
                     
                     # Log the combined file upload for tracking
                     csv_upload = CSVUpload(project_id=project_id, file_name=combined_filename)
                     db.add(csv_upload)
+                    
+                    await ActivityLogService.log_activity(
+                        db,
+                        project_id=project_id,
+                        action="batch_merge_success",
+                        details={
+                            "batch_id": batchId,
+                            "output_file": combined_filename
+                        },
+                        user=current_user.get("username", "admin"),
+                    )
+                    
                     await db.commit()
                     
                     # Enqueue the single combined file
@@ -422,6 +456,19 @@ async def upload_keywords(
                     }
                 except Exception as e:
                     print(f"Error combining batch files: {e}")
+                    
+                    await ActivityLogService.log_activity(
+                        db,
+                        project_id=project_id,
+                        action="batch_merge_failed",
+                        details={
+                            "batch_id": batchId,
+                            "error": str(e),
+                            "fallback": "individual_processing"
+                        },
+                        user=current_user.get("username", "admin"),
+                    )
+                    
                     # Fallback to individual processing if combination fails
                     for entry in file_entries:
                         enqueue_processing_file(
