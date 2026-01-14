@@ -6,6 +6,8 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import LancasterStemmer
 from app.utils.normalization import normalize_numeric_tokens
 
+from app.utils.compound_normalization import normalize_compound_tokens
+
 # Download necessary NLTK resources
 try:
     nltk.data.find('tokenizers/punkt')
@@ -31,7 +33,8 @@ def tokenize_and_lemmatize(keyword: str) -> Tuple[List[str], List[str]]:
         keyword = normalize_numeric_tokens(keyword)
         # Tokenize
         tokens = word_tokenize(keyword.lower())
-        
+        tokens = normalize_compound_tokens(tokens)
+
         # Lemmatize (using stemming as a simple approach)
         lemmatized_tokens = [stemmer.stem(token) for token in tokens]
         

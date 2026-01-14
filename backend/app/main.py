@@ -5,6 +5,7 @@ import uvicorn
 from app.config import settings
 from app.database import init_db
 from app.routes import auth, keyword_tokens, notes, projects, keyword_routes
+from app.utils.compound_normalization import load_compound_variants
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -23,6 +24,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_db_client():
     await init_db()
+    load_compound_variants()
 
 # Include routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)

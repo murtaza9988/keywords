@@ -4,8 +4,6 @@ import { KeywordTable } from './KeywordTable';
 import Pagination from './Pagination';
 import { ActiveKeywordView, GroupedKeywordsDisplay, PaginationInfo, SortParams } from './types';
 import { debounce } from 'lodash';
-
-const TABLE_FIXED_HEIGHT_CLASS = "h-[47vh]";
 const LIMIT_OPTIONS = [100, 250, 500, 1000, 2500, 5000];
 
 interface MainContentProps {
@@ -22,6 +20,7 @@ interface MainContentProps {
   isAnySelected: boolean;
   projectIdStr: string;
   isTableLoading: boolean;
+  selectedParentKeywordCount: number;
   minVolume: string;
   maxVolume: string;
   minLength: string;
@@ -406,6 +405,7 @@ export const MainContent: React.FC<MainContentProps> = memo(({
   isAnySelected,
   projectIdStr,
   isTableLoading,
+  selectedParentKeywordCount,
   minVolume,
   maxVolume,
   minLength,
@@ -460,9 +460,18 @@ export const MainContent: React.FC<MainContentProps> = memo(({
   };
 
   const shouldShowPagination = pagination.pages >= 1;
+  const showSelectedParentCount = activeView === 'grouped' && selectedKeywordIds.size > 0;
 
   return (
     <>
+      <div className="flex flex-col gap-1 pb-2 border-b border-border">
+        <h2 className="text-[15px] font-semibold text-foreground">Keyword Management</h2>
+        {showSelectedParentCount && (
+          <span className="text-xs text-muted">
+            Selected parent keywords: {selectedParentKeywordCount.toLocaleString()}
+          </span>
+        )}
+      </div>
       <div className="flex flex-col justify-end mb-4 gap-3 shrink-0 bg-surface-muted/40 rounded-lg p-2">
         <div className="flex items-center gap-2 w-full justify-end">
           <VolumeInputs
@@ -549,7 +558,7 @@ export const MainContent: React.FC<MainContentProps> = memo(({
         </div>
       </div>
 
-      <div className={`relative flex-grow overflow-hidden ${TABLE_FIXED_HEIGHT_CLASS}`}>
+      <div className="relative flex-1 min-h-0 overflow-hidden">
         <KeywordTable
           groupedKeywords={keywordsToDisplay}
           loading={isLoadingData}
