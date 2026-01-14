@@ -8,9 +8,10 @@ import ProjectDetail from '@/app/projects/[id]/components/ProjectDetail';
 import apiClient from '@/lib/apiClient';
 
 const mockPush = jest.fn();
+const mockRouter = { push: mockPush };
 
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => mockRouter,
   useParams: () => ({ id: '1' }),
 }));
 
@@ -24,16 +25,26 @@ jest.mock('../projects/[id]/components/FiltersSection', () => ({
   FiltersSection: () => <div data-testid="filters">Filters</div>,
 }));
 
-jest.mock('../projects/[id]/components/MainContent', () => ({
-  MainContent: ({ pagination, handlePageChange }: { pagination: { page: number }; handlePageChange: (page: number) => void }) => (
+jest.mock('../projects/[id]/components/MainContent', () => {
+  const MockMainContent = ({
+    pagination,
+    handlePageChange,
+  }: {
+    pagination: { page: number };
+    handlePageChange: (page: number) => void;
+  }) => (
     <div>
       <div data-testid="page">Page {pagination.page}</div>
       <button type="button" onClick={() => handlePageChange(2)}>
         Next Page
       </button>
     </div>
-  ),
-}));
+  );
+
+  MockMainContent.displayName = 'MockMainContent';
+
+  return { MainContent: MockMainContent };
+});
 
 jest.mock('../projects/[id]/components/Snackbar', () => ({
   Snackbar: () => null,
@@ -47,9 +58,11 @@ jest.mock('../projects/[id]/components/TextAreaInputs', () => ({
   TextAreaInputs: () => <div data-testid="notes">Notes</div>,
 }));
 
-jest.mock('../projects/[id]/components/CSVUploadDropdown', () => () => (
-  <div data-testid="csv-upload">CSV</div>
-));
+jest.mock('../projects/[id]/components/CSVUploadDropdown', () => {
+  const MockCSVUploadDropdown = () => <div data-testid="csv-upload">CSV</div>;
+  MockCSVUploadDropdown.displayName = 'MockCSVUploadDropdown';
+  return MockCSVUploadDropdown;
+});
 
 const createTestStore = () =>
   configureStore({

@@ -241,7 +241,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
 
   useEffect(() => {
     applyFilters(filterState);
-  }, [groupedKeywords, applyFilters]);
+  }, [groupedKeywords, applyFilters, filterState]);
 
   const keywordColumnKey = currentView === 'grouped' ? 'groupName' : 'keyword';
   const keywordColumnHeader = currentView === 'grouped' ? 'Page Name' : 'Keyword';

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import FileUploader from './FileUploader';
 import CSVUploadDropdown from './CSVUploadDropdown';

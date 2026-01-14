@@ -10,9 +10,10 @@ import authService from '@/lib/authService';
 import { useAuth } from '@/components/AuthProvider';
 
 const mockPush = jest.fn();
+const mockRouter = { push: mockPush };
 
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => mockRouter,
 }));
 
 jest.mock('@/lib/apiClient');
@@ -53,7 +54,7 @@ describe('Login page', () => {
     );
 
     await userEvent.type(screen.getByLabelText(/username/i), 'demo');
-    await userEvent.type(screen.getByLabelText(/password/i), 'password');
+    await userEvent.type(screen.getByLabelText(/password/i, { selector: 'input' }), 'password');
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
@@ -76,7 +77,7 @@ describe('Login page', () => {
     );
 
     await userEvent.type(screen.getByLabelText(/username/i), 'bad');
-    await userEvent.type(screen.getByLabelText(/password/i), 'bad');
+    await userEvent.type(screen.getByLabelText(/password/i, { selector: 'input' }), 'bad');
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid credentials');
