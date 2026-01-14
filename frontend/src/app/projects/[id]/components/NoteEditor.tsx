@@ -1,4 +1,4 @@
-import React, { useRef, memo } from 'react';
+import React, { memo } from 'react';
 
 interface NoteEditorProps {
   label: string;
