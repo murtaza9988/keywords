@@ -6,7 +6,6 @@ import uuid
 import unicodedata
 import string
 import re
-from collections import deque
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -17,6 +16,7 @@ from sqlalchemy import text as sql_text
 from app.config import settings
 from app.database import get_db_context
 from app.services.keyword import KeywordService
+from app.services.processing_queue import processing_queue_service
 from app.models.keyword import KeywordStatus
 from app.utils.token_normalization import normalize_compound_tokens
 from app.utils.normalization import normalize_numeric_tokens
@@ -53,10 +53,6 @@ stop_words = nltk_stop_words.union(set(custom_stop_words_list))
 lemmatizer = WordNetLemmatizer()
 
 EXTENDED_PUNCTUATION = string.punctuation + "®–—™"
-processing_tasks: Dict[int, str] = {}
-processing_results: Dict[int, Dict[str, Any]] = {}
-processing_queue: Dict[int, deque] = {}
-processing_current_files: Dict[int, Dict[str, str]] = {}
 question_words = {'what', 'why', 'how', 'when', 'where', 'who', 'which', 'whose', 'whom','can'}
 
 def get_synonyms(word: str) -> Set[str]:
@@ -172,47 +168,33 @@ def process_keyword(row_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
         return None, False
 
 def enqueue_processing_file(project_id: int, file_path: str, file_name: str) -> None:
-    queue = processing_queue.setdefault(project_id, deque())
-    queue.append({
-        "file_path": file_path,
-        "file_name": file_name
-    })
-    if processing_tasks.get(project_id) not in {"processing", "uploading", "combining"}:
-        processing_tasks[project_id] = "queued"
+    processing_queue_service.enqueue(project_id, file_path, file_name)
 
 async def start_next_processing(project_id: int) -> None:
-    if processing_tasks.get(project_id) == "processing":
+    next_item = processing_queue_service.start_next(project_id)
+    if not next_item:
         return
-    queue = processing_queue.get(project_id)
-    if queue and len(queue) > 0:
-        next_item = queue.popleft()
-        processing_current_files[project_id] = next_item
-        processing_tasks[project_id] = "processing"
-        asyncio.create_task(
-            process_csv_file(
-                next_item["file_path"],
-                project_id,
-                next_item["file_name"]
-            )
+    asyncio.create_task(
+        process_csv_file(
+            next_item["file_path"],
+            project_id,
+            next_item["file_name"]
         )
-    else:
-        processing_current_files.pop(project_id, None)
-        if processing_tasks.get(project_id) not in {"complete", "error"}:
-            processing_tasks[project_id] = "idle"
+    )
 
 async def process_csv_file(file_path: str, project_id: int, file_name: Optional[str] = None) -> None:
     """Process the CSV file in the background with optimized performance using new merge operations structure."""
-    processing_tasks[project_id] = "processing"
-    processing_results[project_id] = {
-        "processed_count": 0,
-        "skipped_count": 0,
-        "duplicate_count": 0,
-        "keywords": [],
-        "complete": False,
-        "total_rows": 0,
-        "progress": 0.0,
-        "message": f"Processing {file_name}" if file_name else "Processing CSV"
-    }
+    processing_queue_service.set_status(project_id, "processing")
+    processing_queue_service.update_progress(
+        project_id,
+        processed_count=0,
+        skipped_count=0,
+        duplicate_count=0,
+        progress=0.0,
+        total_rows=0,
+        keywords=[],
+        message=f"Processing {file_name}" if file_name else "Processing CSV",
+    )
 
     try:
         async with get_db_context() as db:
@@ -316,13 +298,21 @@ async def process_csv_file(file_path: str, project_id: int, file_name: Optional[
                     row_count += 1
             
             total_rows = row_count
-            processing_results[project_id]["total_rows"] = total_rows
+            processing_queue_service.update_progress(
+                project_id,
+                processed_count=0,
+                skipped_count=0,
+                duplicate_count=0,
+                progress=0.0,
+                total_rows=total_rows,
+            )
             print(f"Total rows to process: {total_rows}")
             
             if total_rows == 0:
-                processing_tasks[project_id] = "complete"
-                processing_results[project_id]["complete"] = True
-                processing_results[project_id]["message"] = f"No rows found in {file_name}" if file_name else "No rows found in CSV"
+                processing_queue_service.mark_complete(
+                    project_id,
+                    message=f"No rows found in {file_name}" if file_name else "No rows found in CSV",
+                )
                 return
             
             # Processing variables
@@ -363,7 +353,15 @@ async def process_csv_file(file_path: str, project_id: int, file_name: Optional[
                                 # Check for duplicates
                                 if keyword_lower in existing_keyword_texts or keyword_lower in seen_keywords:
                                     duplicate_count += 1
-                                    processing_results[project_id]["duplicate_count"] = duplicate_count
+                                    processing_queue_service.update_progress(
+                                        project_id,
+                                        processed_count=processed_count,
+                                        skipped_count=skipped_count,
+                                        duplicate_count=duplicate_count,
+                                        progress=(processed_count + skipped_count + duplicate_count)
+                                        / total_rows
+                                        * 100,
+                                    )
                                     continue
                                 
                                 seen_keywords.add(keyword_lower)
@@ -389,10 +387,13 @@ async def process_csv_file(file_path: str, project_id: int, file_name: Optional[
                         
                         # Update progress
                         current_progress = (processed_count + skipped_count + duplicate_count) / total_rows * 100
-                        processing_results[project_id]["progress"] = current_progress
-                        processing_results[project_id]["processed_count"] = processed_count
-                        processing_results[project_id]["skipped_count"] = skipped_count
-                        processing_results[project_id]["duplicate_count"] = duplicate_count
+                        processing_queue_service.update_progress(
+                            project_id,
+                            processed_count=processed_count,
+                            skipped_count=skipped_count,
+                            duplicate_count=duplicate_count,
+                            progress=current_progress,
+                        )
                         
                         # Save keywords when batch is full or at end
                         if len(chunk_results) >= batch_size or i == total_rows - 1:
@@ -478,7 +479,14 @@ async def process_csv_file(file_path: str, project_id: int, file_name: Optional[
                                 existing_token_groups = await refresh_existing_token_groups()                                
                                 token_groups.clear()
                                 
-                                processing_results[project_id]["keywords"] = final_keywords_to_save[-50:]
+                                processing_queue_service.update_progress(
+                                    project_id,
+                                    processed_count=processed_count,
+                                    skipped_count=skipped_count,
+                                    duplicate_count=duplicate_count,
+                                    progress=current_progress,
+                                    keywords=final_keywords_to_save[-50:],
+                                )
                             
                             await asyncio.sleep(0.005)
                         
@@ -493,19 +501,19 @@ async def process_csv_file(file_path: str, project_id: int, file_name: Optional[
             await db.commit()
 
             # Mark processing as complete after final grouping and cleanup
-            processing_results[project_id]["complete"] = True
-            processing_results[project_id]["progress"] = 100.0
-            processing_results[project_id]["message"] = f"Completed processing {file_name}" if file_name else "Processing complete."
-            processing_tasks[project_id] = "complete"
+            processing_queue_service.mark_complete(
+                project_id,
+                message=f"Completed processing {file_name}" if file_name else "Processing complete.",
+            )
 
     except Exception as e:
         print(f"Error during CSV processing for project {project_id}: {e}")
         import traceback
         traceback.print_exc()
-        processing_tasks[project_id] = "error"
-        processing_results[project_id]["complete"] = True
-        processing_results[project_id]["progress"] = 0.0
-        processing_results[project_id]["message"] = f"Failed processing {file_name}: {e}" if file_name else f"Failed processing CSV: {e}"
+        processing_queue_service.mark_error(
+            project_id,
+            message=f"Failed processing {file_name}: {e}" if file_name else f"Failed processing CSV: {e}",
+        )
         try:
             async with get_db_context() as db:
                 drop_index_query = f"DROP INDEX IF EXISTS temp_tokens_idx_{project_id}"
@@ -611,27 +619,11 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) 
 
 # Status check functions (unchanged)
 def get_processing_status(project_id: int) -> str:
-    return processing_tasks.get(project_id, "not_started")
+    return processing_queue_service.get_status(project_id)
 
 def get_processing_results(project_id: int) -> Dict[str, Any]:
-    return processing_results.get(project_id, {
-        "processed_count": 0,
-        "skipped_count": 0,
-        "duplicate_count": 0,
-        "keywords": [],
-        "complete": False,
-        "total_rows": 0,
-        "progress": 0.0,
-        "message": ""
-    })
+    return processing_queue_service.get_result(project_id)
 
 def cleanup_processing_data(project_id: int) -> None:
     """Clean up processing data for a project."""
-    if project_id in processing_tasks:
-        del processing_tasks[project_id]
-    if project_id in processing_results:
-        del processing_results[project_id]
-    if project_id in processing_queue:
-        del processing_queue[project_id]
-    if project_id in processing_current_files:
-        del processing_current_files[project_id]
+    processing_queue_service.cleanup(project_id)
