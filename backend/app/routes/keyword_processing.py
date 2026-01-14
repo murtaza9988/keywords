@@ -133,8 +133,19 @@ def process_keyword(row_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
         print(f"Error processing keyword row '{row_dict.get('Keyword')}': {e}")
         return None, False
 
-def enqueue_processing_file(project_id: int, file_path: str, file_name: str) -> None:
-    processing_queue_service.enqueue(project_id, file_path, file_name)
+def enqueue_processing_file(
+    project_id: int,
+    file_path: str,
+    file_name: str,
+    *,
+    file_names: Optional[List[str]] = None,
+) -> None:
+    processing_queue_service.enqueue(
+        project_id,
+        file_path,
+        file_name,
+        file_names=file_names,
+    )
 
 async def start_next_processing(project_id: int) -> None:
     next_item = processing_queue_service.start_next(project_id)
@@ -148,11 +159,18 @@ async def start_next_processing(project_id: int) -> None:
         process_csv_file(
             next_item["file_path"],
             project_id,
-            next_item["file_name"]
+            next_item.get("file_name"),
+            file_names=next_item.get("file_names"),
         )
     )
 
-async def process_csv_file(file_path: str, project_id: int, file_name: Optional[str] = None) -> None:
+async def process_csv_file(
+    file_path: str,
+    project_id: int,
+    file_name: Optional[str] = None,
+    *,
+    file_names: Optional[List[str]] = None,
+) -> None:
     """Process the CSV file in the background with optimized performance using new merge operations structure."""
     processing_queue_service.start_file_processing(
         project_id,
@@ -479,6 +497,7 @@ async def process_csv_file(file_path: str, project_id: int, file_name: Optional[
                 project_id,
                 message=f"Completed processing {file_name}" if file_name else "Processing complete.",
                 file_name=file_name,
+                file_names=file_names,
                 has_more_in_queue=len(remaining_queue) > 0,
             )
 

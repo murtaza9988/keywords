@@ -322,7 +322,17 @@ async def upload_keywords(
                         os.remove(entry["file_path"])
                 if batch_dir and os.path.exists(batch_dir) and not os.listdir(batch_dir):
                     os.rmdir(batch_dir)
-                enqueue_processing_file(project_id, combined_path, f"Combined CSV ({resolved_total_files} files)")
+                batch_file_names = [
+                    entry.get("file_name")
+                    for entry in file_entries
+                    if entry.get("file_name")
+                ]
+                enqueue_processing_file(
+                    project_id,
+                    combined_path,
+                    f"Combined CSV ({resolved_total_files} files)",
+                    file_names=batch_file_names,
+                )
                 await start_next_processing(project_id)
                 return {
                     "message": "Batch upload complete. Processing queued.",
@@ -429,7 +439,17 @@ async def upload_keywords(
                     os.remove(entry["file_path"])
             if batch_dir and os.path.exists(batch_dir) and not os.listdir(batch_dir):
                 os.rmdir(batch_dir)
-            enqueue_processing_file(project_id, combined_path, f"Combined CSV ({resolved_total_files} files)")
+            batch_file_names = [
+                entry.get("file_name")
+                for entry in file_entries
+                if entry.get("file_name")
+            ]
+            enqueue_processing_file(
+                project_id,
+                combined_path,
+                f"Combined CSV ({resolved_total_files} files)",
+                file_names=batch_file_names,
+            )
             await start_next_processing(project_id)
             return {
                 "message": "Batch upload complete. Processing queued.",
