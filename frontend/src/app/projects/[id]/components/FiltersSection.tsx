@@ -371,21 +371,22 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        {showLoader && (
-          <div className="flex items-center text-blue-600 h-6">
-            <div className="flex items-center">
+        <div className="flex items-center h-6">
+          {showLoader ? (
+            <div className="flex items-center text-blue-600">
               <Loader2 size={16} className="animate-spin mr-2" />
               <span className="text-xs">
                 {isUploading ? "Uploading..." : "Processing..."}
               </span>
             </div>
-          </div>
-        )}
-        {processingStatus === 'error' && !isUploading && !isProcessing && (
-          <div className="text-red-600 h-6 flex items-center">
-            Processing failed. Try uploading again.
-          </div>
-        )}
+          ) : processingStatus === 'error' && !isUploading && !isProcessing ? (
+            <div className="text-red-600 text-xs">
+              Processing failed. Try uploading again.
+            </div>
+          ) : (
+            <span className="text-xs text-transparent">Status</span>
+          )}
+        </div>
         <div className="flex items-center gap-x-3 min-h-[32px] flex-wrap">
           <span className="text-[13px] font-light text-gray-800 uppercase mr-2 shrink-0">Filters:</span>
           {selectedTokens.map(token => (
@@ -403,9 +404,13 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
               Exc ({excludeMatchType}): {excludeFilter} <button onClick={clearExcludeFilter} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
             </span>
           )}
-          {(selectedTokens.length > 0 || includeFilter || excludeFilter) && (
-            <button onClick={handleClearAllFilters} className="cursor-pointer text-[13px] text-blue-600 hover:underline ml-auto px-2 py-1 shrink-0 transition-all duration-200 hover:text-blue-800">Clear All</button>
-          )}
+          <button
+            onClick={handleClearAllFilters}
+            className={`cursor-pointer text-[13px] text-blue-600 hover:underline ml-auto px-2 py-1 shrink-0 transition-all duration-200 hover:text-blue-800 ${selectedTokens.length > 0 || includeFilter || excludeFilter ? '' : 'invisible'}`}
+            disabled={selectedTokens.length === 0 && !includeFilter && !excludeFilter}
+          >
+            Clear All
+          </button>
         </div>
       </div>
     </div>

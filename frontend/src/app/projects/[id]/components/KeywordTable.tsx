@@ -264,14 +264,14 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   disabled={groupedKeywords.length === 0}
                 />
               </th>
-              <th scope="col" className="w-[30%] py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort(keywordColumnKey)}>
+              <th scope="col" className="w-[38%] py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort(keywordColumnKey)}>
                 <div className="flex items-center">
                   <span>{keywordColumnHeader}</span>
                   {renderSortIcon(keywordColumnKey)}
                 </div>
               </th>
-              <th scope="col" className="w-[18%] px-2 py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider">Tokens</th>
-              <th scope="col" className="w-14 px-2 py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider">
+              <th scope="col" className="w-[26%] px-2 py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider">Tokens</th>
+              <th scope="col" className="w-10 px-2 py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1">
                     <span>SERP</span>
