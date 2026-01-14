@@ -8,6 +8,7 @@ import { KeywordRow } from './KeywordRow';
 import fetchSerpFeatures  from '@/lib/apiClient';
 import apiClient from '@/lib/apiClient';
 import authService from '@/lib/authService';
+import { cn } from '@/lib/cn';
 
 interface KeywordTableProps {
   groupedKeywords: GroupedKeywordsDisplay[];
@@ -35,6 +36,22 @@ interface KeywordTableProps {
 interface FilterState {
   serpFeatures: string[];
 }
+
+const TableScroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("flex-1 overflow-y-auto", className)} {...props} />
+  )
+);
+
+TableScroller.displayName = 'TableScroller';
+
+const KeywordTableElement = React.forwardRef<HTMLTableElement, React.TableHTMLAttributes<HTMLTableElement>>(
+  ({ className, ...props }, ref) => (
+    <table ref={ref} className={cn("min-w-full divide-y divide-gray-200 table-fixed", className)} {...props} />
+  )
+);
+
+KeywordTableElement.displayName = 'KeywordTableElement';
 
 export const KeywordTable: React.FC<KeywordTableProps> = memo(({
   groupedKeywords,
@@ -232,8 +249,8 @@ const toggleSerpFeature = useCallback((feature: string) => {
 
   return (
     <div className="flex flex-col lg:h-[calc(100vh-400px)] border border-border shadow-sm">
-      <div className="flex-1 overflow-y-auto">
-        <table className="min-w-full divide-y divide-gray-200 table-fixed">
+      <TableScroller>
+        <KeywordTableElement>
           <thead className="bg-gray-100 sticky top-0 z-10">
             <tr onDoubleClick={handleDoubleClick}>
               <th scope="col" className="w-8 px-3 py-1 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -448,8 +465,8 @@ const toggleSerpFeature = useCallback((feature: string) => {
               })
             )}
           </tbody>
-        </table>
-      </div>
+        </KeywordTableElement>
+      </TableScroller>
       <style jsx>{`
         table {
           table-layout: fixed;
