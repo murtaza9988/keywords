@@ -1128,32 +1128,125 @@ async def get_project_initial_data(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    tasks = [
-        KeywordService.count_parents_by_project(db, project_id, status=KeywordStatus.ungrouped),
-        KeywordService.count_parents_by_project(db, project_id, status=KeywordStatus.grouped),
-        KeywordService.count_parents_by_project(db, project_id, status=KeywordStatus.blocked),
-        KeywordService.get_parents_by_project(db, project_id, skip=0, limit=None, status=KeywordStatus.grouped),
-        KeywordService.get_parents_by_project(
-            db, project_id, 
-            skip=(page-1)*limit, 
-            limit=limit, 
-            status=status, 
-            sort="volume", 
-            direction="desc"
+    stats_query = text("""
+        WITH project_stats AS (
+            SELECT 
+                project_id,
+                COUNT(*) FILTER (WHERE is_parent = TRUE AND status = 'ungrouped') as ungrouped_count,
+                COUNT(*) FILTER (WHERE is_parent = TRUE AND status = 'grouped') as grouped_pages,
+                COUNT(*) FILTER (WHERE is_parent = TRUE AND status = 'confirmed') as confirmed_pages,
+                COUNT(*) FILTER (WHERE is_parent = TRUE AND status = 'blocked') as blocked_count,
+                COUNT(*) FILTER (WHERE is_parent = TRUE) as total_parent_keywords,
+                COUNT(*) FILTER (
+                    WHERE is_parent = FALSE
+                      AND (blocked_by IS NULL OR blocked_by != 'merge_hidden')
+                ) as total_child_keywords,
+                COUNT(DISTINCT group_id) FILTER (WHERE group_id IS NOT NULL) as group_count,
+                (
+                    SELECT COUNT(*) 
+                    FROM keywords k2 
+                    WHERE k2.project_id = keywords.project_id 
+                    AND k2.status = 'grouped' 
+                    AND k2.is_parent = FALSE
+                    AND (k2.blocked_by IS NULL OR k2.blocked_by != 'merge_hidden')
+                ) as grouped_children_count,
+                (
+                    SELECT COUNT(*) 
+                    FROM keywords k3 
+                    WHERE k3.project_id = keywords.project_id 
+                    AND k3.status = 'confirmed' 
+                    AND k3.is_parent = FALSE
+                    AND (k3.blocked_by IS NULL OR k3.blocked_by != 'merge_hidden')
+                ) as confirmed_children_count,
+                (
+                    SELECT COUNT(DISTINCT tok)
+                    FROM keywords kp,
+                         jsonb_array_elements_text(kp.tokens) AS tok
+                    WHERE kp.project_id = keywords.project_id
+                      AND kp.is_parent = TRUE
+                      AND (kp.blocked_by IS NULL OR kp.blocked_by != 'merge_hidden')
+                ) as parent_token_count,
+                (
+                    SELECT COUNT(DISTINCT tok)
+                    FROM keywords kc,
+                         jsonb_array_elements_text(kc.tokens) AS tok
+                    WHERE kc.project_id = keywords.project_id
+                      AND kc.is_parent = FALSE
+                      AND (kc.blocked_by IS NULL OR kc.blocked_by != 'merge_hidden')
+                ) as child_token_count
+            FROM keywords 
+            WHERE project_id = :project_id
+            GROUP BY project_id
         )
+        SELECT 
+            project_id,
+            ungrouped_count,
+            grouped_pages,
+            (grouped_pages + grouped_children_count) as grouped_keywords_count,
+            confirmed_pages,
+            (confirmed_pages + confirmed_children_count) as confirmed_keywords_count,
+            blocked_count,
+            total_parent_keywords,
+            total_child_keywords,
+            group_count,
+            parent_token_count,
+            child_token_count,
+            (ungrouped_count + grouped_pages + grouped_children_count + confirmed_pages + confirmed_children_count + blocked_count) as total_keywords
+        FROM project_stats
+    """)
+
+    tasks = [
+        db.execute(stats_query, {"project_id": project_id}),
+        KeywordService.get_parents_by_project(
+            db,
+            project_id,
+            skip=(page - 1) * limit,
+            limit=limit,
+            status=status,
+            sort="volume",
+            direction="desc",
+        ),
     ]
-    
-    results = await asyncio.gather(*tasks)
-    ungrouped_count, grouped_pages, blocked_count, grouped_keywords, current_view_keywords = results
-    grouped_keywords_count = sum(kw["child_count"] + 1 for kw in grouped_keywords)
-    total_keywords = ungrouped_count + grouped_keywords_count + blocked_count
+
+    stats_result, current_view_keywords = await asyncio.gather(*tasks)
+    stats_row = stats_result.fetchone()
+    if stats_row:
+        ungrouped_count = stats_row.ungrouped_count or 0
+        grouped_pages = stats_row.grouped_pages or 0
+        confirmed_pages = stats_row.confirmed_pages or 0
+        confirmed_keywords_count = stats_row.confirmed_keywords_count or 0
+        blocked_count = stats_row.blocked_count or 0
+        total_parent_keywords = stats_row.total_parent_keywords or 0
+        total_child_keywords = stats_row.total_child_keywords or 0
+        group_count = stats_row.group_count or 0
+        parent_token_count = stats_row.parent_token_count or 0
+        child_token_count = stats_row.child_token_count or 0
+        grouped_keywords_count = stats_row.grouped_keywords_count or 0
+        total_keywords = stats_row.total_keywords or 0
+    else:
+        ungrouped_count = 0
+        grouped_pages = 0
+        confirmed_pages = 0
+        confirmed_keywords_count = 0
+        blocked_count = 0
+        total_parent_keywords = 0
+        total_child_keywords = 0
+        group_count = 0
+        parent_token_count = 0
+        child_token_count = 0
+        grouped_keywords_count = 0
+        total_keywords = 0
+
     ungrouped_percent = ((ungrouped_count / total_keywords) * 100) if total_keywords > 0 else 0.0
     grouped_percent = ((grouped_keywords_count / total_keywords) * 100) if total_keywords > 0 else 0.0
+    confirmed_percent = ((confirmed_keywords_count / total_keywords) * 100) if total_keywords > 0 else 0.0
     blocked_percent = ((blocked_count / total_keywords) * 100) if total_keywords > 0 else 0.0
     if status == KeywordStatus.ungrouped:
         total_current = ungrouped_count
     elif status == KeywordStatus.grouped:
         total_current = grouped_pages
+    elif status == KeywordStatus.confirmed:
+        total_current = confirmed_pages
     else:
         total_current = blocked_count
     pages = (total_current + limit - 1) // limit if limit > 0 else 1
@@ -1166,11 +1259,19 @@ async def get_project_initial_data(
             "ungroupedCount": ungrouped_count,
             "groupedKeywordsCount": grouped_keywords_count,
             "groupedPages": grouped_pages,
+            "confirmedKeywordsCount": confirmed_keywords_count,
+            "confirmedPages": confirmed_pages,
             "blockedCount": blocked_count,
             "totalKeywords": total_keywords,
+            "totalParentKeywords": total_parent_keywords,
+            "totalChildKeywords": total_child_keywords,
+            "groupCount": group_count,
+            "parentTokenCount": parent_token_count,
+            "childTokenCount": child_token_count,
             "ungroupedPercent": round(ungrouped_percent, 2),
             "groupedPercent": round(grouped_percent, 2),
-            "blockedPercent": round(blocked_percent, 2)
+            "confirmedPercent": round(confirmed_percent, 2),
+            "blockedPercent": round(blocked_percent, 2),
         },
         "pagination": {
             "total": total_current,

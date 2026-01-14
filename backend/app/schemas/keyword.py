@@ -158,10 +158,18 @@ class ProjectStats(BaseModel):
     ungrouped_count: int = Field(..., alias="ungroupedCount")
     grouped_keywords_count: int = Field(..., alias="groupedKeywordsCount")
     grouped_pages: int = Field(..., alias="groupedPages")
+    confirmed_keywords_count: Optional[int] = Field(None, alias="confirmedKeywordsCount")
+    confirmed_pages: Optional[int] = Field(None, alias="confirmedPages")
     blocked_count: int = Field(..., alias="blockedCount")
     total_keywords: int = Field(..., alias="totalKeywords")
+    total_parent_keywords: Optional[int] = Field(None, alias="totalParentKeywords")
+    total_child_keywords: Optional[int] = Field(None, alias="totalChildKeywords")
+    group_count: Optional[int] = Field(None, alias="groupCount")
+    parent_token_count: Optional[int] = Field(None, alias="parentTokenCount")
+    child_token_count: Optional[int] = Field(None, alias="childTokenCount")
     ungrouped_percent: float = Field(..., alias="ungroupedPercent")
     grouped_percent: float = Field(..., alias="groupedPercent")
+    confirmed_percent: Optional[float] = Field(None, alias="confirmedPercent")
     blocked_percent: float = Field(..., alias="blockedPercent")
     
     model_config = {
