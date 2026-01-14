@@ -128,6 +128,65 @@ def test_upload_keywords_chunked_combines_and_queues(
     assert mock_processing_results[1]["complete"] is False
 
 
+def test_upload_keywords_batch_combines_files(
+    test_api_client,
+    mock_project_model,
+    mock_processing_tasks,
+    mock_processing_results,
+    mock_processing_queue,
+    mock_processing_current_files,
+    temp_upload_dir,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        ProjectService,
+        "get_by_id",
+        AsyncMock(return_value=mock_project_model),
+    )
+    mock_process = AsyncMock()
+    monkeypatch.setattr("app.routes.keyword_processing.process_csv_file", mock_process)
+
+    response_first = test_api_client.post(
+        "/api/projects/1/upload",
+        data={
+            "batchId": "batch-1",
+            "fileIndex": 0,
+            "totalFiles": 2,
+        },
+        files={
+            "file": (
+                "keywords-one.csv",
+                b"Keyword,Volume\nalpha,10\n",
+                "text/csv",
+            )
+        },
+    )
+
+    assert response_first.status_code == 202
+    assert response_first.json()["status"] == "uploading"
+
+    response_second = test_api_client.post(
+        "/api/projects/1/upload",
+        data={
+            "batchId": "batch-1",
+            "fileIndex": 1,
+            "totalFiles": 2,
+        },
+        files={
+            "file": (
+                "keywords-two.csv",
+                b"Keyword,Volume\nbeta,20\n",
+                "text/csv",
+            )
+        },
+    )
+
+    assert response_second.status_code == 202
+    assert response_second.json()["status"] == "processing"
+    assert mock_processing_tasks[1] == "processing"
+    assert mock_processing_results[1]["complete"] is False
+
+
 def test_processing_status_idle_returns_complete(
     test_api_client,
     mock_processing_tasks,
