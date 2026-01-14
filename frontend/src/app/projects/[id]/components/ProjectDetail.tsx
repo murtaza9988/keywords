@@ -421,7 +421,7 @@ export default function ProjectDetail(): React.ReactElement {
         'error'
       );
     }
-  }, [projectIdStr, addSnackbarMessage]);
+  }, [projectIdStr, addSnackbarMessage, dispatch]);
   const calculateMaintainedPage = useCallback((
     currentPage: number,
     currentLimit: number,
@@ -937,7 +937,7 @@ export default function ProjectDetail(): React.ReactElement {
     }, true);
   }
 }, [
-  activeView, pagination.limit, sortParams, filterParams, fetchKeywords, projectIdStr, apiCache
+  activeView, pagination, sortParams, filterParams, fetchKeywords, projectIdStr, apiCache
 ]);
 
 const handlePageChange = useCallback((newPage: number) => {
@@ -1328,7 +1328,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       
       executeSearch();
     },
-    [activeView, fetchKeywords, pagination, sortParams, excludeFilter, childrenCache, includeMatchType, filterParams]
+    [activeView, fetchKeywords, pagination, sortParams, childrenCache, includeMatchType, filterParams]
   );
   const handleExcludeFilterChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1397,7 +1397,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     }, true);
   }, [
     fetchKeywords, 
-    pagination.limit, 
+    pagination, 
     activeView, 
     sortParams,
     projectIdStr,
@@ -2128,15 +2128,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         },
       });
 
-      if (validationError && data.status === 'complete') {
-        setProcessingStatus('error');
-        setIsUploading(false);
-        setProcessingProgress(0);
-        addSnackbarMessage(validationError, 'error');
-        stopProcessingCheck();
-        return;
-      }
-
       if (data.status === 'complete') {
         detailDispatch({
           type: 'updateProcessing',
@@ -2414,8 +2405,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     bumpLogsRefresh();
   }, [startProcessingCheck, bumpLogsRefresh]);  
   const handleUploadBatchStart = useCallback((files: File[]) => {
-    setExpectedUploadFiles(files.map((file) => file.name));
-  }, []);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { processingQueue: files.map((file) => file.name) },
+    });
+  }, [detailDispatch]);
   const handleUploadSuccess = useCallback(
     (status: ProcessingStatus, message?: string) => {
       detailDispatch({

@@ -54,6 +54,7 @@ export function ProjectDetailOverview({
         processingCurrentFile={processingCurrentFile}
         processingQueue={processingQueue}
         onUploadStart={onUploadStart}
+        onUploadBatchStart={onUploadBatchStart}
         onUploadSuccess={onUploadSuccess}
         onUploadError={onUploadError}
       />
