@@ -3,26 +3,21 @@ import csv
 import os
 import json
 import uuid
-from collections import deque
-import unicodedata
-import string
-import re
+from typing import Any, Dict, List, Optional, Tuple
 import nltk
 from nltk import data as nltk_data
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from typing import Any, Dict, List, Optional, Set, Tuple
+from nltk.corpus import wordnet
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text as sql_text
 from app.config import settings
 from app.database import get_db_context
 from app.services.keyword import KeywordService
-from nltk.tokenize import word_tokenize
 from app.services.keyword_processing import (
     apply_stopwords,
     build_keyword_payload,
-    get_synonyms,
     lemmatizer,
     lemmatize,
     map_synonyms,
@@ -32,17 +27,7 @@ from app.services.keyword_processing import (
     tokenize,
 )
 from app.models.keyword import KeywordStatus
-
-processing_tasks: Dict[int, str] = {}
-processing_results: Dict[int, Dict[str, Any]] = {}
-processing_queue: Dict[int, deque] = {}
-processing_current_files: Dict[int, Dict[str, str]] = {}
 from app.services.processing_queue import processing_queue_service
-from app.models.keyword import KeywordStatus
-from app.utils.token_normalization import normalize_compound_tokens
-from app.utils.normalization import normalize_numeric_tokens
-from app.utils.compound_normalization import normalize_compound_tokens
-from nltk.corpus import wordnet
 
 REQUIRED_NLTK_RESOURCES = {
     "punkt": "tokenizers/punkt",
