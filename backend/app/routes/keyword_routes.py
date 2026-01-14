@@ -440,12 +440,30 @@ async def upload_keywords(
                     
                     await db.commit()
                     
-                    # Enqueue the single combined file
+                    # Collect original filenames to mark as processed later
+                    original_filenames = [
+                        entry.get("file_name") 
+                        for entry in file_entries 
+                        if entry.get("file_name")
+                    ]
+                    
+                    # Enqueue the single combined file, but pass the list of ORIGINAL files
+                    # so the processing queue service knows all these files are now "processed".
                     enqueue_processing_file(
                         project_id,
                         combined_path,
-                        combined_filename
+                        combined_filename,
+                        file_names=original_filenames
                     )
+                    
+                    # Cleanup individual files since they are now combined
+                    for entry in file_entries:
+                        try:
+                            file_path = entry["file_path"]
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                        except Exception as cleanup_err:
+                            print(f"Warning: Failed to cleanup temp file {entry.get('file_path')}: {cleanup_err}")
                     
                     await start_next_processing(project_id)
                     
