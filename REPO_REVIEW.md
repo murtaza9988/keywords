@@ -49,6 +49,9 @@ _Last updated: 2025-01-13_
 ### 2.9 Notes
 - `/api/projects/{project_id}/notes` supports fetching and updating two notes fields. If notes don’t exist, the API returns a blank note object so the UI always has editable content.【F:backend/app/routes/notes.py†L1-L62】
 
+### 2.10 Maintenance: Token Backfill
+- `app/scripts/backfill_compounds.py` reprocesses keyword text with the compound normalization pipeline, updates `keywords.tokens`, reapplies merge mappings, and then regroups affected keywords. Run it per project after tokenization changes to keep grouping consistent.【F:backend/app/scripts/backfill_compounds.py†L1-L140】
+
 ## 3) Frontend: Core Components and Flow
 
 ### 3.1 Login Flow
