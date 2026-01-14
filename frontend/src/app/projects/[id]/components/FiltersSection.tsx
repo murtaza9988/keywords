@@ -76,6 +76,28 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
   const isGroupButtonVisible = activeView === 'ungrouped' || activeView === 'grouped';
   const isUngroupButtonVisible = activeView === 'grouped';
   const isUnblockButtonVisible = activeView === 'blocked';
+
+  const isProcessing =
+    processingStatus === 'uploading' ||
+    processingStatus === 'combining' ||
+    processingStatus === 'queued' ||
+    processingStatus === 'processing';
+  const showLoader = isUploading || isProcessing;
+
+  const getStageLabel = (status: ProcessingStatus) => {
+    switch (status) {
+      case 'uploading':
+        return 'Uploading CSV…';
+      case 'combining':
+        return 'Combining chunks…';
+      case 'queued':
+        return 'Upload complete · queued for processing…';
+      case 'processing':
+        return 'Processing keywords…';
+      default:
+        return 'Working…';
+    }
+  };
   
   const [debouncedFetchSuggestions] = useState(() => 
     debounce((query: string) => {
@@ -348,6 +370,48 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
           </div>
         </div>
       </div>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center h-6">
+          {showLoader ? (
+            <div className="flex items-center text-blue-600">
+              <Loader2 size={16} className="animate-spin mr-2" />
+              <span className="text-xs">
+                {getStageLabel(isUploading ? 'uploading' : processingStatus)}
+              </span>
+            </div>
+          ) : processingStatus === 'error' && !isUploading && !isProcessing ? (
+            <div className="text-red-600 text-xs">
+              Processing failed. Try uploading again.
+            </div>
+          ) : (
+            <span className="text-xs text-transparent">Status</span>
+          )}
+        </div>
+        <div className="flex items-center gap-x-3 min-h-[32px] flex-wrap">
+          <span className="text-xs font-semibold text-foreground uppercase tracking-wide mr-2 shrink-0">Filters</span>
+          {selectedTokens.map(token => (
+            <span key={`f-${token}`} className="inline-flex items-center px-2 rounded-full text-[13px] bg-gray-600 text-white m-1 shadow-sm">
+              T: {token} <button onClick={() => removeToken(token)} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
+            </span>
+          ))}
+          {includeFilter && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[13px] bg-green-100 text-green-800 m-1 shadow-sm">
+              Inc ({includeMatchType}): {includeFilter} <button onClick={clearIncludeFilter} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
+            </span>
+          )}
+          {excludeFilter && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[13px] bg-red-100 text-red-800 m-1 shadow-sm">
+              Exc ({excludeMatchType}): {excludeFilter} <button onClick={clearExcludeFilter} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
+            </span>
+          )}
+          <button
+            onClick={handleClearAllFilters}
+            className={`cursor-pointer text-[13px] text-blue-600 hover:underline ml-auto px-2 py-1 shrink-0 transition-all duration-200 hover:text-blue-800 ${selectedTokens.length > 0 || includeFilter || excludeFilter ? '' : 'invisible'}`}
+            disabled={selectedTokens.length === 0 && !includeFilter && !excludeFilter}
+          >
+            Clear All
+          </button>
+        </div>
       <div className="flex items-center gap-x-3 min-h-[32px] flex-wrap">
         <span className="text-xs font-semibold text-foreground uppercase tracking-wide mr-2 shrink-0">Filters</span>
         {selectedTokens.map(token => (

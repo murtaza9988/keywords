@@ -33,7 +33,7 @@ interface TokenManagementProps {
   onBlockTokenSuccess: () => void;
   onUnblockTokenSuccess: () => void;
   onTokenDataChange: () => void;
-  addSnackbarMessage: (text: string, type: 'success' | 'error') => void;
+  addSnackbarMessage: (text: string, type: 'success' | 'error' | 'info') => void;
   activeViewKeywords: TokenData[];
   toggleTokenSelection: (token: string) => void;
   activeView: 'ungrouped' | 'grouped' | 'blocked';

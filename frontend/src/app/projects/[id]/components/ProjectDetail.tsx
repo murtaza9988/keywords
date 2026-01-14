@@ -166,6 +166,7 @@ export default function ProjectDetail() {
     groupedPages: 0,
     blockedCount: 0,
     totalKeywords: 0,
+    totalParentKeywords: 0,
   });
   const [sortParams, setSortParams] = useState<SortParams>({
     column: 'volume',
@@ -207,9 +208,22 @@ export default function ProjectDetail() {
   const [selectedSerpFeatures, setSelectedSerpFeatures] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
-  const addSnackbarMessage = useCallback((text: string, type: 'success' | 'error') => {
+  const addSnackbarMessage = useCallback((
+    text: string,
+    type: 'success' | 'error' | 'info',
+    options?: { description?: string; stage?: ProcessingStatus }
+  ) => {
     const id = Date.now();
-    setSnackbarMessages(prev => [...prev, { id, text, type }]);
+    setSnackbarMessages(prev => [
+      ...prev,
+      {
+        id,
+        text,
+        type,
+        description: options?.description,
+        stage: options?.stage
+      }
+    ]);
     setTimeout(() => {
       setSnackbarMessages(prev => prev.filter(msg => msg.id !== id));
     }, 3000);
@@ -292,6 +306,7 @@ const fetchProjectStats = useCallback(async () => {
       confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
       confirmedPages: statsData.confirmedPages || 0,               
       blockedCount: statsData.blockedCount || 0,
+      totalParentKeywords: statsData.totalParentKeywords || 0,
       totalKeywords: statsData.totalKeywords || 
         (statsData.ungroupedCount + statsData.groupedKeywordsCount + 
          statsData.confirmedKeywordsCount + statsData.blockedCount),
@@ -1468,6 +1483,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               confirmedPages: statsData.confirmedPages || 0,
               groupedPages: statsData.groupedPages || 0,
               blockedCount: statsData.blockedCount || 0,
+              totalParentKeywords: statsData.totalParentKeywords || 0,
               totalKeywords: statsData.totalKeywords ||
                 (statsData.ungroupedCount + statsData.groupedKeywordsCount + (statsData.confirmedKeywordsCount || 0) + statsData.blockedCount),
             });
@@ -1833,6 +1849,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         setIsUploading(false);
         setUploadSuccess(true);
         stopProcessingCheck();
+        addSnackbarMessage('Processing complete', 'success', {
+          stage: 'complete',
+          description: 'Your keywords are ready to review.'
+        });
         fetchKeywords(1, pagination.limit, activeView, sortParams, {
           tokens: selectedTokens,
           include: includeFilter,
@@ -1849,7 +1869,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }, true);
         
         fetchProjectStats();
-        addSnackbarMessage('File processed successfully', 'success');
         return;
       }
       if (data.status !== processingStatus) {
@@ -1863,6 +1882,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         } else if (data.status === 'idle') {
           setIsUploading(false);
           stopProcessingCheck();
+        } else if (data.status === 'uploading' || data.status === 'combining') {
+          setIsUploading(true);
+        } else if (data.status === 'queued' || data.status === 'processing') {
+          setIsUploading(false);
         }
       }
 
@@ -1930,7 +1953,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   ]);
 
   useEffect(() => {
-    if (processingStatus === 'queued' || processingStatus === 'processing') {
+    if (
+      processingStatus === 'uploading' ||
+      processingStatus === 'combining' ||
+      processingStatus === 'queued' ||
+      processingStatus === 'processing'
+    ) {
       if (!statusCheckIntervalRef.current) {
         checkProcessingStatus();
         statusCheckIntervalRef.current = setInterval(checkProcessingStatus, 1000);
@@ -1997,10 +2025,17 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         if (initialData.pagination) {
           setPagination(initialData.pagination);
         }
-        if (initialData.processingStatus?.status === 'processing') {
+        if (initialData.processingStatus?.status) {
           setProcessingStatus(initialData.processingStatus.status);
           setProcessingProgress(initialData.processingStatus.progress || 0);
-          startProcessingCheck();
+          if (
+            initialData.processingStatus.status === 'uploading' ||
+            initialData.processingStatus.status === 'combining' ||
+            initialData.processingStatus.status === 'queued' ||
+            initialData.processingStatus.status === 'processing'
+          ) {
+            startProcessingCheck();
+          }
         }
       }
     } catch (error) {
@@ -2028,7 +2063,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   
   const handleUploadStart = useCallback(() => {
     setIsUploading(true);
-    setProcessingStatus('queued');
+    setProcessingStatus('uploading');
     setProcessingProgress(0);
     startProcessingCheck();
   }, [startProcessingCheck]);  
@@ -2062,7 +2097,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }, 1500);
       } else if (status === 'queued' || status === 'processing') {
         startProcessingCheck();
-        if (message) addSnackbarMessage(message, 'success');
+        addSnackbarMessage('Upload complete', 'success', {
+          stage: 'queued',
+          description: message || (status === 'processing'
+            ? 'Processing has started.'
+            : 'Processing is queued and will begin shortly.')
+        });
       } else {
         setIsUploading(false);
         if (message) addSnackbarMessage(message, 'success');
@@ -2449,6 +2489,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
 
   const isProcessing = processingStatus === 'queued' || processingStatus === 'processing';
   const showUploadLoader = isUploading || isProcessing;
+  const totalChildKeywords = Math.max(0, stats.totalKeywords - stats.totalParentKeywords);
 
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden">
@@ -2573,6 +2614,32 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       ) : (
                         <span className="text-xs text-transparent">Status</span>
                       )}
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total keywords uploaded</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.totalKeywords.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total parent keywords</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.totalParentKeywords.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total child keywords</p>
+                        <p className="text-lg font-semibold text-foreground">{totalChildKeywords.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Grouped pages</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.groupedPages.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Confirmed pages</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.confirmedPages.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Blocked parent keywords</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.blockedCount.toLocaleString()}</p>
+                      </div>
                     </div>
                   </div>
                 )}

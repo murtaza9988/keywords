@@ -8,6 +8,7 @@ import {
   LoginResponse,
   CreateProjectResponse,
   KeywordChildrenData,
+  ProcessingStatus,
   ProcessingStatusResponse,
   GroupKeywordsResponse,
   BlockTokenResponse,
@@ -344,7 +345,7 @@ class ApiClient {
     projectId: string,
     formData: FormData,
     onUploadProgress?: (progress: number) => void
-  ): Promise<{ message: string; status: 'processing' | 'complete' | 'error'; file_name?: string }> {
+  ): Promise<{ message: string; status: ProcessingStatus; file_name?: string }> {
     try {
       this.cache.invalidate(`/api/projects/${projectId}`);
       const chunkIndex = formData.get('chunkIndex');
@@ -369,7 +370,7 @@ class ApiClient {
       if (chunkIndex && totalChunks && Number(chunkIndex) < Number(totalChunks) - 1) {
         return {
           message: `Uploaded chunk ${Number(chunkIndex) + 1} of ${totalChunks}`,
-          status: 'complete',
+          status: 'uploading',
           file_name: formData.get('file_name') as string
         };
       }
