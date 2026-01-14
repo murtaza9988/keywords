@@ -151,6 +151,7 @@ export default function ProjectDetail() {
   // Component state
   const [activeView, setActiveView] = useState<ActiveKeywordView>('ungrouped');
   const [activeTab, setActiveTab] = useState<'overview' | 'group' | 'logs'>('group');
+  const [logsRefreshKey, setLogsRefreshKey] = useState(0);
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
   const [includeFilter, setIncludeFilter] = useState('');
   const [excludeFilter, setExcludeFilter] = useState('');
@@ -205,6 +206,10 @@ export default function ProjectDetail() {
 
   const [selectedSerpFeatures, setSelectedSerpFeatures] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+
+  const bumpLogsRefresh = useCallback(() => {
+    setLogsRefreshKey((prev) => prev + 1);
+  }, []);
 
   const addSnackbarMessage = useCallback((
     text: string,
@@ -697,13 +702,14 @@ const fetchChildren = useCallback(async (groupId: string) => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
       addSnackbarMessage('CSV exported successfully', 'success');
+      bumpLogsRefresh();
     } catch (error) {
       console.error('Error during export:', error);
       addSnackbarMessage(`Error exporting CSV: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsExporting(false);
     }
-  }, [activeView, projectIdStr, addSnackbarMessage]);
+  }, [activeView, projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
 
   const handleExportParentKeywords = useCallback(async () => {
 
@@ -722,13 +728,14 @@ const fetchChildren = useCallback(async (groupId: string) => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
       addSnackbarMessage('Parent keywords CSV exported successfully', 'success');
+      bumpLogsRefresh();
     } catch (error) {
       console.error('Error during parent export:', error);
       addSnackbarMessage(`Error exporting parent keywords: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsExportingParent(false);
     }
-  }, [projectIdStr, addSnackbarMessage]);
+  }, [projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
   const handleImportParentKeywords = useCallback(async (file: File) => {
 
     setIsImportingParent(true);
@@ -755,13 +762,14 @@ const fetchChildren = useCallback(async (groupId: string) => {
         maxRating: maxRating ? parseInt(maxRating) : "",
         serpFeatures: selectedSerpFeatures
       }, true);
+      bumpLogsRefresh();
     } catch (error) {
       console.error('Error during parent import:', error);
       addSnackbarMessage(`Error importing parent keywords: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsImportingParent(false);
     }
-  }, [projectIdStr, addSnackbarMessage, fetchKeywords, pagination, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]);
+  }, [projectIdStr, addSnackbarMessage, fetchKeywords, pagination, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures, bumpLogsRefresh]);
 
 const handleViewChange = useCallback((newView: ActiveKeywordView) => {
   if (activeView !== newView) {
@@ -1089,6 +1097,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           },
           false
         );
+        bumpLogsRefresh();
         
       } catch (error) {
         addSnackbarMessage(`Error blocking keywords: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
@@ -1099,7 +1108,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     } else {
       toggleTokenSelection(token);
     }
-  }, [projectIdStr, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, pagination.page, pagination.limit, addSnackbarMessage, apiCache, activeView, fetchProjectStats, fetchKeywords, sortParams, minRating, maxRating, toggleTokenSelection]);
+  }, [projectIdStr, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, pagination.page, pagination.limit, addSnackbarMessage, apiCache, activeView, fetchProjectStats, fetchKeywords, sortParams, minRating, maxRating, toggleTokenSelection, bumpLogsRefresh]);
 
 
   const removeToken = useCallback((token: string) => {
@@ -1321,6 +1330,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         fetchProjectStats(),
       ]);
 
+      bumpLogsRefresh();
       setSelectedKeywordIds(new Set());
       setGroupName('');
       setExpandedGroups(new Set());
@@ -1331,7 +1341,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
 
   const handleUnconfirmKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1382,6 +1392,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         fetchProjectStats(),
       ]);
 
+      bumpLogsRefresh();
       setSelectedKeywordIds(new Set());
       setGroupName('');
       setExpandedGroups(new Set());
@@ -1392,7 +1403,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
 
   const handleGroupKeywords = useCallback(async (overrideGroupName?: string) => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1463,6 +1474,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         addSnackbarMessage(`Successfully ${messagePrefix} ${data.count} keywords as "${trimmedGroupName}"`, 'success');
       }
       
+      bumpLogsRefresh();
       apiCache.clear();
     
       Object.keys(childrenCache).forEach(groupId => {
@@ -1534,7 +1546,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating]);
+  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, bumpLogsRefresh]);
 
   useEffect(() => {
       const blurActiveCheckboxes = () => {
@@ -1698,6 +1710,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         fetchProjectStats(),
       ]);
       
+      bumpLogsRefresh();
       setSelectedKeywordIds(new Set());
       setGroupName('');
       setExpandedGroups(new Set());
@@ -1708,7 +1721,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
 
   const handleUnblockKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1748,6 +1761,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         fetchProjectStats(),
       ]);
       
+      bumpLogsRefresh();
       setSelectedKeywordIds(new Set());
     } catch (error) {
       addSnackbarMessage(`Error unblocking keywords: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
@@ -1755,7 +1769,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
     
     const handleMiddleClickGroup = useCallback(async (keywordIds: number[]) => {
     if (activeView !== 'ungrouped') {
@@ -1816,6 +1830,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         maxRating: maxRating ? parseInt(maxRating) : ""
       }, true);
       await fetchProjectStats();
+      bumpLogsRefresh();
       setSelectedKeywordIds(new Set());
     } catch (error) {
       addSnackbarMessage(`Error grouping keyword: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
@@ -1824,7 +1839,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     }
   }, [activeView, groupName, projectIdStr, ungroupedKeywords, addSnackbarMessage, setGroupName,
       fetchKeywords, pagination, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, 
-      setSelectedKeywordIds, setIsProcessingAction]);
+      setSelectedKeywordIds, setIsProcessingAction, bumpLogsRefresh]);
       
   const stopProcessingCheck = useCallback(() => {
     if (statusCheckIntervalRef.current) {
@@ -1869,6 +1884,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }, true);
         
         fetchProjectStats();
+        bumpLogsRefresh();
         return;
       }
       if (data.status !== processingStatus) {
@@ -1950,7 +1966,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     projectIdStr, processingStatus, stopProcessingCheck, 
     fetchKeywords, pagination.limit, activeView, sortParams, 
     selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, addSnackbarMessage, 
-    dispatch, projectIdNum, fetchProjectStats
+    dispatch, projectIdNum, fetchProjectStats, bumpLogsRefresh
   ]);
 
   useEffect(() => {
@@ -2067,7 +2083,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     setProcessingStatus('uploading');
     setProcessingProgress(0);
     startProcessingCheck();
-  }, [startProcessingCheck]);  
+    bumpLogsRefresh();
+  }, [startProcessingCheck, bumpLogsRefresh]);  
   const handleUploadSuccess = useCallback(
     (status: ProcessingStatus, message?: string) => {
       setProcessingStatus(status);
@@ -2092,6 +2109,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           minRating: minRating ? parseInt(minRating) : "",
           maxRating: maxRating ? parseInt(maxRating) : ""
         }, true);
+        bumpLogsRefresh();
         
         setTimeout(() => {
           window.location.reload();
@@ -2110,7 +2128,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       }
     },
     [
-      addSnackbarMessage, startProcessingCheck, stopProcessingCheck,
+      addSnackbarMessage, startProcessingCheck, stopProcessingCheck, bumpLogsRefresh,
       fetchKeywords, pagination.limit, activeView, sortParams,
       selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats
     ]
@@ -2722,7 +2740,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                   </>
                 )}
                 {activeTab === 'logs' && (
-                  <LogsTable projectId={projectIdStr} />
+                  <LogsTable
+                    projectId={projectIdStr}
+                    isActive={activeTab === 'logs'}
+                    refreshKey={logsRefreshKey}
+                  />
                 )}
               </div>
             </main>
@@ -2755,6 +2777,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       ),
                       fetchProjectStats()
                     ]);
+                    bumpLogsRefresh();
                   }}
                   onUnblockTokenSuccess={async () => {
                     await Promise.all([
@@ -2781,6 +2804,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       ),
                       fetchProjectStats()
                     ]);
+                    bumpLogsRefresh();
                   }}
                   addSnackbarMessage={addSnackbarMessage}
                   onTokenDataChange={handleTokenDataChange}

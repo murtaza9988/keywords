@@ -226,7 +226,7 @@ class ApiClient {
       `/api/projects/${projectId}/logs`,
       undefined,
       undefined,
-      true
+      false
     );
     return data.map((log) => ({
       ...log,
