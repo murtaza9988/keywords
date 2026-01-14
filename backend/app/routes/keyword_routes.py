@@ -210,20 +210,9 @@ async def upload_keywords(
     if not file.filename or not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     
-    current_status = processing_queue_service.get_status(project_id)
-    
-    # Reset state for new batch if not actively processing
-    # This handles: idle, not_started, complete, error states
-    if current_status not in {"processing", "queued", "uploading", "combining"}:
-        processing_queue_service.reset_for_new_batch(project_id)
-    
-    # Also reset if the status is error - user wants to try again with new files
-    if current_status == "error":
-        processing_queue_service.reset_for_new_batch(project_id)
-    
-    # Set uploading status if not already in an active state
-    if current_status not in {"processing", "queued"}:
-        processing_queue_service.set_status(project_id, "uploading")
+    # Signal upload starting - this handles all state reset logic internally
+    # If there's stale/error state, it will be cleared automatically
+    processing_queue_service.begin_upload(project_id)
     
     is_chunked_upload = chunkIndex is not None and totalChunks is not None and originalFilename is not None
     safe_original_filename = _sanitize_segment(originalFilename or file.filename)

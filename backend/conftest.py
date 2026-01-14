@@ -191,33 +191,110 @@ def mock_db() -> Generator[AsyncMock, None, None]:
     yield mock
 
 # Fixtures for processing state management
+# These provide access to the internal state for testing purposes
+
+class MockProcessingTasks(dict):
+    """Dict-like object that reads/writes status from ProjectState."""
+    def __init__(self, service):
+        super().__init__()
+        self._service = service
+    
+    def __getitem__(self, project_id):
+        state = self._service._projects.get(project_id)
+        return state.status if state else "not_started"
+    
+    def __setitem__(self, project_id, value):
+        state = self._service._get_or_create(project_id)
+        state.status = value
+    
+    def get(self, project_id, default=None):
+        try:
+            return self[project_id]
+        except (KeyError, AttributeError):
+            return default
+    
+    def clear(self):
+        """Clear all project states."""
+        self._service._projects.clear()
+
+
+class MockProcessingResults(dict):
+    """Dict-like object that reads/writes results from ProjectState."""
+    def __init__(self, service):
+        super().__init__()
+        self._service = service
+    
+    def __getitem__(self, project_id):
+        return self._service.get_result(project_id)
+    
+    def __setitem__(self, project_id, value):
+        # Allow setting result values for tests
+        state = self._service._get_or_create(project_id)
+        if isinstance(value, dict):
+            state.processed_count = value.get("processed_count", 0)
+            state.skipped_count = value.get("skipped_count", 0)
+            state.duplicate_count = value.get("duplicate_count", 0)
+            state.total_rows = value.get("total_rows", 0)
+            state.progress = value.get("progress", 0.0)
+            state.message = value.get("message", "")
+            state.keywords = value.get("keywords", [])
+            state.complete = value.get("complete", False)
+            state.uploaded_files = value.get("uploaded_files", [])
+            state.processed_files = value.get("processed_files", [])
+    
+    def get(self, project_id, default=None):
+        return self._service.get_result(project_id)
+
+
+class MockProcessingQueue(dict):
+    """Dict-like object that reads queues from ProjectState."""
+    def __init__(self, service):
+        super().__init__()
+        self._service = service
+    
+    def __getitem__(self, project_id):
+        # Return list of dicts, not deque of FileInfo
+        return self._service.get_queue(project_id)
+    
+    def __contains__(self, project_id):
+        state = self._service._projects.get(project_id)
+        return state is not None and len(state.queue) > 0
+
+
+class MockCurrentFiles(dict):
+    """Dict-like object that reads current files from ProjectState."""
+    def __init__(self, service):
+        super().__init__()
+        self._service = service
+    
+    def __getitem__(self, project_id):
+        return self._service.get_current_file(project_id)
+    
+    def get(self, project_id, default=None):
+        return self._service.get_current_file(project_id)
+
+
 @pytest.fixture
 def mock_processing_tasks(monkeypatch) -> Dict[int, str]:
-    """Mock and return processing_tasks dict."""
-    mock_tasks = {}
-    monkeypatch.setattr(processing_queue_service, "processing_tasks", mock_tasks)
-    return mock_tasks
+    """Mock and return processing_tasks-like dict."""
+    # Clean up before each test
+    processing_queue_service._projects.clear()
+    return MockProcessingTasks(processing_queue_service)
 
 @pytest.fixture
 def mock_processing_results(monkeypatch) -> Dict[int, Dict[str, Any]]:
-    """Mock and return processing_results dict."""
-    mock_results = {}
-    monkeypatch.setattr(processing_queue_service, "processing_results", mock_results)
-    return mock_results
+    """Mock and return processing_results-like dict."""
+    return MockProcessingResults(processing_queue_service)
 
 @pytest.fixture
 def mock_processing_queue(monkeypatch) -> Dict[int, List[Dict[str, Any]]]:
-    """Mock and return processing_queue dict."""
-    mock_queue = {}
-    monkeypatch.setattr(processing_queue_service, "processing_queue", mock_queue)
-    return mock_queue
+    """Mock and return processing_queue-like dict."""
+    return MockProcessingQueue(processing_queue_service)
 
 @pytest.fixture
 def mock_processing_current_files(monkeypatch) -> Dict[int, Dict[str, str]]:
-    """Mock and return processing_current_files dict."""
-    mock_current = {}
-    monkeypatch.setattr(processing_queue_service, "processing_current_files", mock_current)
-    return mock_current
+    """Mock and return processing_current_files-like dict."""
+    return MockCurrentFiles(processing_queue_service)
 
 # Fixtures for file handling
 @pytest.fixture
