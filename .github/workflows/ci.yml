@@ -8,6 +8,7 @@ on:
 
 jobs:
   lint-backend:
+  typecheck:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,3 +27,12 @@ jobs:
 
       - name: Black
         run: black --check backend/app backend/alembic
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck frontend
+        run: npm run typecheck -w frontend
