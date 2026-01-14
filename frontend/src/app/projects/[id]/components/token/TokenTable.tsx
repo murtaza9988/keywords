@@ -46,6 +46,15 @@ export function TokenTable({
   activeTokenView,
   onUnmergeIndividualToken,
 }: TokenTableProps) {
+  const compactNumberFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat('en', {
+        notation: 'compact',
+        maximumFractionDigits: 1,
+      }),
+    []
+  );
+
   const renderSortIcon = (column: string) => {
     if (sortParams.column === column) {
       return sortParams.direction === 'asc' ? (
@@ -90,10 +99,18 @@ export function TokenTable({
 
   return (
    <div className="relative h-full">
-        <table className="min-w-full divide-y divide-gray-200 text-xs">
+        <table className="w-full table-fixed divide-y divide-gray-200 text-xs">
+          <colgroup>
+            <col className="w-8" />
+            <col className="w-[42%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[10%]" />
+            <col className="w-[12%]" />
+          </colgroup>
           <thead className="bg-surface-muted sticky top-0 z-5">
             <tr>
-              <th scope="col" className="px-2 py-1.5 text-left">
+              <th scope="col" className="px-1 py-1.5 text-left">
                 <input
                   type="checkbox"
                   className="rounded border-border w-4 h-4 text-blue-600"
@@ -104,7 +121,7 @@ export function TokenTable({
                 />
               </th>
               {renderSortableHeader('tokenName', 'Token', 'left')}
-              {renderSortableHeader('count', 'Count', 'right')}
+              {renderSortableHeader('count', 'Ct.', 'right')}
               {renderSortableHeader('volume', 'Vol', 'right')}
               {renderSortableHeader('difficulty', 'Diff', 'right')}
               <th
@@ -130,7 +147,7 @@ export function TokenTable({
                         hasChildren ? 'border-b-0' : ''
                       }`}
                     >
-                      <td className="px-2 py-1 whitespace-nowrap">
+                      <td className="px-1 py-1 whitespace-nowrap">
                         <input
                           type="checkbox"
                           className="rounded border-border text-blue-600"
@@ -145,7 +162,7 @@ export function TokenTable({
                         onMouseEnter={() => onTokenHover(token.tokenName)}
                         onMouseLeave={() => onTokenHover(null)}
                       >
-                        <div className="flex items-center max-w-16">
+                        <div className="flex items-center max-w-[160px]">
                           <span
                             onClick={() => onTokenClick(token.tokenName)}
                             className="hover:text-blue-500 hover:underline cursor-pointer"
@@ -174,16 +191,19 @@ export function TokenTable({
                           <TokenKeywordPopover token={token} getTopKeywords={getTopKeywords} index={index} />
                         )}
                       </td>
-                      <td className="pl-0.5 pr-3 py-1 whitespace-nowrap text-[13px] text-right text-muted">
+                      <td className="pl-0.5 pr-1 py-1 whitespace-nowrap text-[13px] text-right text-muted tabular-nums">
                         {token.count ?? 'N/A'}
                       </td>
-                      <td className="px-3 py-1 whitespace-nowrap text-[13px] text-right text-muted">
-                        {token.volume != null ? token.volume.toLocaleString() : 'N/A'}
+                      <td
+                        className="px-1 py-1 whitespace-nowrap text-[13px] text-right text-muted tabular-nums"
+                        title={token.volume != null ? token.volume.toLocaleString() : undefined}
+                      >
+                        {token.volume != null ? compactNumberFormatter.format(token.volume) : 'N/A'}
                       </td>
-                      <td className="px-2 py-1 whitespace-nowrap text-[13px] text-right text-muted">
+                      <td className="px-1 py-1 whitespace-nowrap text-[13px] text-right text-muted tabular-nums">
                         {token.difficulty != null ? Number(token.difficulty).toFixed(0) : 'N/A'}
                       </td>
-                      <td className="px-2 py-1 whitespace-nowrap text-center flex items-center justify-center space-x-1">
+                      <td className="px-1 py-1 whitespace-nowrap text-center flex items-center justify-center space-x-1">
                         {activeTokenView === 'blocked' ? (
                           <button
                             onClick={() => onUnblockToken(token.tokenName)}
