@@ -218,6 +218,15 @@ export default function ProjectDetail(): React.ReactElement {
   const prevActiveViewRef = useRef(activeView);
   const targetProgressRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
+  const [minVolume, setMinVolume] = useState<string>('');
+  const [maxVolume, setMaxVolume] = useState<string>('');
+  const [minLength, setMinLength] = useState<string>('');
+  const [maxLength, setMaxLength] = useState<string>('');
+  const [minDifficulty, setMinDifficulty] = useState<string>('');
+  const [maxDifficulty, setMaxDifficulty] = useState<string>('');
+  const [minRating, setMinRating] = useState<string>('');
+  const [maxRating, setMaxRating] = useState<string>('');
+  const [selectedSerpFeatures, setSelectedSerpFeatures] = useState<string[]>([]);
   const displayProgressRef = useRef(displayProgress);
   const filterParams = useMemo(() => ({
     tokens: selectedTokens,
@@ -838,6 +847,9 @@ export default function ProjectDetail(): React.ReactElement {
         'Error exporting parent keywords: ' + (isError(error) ? error.message : 'Unknown error'),
         'error'
       );
+    }
+  }, [projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
+  const handleImportParentKeywords = useCallback(async (file: File) => {
     } finally {
       detailDispatch({
         type: 'updateProcessing',
@@ -2809,8 +2821,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     );
   }
 
-  const isProcessing = processingStatus === 'queued' || processingStatus === 'processing';
-  const showUploadLoader = isUploading || isProcessing;
   const totalChildKeywords = Math.max(0, stats.totalKeywords - stats.totalParentKeywords);
 
   return (
@@ -2818,9 +2828,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       <Header projectName={project?.name} />
       <ProjectDetailToolbar
         activeView={activeView}
-        isExportingParent={isExportingParent}
-        isImportingParent={isImportingParent}
-        isExporting={isExporting}
         onExportParentKeywords={handleExportParentKeywords}
         onImportParentKeywords={handleImportParentKeywords}
         onExportCSV={handleExportCSV}
@@ -2841,7 +2848,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     projectId={projectIdStr}
                     stats={stats}
                     totalChildKeywords={totalChildKeywords}
-                    showUploadLoader={showUploadLoader}
                     isUploading={isUploading}
                     processingStatus={processingStatus}
                     processingMessage={processingMessage}
@@ -2883,49 +2889,60 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       handleUnconfirmKeywords={handleUnconfirmKeywords}
                     />
                     <MainContent
-                      activeView={activeView}
-                      isTableLoading={isTableLoading}
-                      keywordsToDisplay={formatDataForDisplay}
-                      pagination={pagination}
-                      isLoadingData={isLoadingData}
-                      loadingChildren={loadingChildren}
-                      expandedGroups={expandedGroups}
-                      selectedKeywordIds={selectedKeywordIds}
-                      selectedTokens={selectedTokens}
-                      sortParams={sortParams}
-                      isAllSelected={isAllSelected}
-                      isAnySelected={isAnySelected}
-                      projectIdStr={projectIdStr}
-                      selectedParentKeywordCount={selectedParentKeywordCount}
-                      minVolume={minVolume}
-                      maxVolume={maxVolume}
-                      minLength={minLength}
-                      maxLength={maxLength}
-                      minRating={minRating}
-                      maxRating={maxRating}
-                      minDifficulty={minDifficulty}
-                      maxDifficulty={maxDifficulty}
-                      handleViewChange={handleViewChange}
-                      handlePageChange={handlePageChange}
-                      handleLimitChange={handleLimitChange}
-                      handleMinVolumeChange={handleMinVolumeChange}
-                      handleMaxVolumeChange={handleMaxVolumeChange}
-                      handleMinLengthChange={handleMinLengthChange}
-                      handleMaxLengthChange={handleMaxLengthChange}
-                      handleMinDifficultyChange={handleMinDifficultyChange}
-                      handleMaxDifficultyChange={handleMaxDifficultyChange}
-                      handleMinRatingChange={handleMinRatingChange}
-                      handleMaxRatingChange={handleMaxRatingChange}
-                      toggleGroupExpansion={toggleGroupExpansion}
-                      toggleKeywordSelection={toggleKeywordSelection}
-                      toggleTokenSelection={handleAdvancedTokenSelection}
-                      removeToken={removeToken}
-                      handleSort={handleSort}
-                      handleSelectAllClick={handleSelectAllClick}
-                      handleMiddleClickGroup={handleMiddleClickGroup}
-                      stats={stats}
-                      selectedSerpFeatures={selectedSerpFeatures}
-                      handleSerpFilterChange={handleSerpFilterChange}
+                      viewState={{
+                        activeView,
+                        stats,
+                        selectedParentKeywordCount,
+                      }}
+                      tableState={{
+                        keywordsToDisplay: formatDataForDisplay,
+                        pagination,
+                        isLoadingData,
+                        isTableLoading,
+                        loadingChildren,
+                        expandedGroups,
+                        selectedKeywordIds,
+                        selectedTokens,
+                        sortParams,
+                        isAllSelected,
+                        isAnySelected,
+                        projectIdStr,
+                      }}
+                      filterValues={{
+                        minVolume,
+                        maxVolume,
+                        minLength,
+                        maxLength,
+                        minRating,
+                        maxRating,
+                        minDifficulty,
+                        maxDifficulty,
+                      }}
+                      filterHandlers={{
+                        onMinVolumeChange: handleMinVolumeChange,
+                        onMaxVolumeChange: handleMaxVolumeChange,
+                        onMinLengthChange: handleMinLengthChange,
+                        onMaxLengthChange: handleMaxLengthChange,
+                        onMinDifficultyChange: handleMinDifficultyChange,
+                        onMaxDifficultyChange: handleMaxDifficultyChange,
+                        onMinRatingChange: handleMinRatingChange,
+                        onMaxRatingChange: handleMaxRatingChange,
+                      }}
+                      tableHandlers={{
+                        onViewChange: handleViewChange,
+                        onPageChange: handlePageChange,
+                        onLimitChange: handleLimitChange,
+                        onSort: handleSort,
+                        onSelectAllClick: handleSelectAllClick,
+                        onMiddleClickGroup: handleMiddleClickGroup,
+                        toggleGroupExpansion,
+                        toggleKeywordSelection,
+                        toggleTokenSelection: handleAdvancedTokenSelection,
+                        removeToken,
+                      }}
+                      serpFilters={{
+                        onSerpFilterChange: handleSerpFilterChange,
+                      }}
                     />
                   </>
                 )}
