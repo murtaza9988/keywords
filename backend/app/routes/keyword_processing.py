@@ -52,11 +52,21 @@ REQUIRED_NLTK_RESOURCES = {
 
 
 def _verify_nltk_resources() -> None:
-    missing = []
-    for resource_name, resource_path in REQUIRED_NLTK_RESOURCES.items():
+    def _resource_present(resource_path: str) -> bool:
         try:
             nltk_data.find(resource_path)
+            return True
         except LookupError:
+            # Some environments keep corpora as `<resource>.zip` (e.g. wordnet.zip).
+            try:
+                nltk_data.find(f"{resource_path}.zip")
+                return True
+            except LookupError:
+                return False
+
+    missing = []
+    for resource_name, resource_path in REQUIRED_NLTK_RESOURCES.items():
+        if not _resource_present(resource_path):
             missing.append(resource_name)
     if missing:
         missing_list = ", ".join(sorted(missing))
