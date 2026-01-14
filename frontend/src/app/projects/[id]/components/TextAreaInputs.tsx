@@ -186,23 +186,23 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
   };
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-6 w-full max-w-4xl mx-auto p-4">
-      <div className="note-section border border-gray-300 rounded-lg overflow-hidden">
-        <div className="header flex items-center gap-1 p-2 bg-gray-100 border-b border-gray-300">
-          <label htmlFor="note1" className="text-[13px] font-light mr-2 text-gray-800">
+    <div ref={containerRef} className="flex flex-col gap-6 w-full mx-auto p-4">
+      <div className="note-section border border-border rounded-lg overflow-hidden">
+        <div className="header flex items-center gap-1 p-2 bg-surface-muted border-b border-border">
+          <label htmlFor="note1" className="text-[13px] font-light mr-2 text-foreground">
             Notes 1
           </label>
           <div className="toolbar flex gap-2">
             <button
               onClick={() => formatText("bold")}
-              className="px-2 py-1 text-[13px] bg-gray-200 rounded hover:bg-gray-300"
+              className="px-2 py-1 text-[13px] bg-white border border-border rounded hover:bg-surface-muted"
               title="Bold"
             >
               <strong>B</strong>
             </button>
             <select
               onChange={(e) => formatText("fontSize", e.target.value)}
-              className="text-[13px] bg-gray-200 rounded px-2 py-1"
+              className="text-[13px] bg-white border border-border rounded px-2 py-1"
               title="Font Size"
             >
               <option value="">Font Size</option>
@@ -214,11 +214,11 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
             <input
               type="color"
               onChange={(e) => formatText("foreColor", e.target.value)}
-              className="w-6 h-6 p-0 border-0 cursor-pointer bg-gray-200 rounded"
+              className="w-6 h-6 p-0 border border-border cursor-pointer bg-white rounded"
               title="Text Color"
             />
           </div>
-          <span className="ml-auto flex items-center gap-1 text-xs text-gray-500">
+          <span className="ml-auto flex items-center gap-1 text-xs text-muted">
             {isSavingNote1 ? (
               <span className="inline-block w-3 h-3 border-2 border-green-400 border-t-green-700 rounded-full animate-spin" />
             ) : (
@@ -234,7 +234,7 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
           contentEditable
           onInput={handleNote1Change}
           onWheel={handleWheel}
-          className="w-full text-gray-700 p-3 resize-y"
+          className="w-full text-foreground p-3 resize-y"
           style={{
             whiteSpace: "pre-wrap",
             minHeight: "150px",
@@ -247,22 +247,22 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
           }}
         />
       </div>
-      <div className="note-section border border-gray-300 rounded-lg overflow-hidden">
-        <div className="header flex items-center gap-1 p-2 bg-gray-100 border-b border-gray-300">
-          <label htmlFor="note2" className="text-[13px] font-light mr-2 text-gray-800">
+      <div className="note-section border border-border rounded-lg overflow-hidden">
+        <div className="header flex items-center gap-1 p-2 bg-surface-muted border-b border-border">
+          <label htmlFor="note2" className="text-[13px] font-light mr-2 text-foreground">
             Notes 2
           </label>
           <div className="toolbar flex gap-2">
             <button
               onClick={() => formatText("bold")}
-              className="px-2 py-1 text-[13px] bg-gray-200 rounded hover:bg-gray-300"
+              className="px-2 py-1 text-[13px] bg-white border border-border rounded hover:bg-surface-muted"
               title="Bold"
             >
               <strong>B</strong>
             </button>
             <select
               onChange={(e) => formatText("fontSize", e.target.value)}
-              className="text-[13px] bg-gray-200 rounded px-2 py-1"
+              className="text-[13px] bg-white border border-border rounded px-2 py-1"
               title="Font Size"
             >
               <option value="">Font Size</option>
@@ -274,11 +274,11 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
             <input
               type="color"
               onChange={(e) => formatText("foreColor", e.target.value)}
-              className="w-6 h-6 p-0 border-0 cursor-pointer bg-gray-200 rounded"
+              className="w-6 h-6 p-0 border border-border cursor-pointer bg-white rounded"
               title="Text Color"
             />
           </div>
-          <span className="ml-auto flex items-center gap-1 text-xs text-gray-500">
+          <span className="ml-auto flex items-center gap-1 text-xs text-muted">
             {isSavingNote2 ? (
               <span className="inline-block w-3 h-3 border-2 border-green-400 border-t-green-700 rounded-full animate-spin" />
             ) : (
@@ -294,7 +294,7 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
           contentEditable
           onInput={handleNote2Change}
           onWheel={handleWheel}
-          className="w-full text-base text-gray-700 p-3 resize-y"
+          className="w-full text-base text-foreground p-3 resize-y"
           style={{
             whiteSpace: "pre-wrap",
             minHeight: "150px",

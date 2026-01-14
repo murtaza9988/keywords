@@ -19,7 +19,6 @@ import {
   ProcessingStatus, ActiveKeywordView, SnackbarMessage, SortParams,
   Keyword, PaginationInfo
 } from './types';
-import CSVUploadDropdown from './CSVUploadDropdown';
 import { 
   selectUngroupedKeywordsForProject, 
   selectGroupedKeywordsForProject, 
@@ -2439,213 +2438,218 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background relative">
-      <div className="flex flex-wrap gap-4 justify-between items-center p-4 bg-surface border-b border-border shadow-sm">
-        <Header projectName={project?.name} />
-        <CSVUploadDropdown projectId={projectIdStr} />
-        <Button
-          onClick={handleExportParentKeywords}
-          disabled={isExportingParent}
-        >
-          {isExportingParent ? (
-            <>
-              <Spinner size="sm" className="border-muted border-t-foreground" />
-              Exporting...
-            </>
-          ) : (
-            'Export Parent KWs'
-          )}
-        </Button>
-        <label className="inline-flex items-center">
-          <span className="sr-only">Import Parent KWs</span>
-          <Button disabled={isImportingParent}>
-            {isImportingParent ? (
+    <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden">
+      <Header projectName={project?.name} />
+      <div className="bg-surface border-b border-border">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-end gap-3">
+          <Button
+            onClick={handleExportParentKeywords}
+            disabled={isExportingParent}
+          >
+            {isExportingParent ? (
               <>
-                <Spinner size="sm" className="border-white/40 border-t-white" />
-                Importing...
+                <Spinner size="sm" className="border-muted border-t-foreground" />
+                Exporting...
               </>
             ) : (
-              'Import Parent KWs'
+              'Export Parent KWs'
             )}
           </Button>
-          <input
-            type="file"
-            accept=".csv"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                handleImportParentKeywords(file);
-                e.target.value = '';
-              }
-            }}
-            className="hidden"
-            disabled={isImportingParent}
-          />
-        </label>
-
-        <Button
-          onClick={handleExportCSV}
-          disabled={(activeView !== 'grouped' && activeView !== 'confirmed') || isExporting}
-          variant="secondary"
-        >
-          {isExporting ? (
-            <>
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-              Exporting...
-            </>
-          ) : (
-            'Export'
-          )}
-        </Button>
-      </div>
-      <div className="flex-1 flex flex-row justify-end overflow-hidden">
-        <aside className="w-1/5 min-w-[250px] flex flex-col">
-          <div className="bg-white shadow border border-gray-200 p-4 flex flex-col flex-grow h-full overflow-auto">
-            <TextAreaInputs projectId={projectIdStr} />
-          </div>
-        </aside>
-      <main className="flex-1 flex flex-col max-w-[1150px]">
-        <div className="bg-white  shadow border border-gray-200 p-4 sm:p-6 flex flex-col flex-grow h-full">
-          <FiltersSection
-            projectIdStr={projectIdStr}
-            isUploading={isUploading}
-            processingStatus={processingStatus}
-            processingProgress={displayProgress}
-            includeFilter={includeFilter}
-            excludeFilter={excludeFilter}
-            groupName={groupName}
-            activeView={activeView}
-            selectedKeywordIds={selectedKeywordIds}
-            isProcessingAction={isProcessingAction}
-            selectedTokens={selectedTokens}
-            handleUploadStart={handleUploadStart}
-            handleUploadSuccess={handleUploadSuccess}
-            handleUploadError={handleUploadError}
-            handleIncludeFilterChange={handleIncludeFilterChange}
-            handleExcludeFilterChange={handleExcludeFilterChange}
-            setGroupName={setGroupName}
-            handleGroupKeywords={handleGroupKeywords}
-            handleUngroupKeywords={handleUngroupKeywords}
-            handleUnblockKeywords={handleUnblockKeywords}
-            removeToken={removeToken}
-            handleClearAllFilters={clearAllFilters}
-            setIncludeMatchType={setIncludeMatchType}
-            setExcludeMatchType={setExcludeMatchType}
-            includeMatchType={includeMatchType}
-            excludeMatchType={excludeMatchType}
-            handleConfirmKeywords={handleConfirmKeywords}
-            handleUnconfirmKeywords={handleUnconfirmKeywords}
-          />
-          <MainContent
-            activeView={activeView}
-            isTableLoading={isTableLoading}
-            keywordsToDisplay={formatDataForDisplay}
-            pagination={pagination}
-            isLoadingData={isLoadingData}
-            loadingChildren={loadingChildren}
-            expandedGroups={expandedGroups}
-            selectedKeywordIds={selectedKeywordIds}
-            selectedTokens={selectedTokens}
-            sortParams={sortParams}
-            isAllSelected={isAllSelected}
-            isAnySelected={isAnySelected}
-            projectIdStr={projectIdStr}
-            minVolume={minVolume}
-            maxVolume={maxVolume}
-            minLength={minLength}
-            maxLength={maxLength}
-            minRating={minRating}
-            maxRating={maxRating}
-            minDifficulty={minDifficulty}
-            maxDifficulty={maxDifficulty}
-            handleViewChange={handleViewChange}
-            handlePageChange={handlePageChange}
-            handleLimitChange={handleLimitChange}
-            handleMinVolumeChange={handleMinVolumeChange}
-            handleMaxVolumeChange={handleMaxVolumeChange}
-            handleMinLengthChange={handleMinLengthChange}
-            handleMaxLengthChange={handleMaxLengthChange}
-            handleMinDifficultyChange={handleMinDifficultyChange}
-            handleMaxDifficultyChange={handleMaxDifficultyChange}
-            handleMinRatingChange={handleMinRatingChange}
-            handleMaxRatingChange={handleMaxRatingChange}
-            toggleGroupExpansion={toggleGroupExpansion}
-            toggleKeywordSelection={toggleKeywordSelection}
-            toggleTokenSelection={handleAdvancedTokenSelection}
-            removeToken={removeToken}
-            handleSort={handleSort}
-            handleSelectAllClick={handleSelectAllClick}
-            handleMiddleClickGroup={handleMiddleClickGroup}
-            stats={stats}
-            selectedSerpFeatures={selectedSerpFeatures}
-            handleSerpFilterChange={handleSerpFilterChange}
-          />
-        </div>
-      </main>
-      <aside className="w-1/3 flex flex-col min-w-[350px] max-w-[450px]">
-           <div className="bg-white  shadow border border-gray-200 p-4 flex flex-col flex-grow h-full overflow-hidden">
-           <TokenManagement
-              projectId={projectIdStr}
-              onBlockTokenSuccess={async () => {
-                await Promise.all([
-                  fetchKeywords(
-                    pagination.page,
-                    pagination.limit,
-                    activeView,
-                    sortParams,
-                    {
-                      tokens: selectedTokens,
-                      include: includeFilter,
-                      exclude: excludeFilter,
-                      minVolume: minVolume ? parseInt(minVolume) : "",
-                      maxVolume: maxVolume ? parseInt(maxVolume) : "",
-                      minLength: minLength ? parseInt(minLength) : "",
-                      maxLength: maxLength ? parseInt(maxLength) : "",
-                      minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-                      maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-                      serpFeatures: selectedSerpFeatures,
-                      minRating: minRating ? parseInt(minRating) : "",
-                      maxRating: maxRating ? parseInt(maxRating) : "",
-                    },
-                    true
-                  ),
-                  fetchProjectStats()
-                ]);
+          <label className="inline-flex items-center">
+            <span className="sr-only">Import Parent KWs</span>
+            <Button disabled={isImportingParent}>
+              {isImportingParent ? (
+                <>
+                  <Spinner size="sm" className="border-white/40 border-t-white" />
+                  Importing...
+                </>
+              ) : (
+                'Import Parent KWs'
+              )}
+            </Button>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  handleImportParentKeywords(file);
+                  e.target.value = '';
+                }
               }}
-              onUnblockTokenSuccess={async () => {
-                await Promise.all([
-                  fetchKeywords(
-                    pagination.page,
-                    pagination.limit,
-                    activeView,
-                    sortParams,
-                    {
-                      tokens: selectedTokens,
-                      include: includeFilter,
-                      exclude: excludeFilter,
-                      minVolume: minVolume ? parseInt(minVolume) : "",
-                      maxVolume: maxVolume ? parseInt(maxVolume) : "",
-                      minLength: minLength ? parseInt(minLength) : "",
-                      maxLength: maxLength ? parseInt(maxLength) : "",
-                      minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-                      maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-                      serpFeatures: selectedSerpFeatures,
-                      minRating: minRating ? parseInt(minRating) : "",
-                      maxRating: maxRating ? parseInt(maxRating) : "",
-                    },
-                    true
-                  ),
-                  fetchProjectStats()
-                ]);
-              }}
-              addSnackbarMessage={addSnackbarMessage}
-              onTokenDataChange={handleTokenDataChange}
-              activeViewKeywords={getTokensFromKeywords()}
-              toggleTokenSelection={toggleTokenSelection} 
-              activeView={activeView as "ungrouped" | "grouped" | "blocked"}
+              className="hidden"
+              disabled={isImportingParent}
             />
-           </div>
-        </aside>
+          </label>
+
+          <Button
+            onClick={handleExportCSV}
+            disabled={(activeView !== 'grouped' && activeView !== 'confirmed') || isExporting}
+            variant="secondary"
+          >
+            {isExporting ? (
+              <>
+                <Spinner size="sm" className="border-white/40 border-t-white" />
+                Exporting...
+              </>
+            ) : (
+              'Export'
+            )}
+          </Button>
+        </div>
+      </div>
+      <div className="flex-1 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col xl:flex-row gap-4">
+            <aside className="w-full xl:w-[220px] xl:flex-shrink-0 flex flex-col">
+              <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-auto">
+                <TextAreaInputs projectId={projectIdStr} />
+              </div>
+            </aside>
+            <main className="flex-1 min-w-0 flex flex-col">
+              <div className="bg-white shadow border border-border rounded-lg p-4 sm:p-6 flex flex-col flex-grow h-full">
+                <FiltersSection
+                  projectIdStr={projectIdStr}
+                  isUploading={isUploading}
+                  processingStatus={processingStatus}
+                  processingProgress={displayProgress}
+                  includeFilter={includeFilter}
+                  excludeFilter={excludeFilter}
+                  groupName={groupName}
+                  activeView={activeView}
+                  selectedKeywordIds={selectedKeywordIds}
+                  isProcessingAction={isProcessingAction}
+                  selectedTokens={selectedTokens}
+                  handleUploadStart={handleUploadStart}
+                  handleUploadSuccess={handleUploadSuccess}
+                  handleUploadError={handleUploadError}
+                  handleIncludeFilterChange={handleIncludeFilterChange}
+                  handleExcludeFilterChange={handleExcludeFilterChange}
+                  setGroupName={setGroupName}
+                  handleGroupKeywords={handleGroupKeywords}
+                  handleUngroupKeywords={handleUngroupKeywords}
+                  handleUnblockKeywords={handleUnblockKeywords}
+                  removeToken={removeToken}
+                  handleClearAllFilters={clearAllFilters}
+                  setIncludeMatchType={setIncludeMatchType}
+                  setExcludeMatchType={setExcludeMatchType}
+                  includeMatchType={includeMatchType}
+                  excludeMatchType={excludeMatchType}
+                  handleConfirmKeywords={handleConfirmKeywords}
+                  handleUnconfirmKeywords={handleUnconfirmKeywords}
+                />
+                <MainContent
+                  activeView={activeView}
+                  isTableLoading={isTableLoading}
+                  keywordsToDisplay={formatDataForDisplay}
+                  pagination={pagination}
+                  isLoadingData={isLoadingData}
+                  loadingChildren={loadingChildren}
+                  expandedGroups={expandedGroups}
+                  selectedKeywordIds={selectedKeywordIds}
+                  selectedTokens={selectedTokens}
+                  sortParams={sortParams}
+                  isAllSelected={isAllSelected}
+                  isAnySelected={isAnySelected}
+                  projectIdStr={projectIdStr}
+                  minVolume={minVolume}
+                  maxVolume={maxVolume}
+                  minLength={minLength}
+                  maxLength={maxLength}
+                  minRating={minRating}
+                  maxRating={maxRating}
+                  minDifficulty={minDifficulty}
+                  maxDifficulty={maxDifficulty}
+                  handleViewChange={handleViewChange}
+                  handlePageChange={handlePageChange}
+                  handleLimitChange={handleLimitChange}
+                  handleMinVolumeChange={handleMinVolumeChange}
+                  handleMaxVolumeChange={handleMaxVolumeChange}
+                  handleMinLengthChange={handleMinLengthChange}
+                  handleMaxLengthChange={handleMaxLengthChange}
+                  handleMinDifficultyChange={handleMinDifficultyChange}
+                  handleMaxDifficultyChange={handleMaxDifficultyChange}
+                  handleMinRatingChange={handleMinRatingChange}
+                  handleMaxRatingChange={handleMaxRatingChange}
+                  toggleGroupExpansion={toggleGroupExpansion}
+                  toggleKeywordSelection={toggleKeywordSelection}
+                  toggleTokenSelection={handleAdvancedTokenSelection}
+                  removeToken={removeToken}
+                  handleSort={handleSort}
+                  handleSelectAllClick={handleSelectAllClick}
+                  handleMiddleClickGroup={handleMiddleClickGroup}
+                  stats={stats}
+                  selectedSerpFeatures={selectedSerpFeatures}
+                  handleSerpFilterChange={handleSerpFilterChange}
+                />
+              </div>
+            </main>
+            <aside className="w-full xl:w-[300px] xl:flex-shrink-0 flex flex-col">
+              <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-hidden">
+                <TokenManagement
+                  projectId={projectIdStr}
+                  onBlockTokenSuccess={async () => {
+                    await Promise.all([
+                      fetchKeywords(
+                        pagination.page,
+                        pagination.limit,
+                        activeView,
+                        sortParams,
+                        {
+                          tokens: selectedTokens,
+                          include: includeFilter,
+                          exclude: excludeFilter,
+                          minVolume: minVolume ? parseInt(minVolume) : "",
+                          maxVolume: maxVolume ? parseInt(maxVolume) : "",
+                          minLength: minLength ? parseInt(minLength) : "",
+                          maxLength: maxLength ? parseInt(maxLength) : "",
+                          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
+                          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
+                          serpFeatures: selectedSerpFeatures,
+                          minRating: minRating ? parseInt(minRating) : "",
+                          maxRating: maxRating ? parseInt(maxRating) : "",
+                        },
+                        true
+                      ),
+                      fetchProjectStats()
+                    ]);
+                  }}
+                  onUnblockTokenSuccess={async () => {
+                    await Promise.all([
+                      fetchKeywords(
+                        pagination.page,
+                        pagination.limit,
+                        activeView,
+                        sortParams,
+                        {
+                          tokens: selectedTokens,
+                          include: includeFilter,
+                          exclude: excludeFilter,
+                          minVolume: minVolume ? parseInt(minVolume) : "",
+                          maxVolume: maxVolume ? parseInt(maxVolume) : "",
+                          minLength: minLength ? parseInt(minLength) : "",
+                          maxLength: maxLength ? parseInt(maxLength) : "",
+                          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
+                          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
+                          serpFeatures: selectedSerpFeatures,
+                          minRating: minRating ? parseInt(minRating) : "",
+                          maxRating: maxRating ? parseInt(maxRating) : "",
+                        },
+                        true
+                      ),
+                      fetchProjectStats()
+                    ]);
+                  }}
+                  addSnackbarMessage={addSnackbarMessage}
+                  onTokenDataChange={handleTokenDataChange}
+                  activeViewKeywords={getTokensFromKeywords()}
+                  toggleTokenSelection={toggleTokenSelection}
+                  activeView={activeView as "ungrouped" | "grouped" | "blocked"}
+                />
+              </div>
+            </aside>
+          </div>
+        </div>
       </div>
       <Snackbar messages={snackbarMessages} onClose={removeSnackbarMessage} />      
     </div>

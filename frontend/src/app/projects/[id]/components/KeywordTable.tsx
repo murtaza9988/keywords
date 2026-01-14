@@ -77,12 +77,12 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
 }) => {
   const renderSortIcon = (columnKey: keyof Keyword | 'groupName' | 'serpFeatures') => {
     if (sortParams.column !== columnKey) {
-      return <ChevronsUpDown className="h-4 w-4 ml-1 text-gray-400 inline-block" />;
+      return <ChevronsUpDown className="h-4 w-4 ml-1 text-muted inline-block" />;
     }
     return sortParams.direction === 'asc' ? (
-      <ArrowUp className="h-4 w-4 ml-1 text-gray-600 inline-block" />
+      <ArrowUp className="h-4 w-4 ml-1 text-muted inline-block" />
     ) : (
-      <ArrowDown className="h-4 w-4 ml-1 text-gray-600 inline-block" />
+      <ArrowDown className="h-4 w-4 ml-1 text-muted inline-block" />
     );
   };
 
@@ -251,9 +251,9 @@ const toggleSerpFeature = useCallback((feature: string) => {
     <div className="flex flex-col lg:h-[calc(100vh-400px)] border border-border shadow-sm">
       <TableScroller>
         <KeywordTableElement>
-          <thead className="bg-gray-100 sticky top-0 z-10">
+          <thead className="bg-surface-muted sticky top-0 z-10">
             <tr onDoubleClick={handleDoubleClick}>
-              <th scope="col" className="w-8 px-3 py-1 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="w-8 px-3 py-1 text-left text-xs font-semibold text-muted uppercase tracking-wider">
                 <input
                   type="checkbox"
                   className="h-6 w-6 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
@@ -264,14 +264,14 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   disabled={groupedKeywords.length === 0}
                 />
               </th>
-              <th scope="col" className="w-[38%] py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort(keywordColumnKey)}>
+              <th scope="col" className="w-[44%] py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort(keywordColumnKey)}>
                 <div className="flex items-center">
                   <span>{keywordColumnHeader}</span>
                   {renderSortIcon(keywordColumnKey)}
                 </div>
               </th>
-              <th scope="col" className="w-[26%] px-2 py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider">Tokens</th>
-              <th scope="col" className="w-10 px-2 py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider">
+              <th scope="col" className="w-[28%] px-2 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">Tokens</th>
+              <th scope="col" className="w-[50px] px-2 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1">
                     <span>SERP</span>
@@ -279,7 +279,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                       <span className="w-2 h-2 rounded-full bg-blue-600" title="Filters active"></span>
                     )}
                     <button
-                      className="text-gray-500 hover:text-gray-700 focus:outline-none p-2 rounded-full hover:bg-gray-200"
+                      className="text-muted hover:text-foreground focus:outline-none p-2 rounded-full hover:bg-surface-muted"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowSerpFilter(prev => !prev);
@@ -357,32 +357,32 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   document.body
                 )}
               </th>
-              <th scope="col" className="w-10 px-2 py-1 text-center text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort('childCount')}>
+              <th scope="col" className="w-[48px] px-2 py-1 text-center text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort('childCount')}>
                 <div className="flex items-center justify-center">
                   <span>Counts</span>
                   {renderSortIcon('childCount')}
                 </div>
               </th>
-              <th scope="col" className="w-10 px-2 py-1 text-right text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort('length')}>
+              <th scope="col" className="w-[40px] px-2 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort('length')}>
                 <div className="flex items-center justify-end">
                   <span>LEN</span>
                   {renderSortIcon('length')}
                 </div>
               </th>
-              <th scope="col" className="w-10 px-2 py-1 text-right text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort('volume')}>
+              <th scope="col" className="w-[48px] px-2 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort('volume')}>
                 <div className="flex items-center justify-end">
                   <span>Vol.</span>
                   {renderSortIcon('volume')}
                 </div>
               </th>
-              <th scope="col" className="w-10 px-2 py-1 text-right text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer hover:bg-gray-200" onClick={() => onSort('difficulty')}>
+              <th scope="col" className="w-[48px] px-2 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer hover:bg-surface-muted" onClick={() => onSort('difficulty')}>
                 <div className="flex items-center justify-end">
                   <span>Diff.</span>
                   {renderSortIcon('difficulty')}
                 </div>
               </th>
               {(currentView === 'ungrouped' || currentView === 'grouped') && (
-                <th scope="col" className="w-10 px-2 py-1 text-right text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer hover:bg-gray-200" onClick={() => onSort('rating')}>
+                <th scope="col" className="w-[40px] px-2 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer hover:bg-surface-muted" onClick={() => onSort('rating')}>
                   <div className="flex items-center justify-end">
                     <span>Rt</span>
                     {renderSortIcon('rating')}
