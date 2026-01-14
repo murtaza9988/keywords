@@ -15,7 +15,7 @@ async def get_project_notes(
     project_id: int,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> NoteResponse:
     """Get notes for a specific project."""
     note = await NoteService.get_by_project_id(db, project_id)
     
@@ -38,7 +38,7 @@ async def create_or_update_notes(
     note_data: NoteCreate,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> NoteResponse:
     """Create or update notes for a specific project."""
     try:
         note = await NoteService.create_or_update(

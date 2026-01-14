@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Awaitable, Dict, List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.services.keyword import KeywordService
@@ -9,10 +9,10 @@ from app.services.merge_token import TokenMergeService
 logger = logging.getLogger(__name__)
 
 class BackgroundTaskManager:
-    _tasks = {}
+    _tasks: Dict[str, Dict[str, Any]] = {}
     
     @classmethod
-    def start_task(cls, task_id: str, coroutine):
+    def start_task(cls, task_id: str, coroutine: Awaitable[Any]) -> str:
         """Start a background task and store its reference."""
         task = asyncio.create_task(cls._run_task(task_id, coroutine))
         cls._tasks[task_id] = {
@@ -24,7 +24,7 @@ class BackgroundTaskManager:
         return task_id
     
     @classmethod
-    async def _run_task(cls, task_id: str, coroutine):
+    async def _run_task(cls, task_id: str, coroutine: Awaitable[Any]) -> None:
         """Run the coroutine and store its result or error."""
         try:
             result = await coroutine
@@ -46,11 +46,16 @@ class BackgroundTaskManager:
         return task_info
     
     @classmethod
-    def clean_completed_tasks(cls, max_age_seconds: int = 3600):
+    def clean_completed_tasks(cls, max_age_seconds: int = 3600) -> None:
         """Clean up completed tasks older than the specified age."""
         pass
 
-async def merge_tokens_background(project_id: int, parent_token: str, child_tokens: List[str], user_id: str = None) -> Dict:
+async def merge_tokens_background(
+    project_id: int,
+    parent_token: str,
+    child_tokens: List[str],
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
     """Background task for merging tokens."""
     try:
         db_gen = get_db()
@@ -82,7 +87,7 @@ async def merge_tokens_background(project_id: int, parent_token: str, child_toke
             "message": f"Database session error: {str(e)}"
         }
 
-async def unmerge_token_background(project_id: int, parent_token: str) -> Dict:
+async def unmerge_token_background(project_id: int, parent_token: str) -> Dict[str, Any]:
     """Background task for unmerging tokens."""
     try:
         db_gen = get_db()

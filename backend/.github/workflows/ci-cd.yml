@@ -22,6 +22,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-asyncio pytest-cov nltk
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
           
       - name: Download NLTK resources
         run: |
@@ -30,6 +31,10 @@ jobs:
       - name: Run tests with coverage
         run: |
           python -m pytest --cov=app tests/ --cov-report=xml
+
+      - name: Run mypy
+        run: |
+          mypy backend/app
           
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
