@@ -173,8 +173,17 @@ class ProcessingQueueService:
             result["keywords"] = keywords
         self.processing_tasks[project_id] = "complete" if not has_more_in_queue else "queued"
 
-    def mark_error(self, project_id: int, *, message: str) -> None:
+    def mark_error(
+        self,
+        project_id: int,
+        *,
+        message: str,
+        file_name: Optional[str] = None,
+        file_names: Optional[List[str]] = None,
+    ) -> None:
         result = self.processing_results.setdefault(project_id, self._default_result())
+        # Mark the file as processed even if it failed, so upload/processed counts match
+        self.mark_file_processed(project_id, file_name, file_names)
         result["complete"] = True
         result["progress"] = 0.0
         result["message"] = message

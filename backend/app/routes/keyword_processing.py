@@ -341,9 +341,13 @@ async def process_csv_file(
             print(f"Total rows to process: {total_rows}")
             
             if total_rows == 0:
+                remaining_queue = processing_queue_service.get_queue(project_id)
                 processing_queue_service.mark_complete(
                     project_id,
                     message=f"No rows found in {file_name}" if file_name else "No rows found in CSV",
+                    file_name=file_name,
+                    file_names=file_names,
+                    has_more_in_queue=len(remaining_queue) > 0,
                 )
                 return
             
@@ -488,6 +492,8 @@ async def process_csv_file(
         processing_queue_service.mark_error(
             project_id,
             message=f"Failed processing {file_name}: {e}" if file_name else f"Failed processing CSV: {e}",
+            file_name=file_name,
+            file_names=file_names,
         )
         try:
             async with get_db_context() as db:
