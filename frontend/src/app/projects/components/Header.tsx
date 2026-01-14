@@ -22,6 +22,7 @@ export default function Header() {
         <nav className="flex items-center gap-2">
           {[
             { href: '/projects', label: 'Projects' },
+            { href: '/backlog', label: 'Backlog' },
             { href: '/design-guidelines', label: 'Design Guidelines' },
           ].map((tab) => {
             const isActive = pathname === tab.href;

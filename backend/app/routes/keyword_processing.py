@@ -17,6 +17,8 @@ from app.config import settings
 from app.database import get_db_context
 from app.services.keyword import KeywordService
 from app.models.keyword import KeywordStatus
+from app.utils.normalization import normalize_numeric_tokens
+from app.utils.compound_normalization import normalize_compound_tokens
 from nltk.corpus import wordnet
 
 nltk.download('punkt')
@@ -69,6 +71,7 @@ def process_keyword(row_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
         keyword = keyword.strip()
         keyword = keyword.replace("'", "'").replace(""", "\"").replace(""", "\"").replace("–", "-").replace("—", "-")
         keyword = keyword.replace("\\", "")
+        keyword = normalize_numeric_tokens(keyword)
         has_non_english = any(
             ord(char) > 127 and unicodedata.category(char).startswith('L')
             for char in keyword
@@ -80,6 +83,8 @@ def process_keyword(row_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
         except Exception as e:
             print(f"Tokenization failed for '{keyword}': {e}")
             tokens = [keyword.lower()]
+
+        tokens = normalize_compound_tokens(tokens)
 
         lemmatized_tokens = []
         synonym_map = {}

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "variants": {
+    "check in": "checkin",
+    "check-in": "checkin",
+    "checkin": "checkin",
+    "follow up": "followup",
+    "follow-up": "followup",
+    "followup": "followup",
+    "log in": "login",
+    "log-in": "login",
+    "login": "login",
+    "set up": "setup",
+    "set-up": "setup",
+    "setup": "setup",
+    "sign up": "signup",
+    "sign-up": "signup",
+    "signup": "signup",
+    "start up": "startup",
+    "start-up": "startup",
+    "startup": "startup"
+  }
+}
