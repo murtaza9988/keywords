@@ -292,7 +292,7 @@ async def get_processing_status(
             "validationError": validation_error,
         }
 
-    if status == "complete" or result.get("complete", False):
+    if status == "complete" and uploaded_count == processed_count:
         keyword_count = await KeywordService.count_total_by_project(db, project_id)
         return {
             "status": "complete",

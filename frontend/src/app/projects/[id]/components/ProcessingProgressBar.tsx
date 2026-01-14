@@ -96,6 +96,10 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
     return 0;
   })();
   const queuedCount = queuedFiles?.length ?? 0;
+  const queueItems = [
+    ...(currentFileName ? [{ name: currentFileName, status: 'current' as const }] : []),
+    ...(queuedFiles ?? []).map((file) => ({ name: file, status: 'queued' as const })),
+  ];
 
   return (
     <div className="w-full mt-3 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
@@ -146,6 +150,27 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
           <span className="text-xs text-muted">Queued files: {queuedCount}</span>
         )}
       </div>
+      {queueItems.length > 0 && (
+        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-muted">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Queue order
+          </div>
+          <ol className="mt-2 space-y-1">
+            {queueItems.map((item, index) => (
+              <li key={`${item.name}-${index}`} className="flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    item.status === 'current' ? 'bg-blue-500' : 'bg-gray-300'
+                  }`}
+                />
+                <span className={item.status === 'current' ? 'text-foreground' : 'text-muted'}>
+                  {item.status === 'current' ? 'Processing' : 'Queued'}: {item.name}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       <div className="mt-3 space-y-2">
         {steps.map((step, index) => {
