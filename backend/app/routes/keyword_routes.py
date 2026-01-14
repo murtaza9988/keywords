@@ -3,6 +3,7 @@ import time
 import json
 import re
 import os
+import uuid
 from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile, File, BackgroundTasks, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1223,16 +1224,16 @@ async def regroup_keywords(
             verify_query = text("SELECT volume FROM keywords WHERE id = :id")
             result = await db.execute(verify_query, {"id": new_parent_id})
             updated_volume = result.scalar_one_or_none()
-        for group_id in affected_group_ids:
-            remaining_keywords = await KeywordService.find_by_group_id(db, project_id, group_id)
+        for affected_group_id in affected_group_ids:
+            remaining_keywords = await KeywordService.find_by_group_id(db, project_id, affected_group_id)
             if remaining_keywords:
-                await KeywordService.update_group_parent(db, project_id, group_id)
+                await KeywordService.update_group_parent(db, project_id, affected_group_id)
         
         await db.commit()
         
         if keyword_cache is not None:
-            for group_id in affected_group_ids:
-                cache_key = f"group_children_{project_id}_{group_id}"
+            for affected_group_id in affected_group_ids:
+                cache_key = f"group_children_{project_id}_{affected_group_id}"
                 if cache_key in keyword_cache:
                     del keyword_cache[cache_key]
             new_cache_key = f"group_children_{project_id}_{group_id}"
@@ -1266,45 +1267,39 @@ async def block_keywords_by_token(
     
     token_to_block = block_request.token.strip().lower()
     try:
-        check_column_query = sql_text("""
-            SELECT EXISTS (
-                SELECT FROM information_schema.columns 
-                WHERE table_name = 'keywords' AND column_name = 'blocked_token'
+        update_query = sql_text("""
+            UPDATE keywords
+            SET status = 'blocked',
+                blocked_by = 'user',
+                blocked_token = :blocked_token
+            WHERE project_id = :project_id
+            AND status IN ('ungrouped', 'grouped')
+            AND (
+                CASE
+                    WHEN jsonb_typeof(tokens) = 'array' THEN
+                        EXISTS (
+                            SELECT 1 FROM jsonb_array_elements_text(tokens) t
+                            WHERE t = :token
+                        )
+                    ELSE
+                        tokens::text = :token
+                END
             )
+            RETURNING id
         """)
-        column_exists_result = await db.execute(check_column_query)
-        column_exists = column_exists_result.scalar_one()
-        
-        if column_exists:
-            update_query = sql_text("""
-                UPDATE keywords
-                SET status = 'blocked', 
-                    blocked_by = 'user',
-                    blocked_token = :blocked_token
-                WHERE project_id = :project_id
-                AND status IN ('ungrouped', 'grouped')
-                AND (
-                    CASE 
-                        WHEN jsonb_typeof(tokens) = 'array' THEN
-                            EXISTS (
-                                SELECT 1 FROM jsonb_array_elements_text(tokens) t
-                                WHERE t = :token
-                            )
-                        ELSE
-                            tokens::text = :token
-                    END
-                )
-                RETURNING id
-            """)
-            
-            result = await db.execute(update_query, {
-                "project_id": project_id,
-                "token": token_to_block,
-                "blocked_token": token_to_block
-            })
-            
+
+        try:
+            result = await db.execute(
+                update_query,
+                {
+                    "project_id": project_id,
+                    "token": token_to_block,
+                    "blocked_token": token_to_block,
+                },
+            )
             updated_count = len(result.fetchall())
-        else:
+        except Exception:
+            # Backwards-compatible fallback for environments without `blocked_token`.
             updated_count = await TokenMergeService.update_status_by_token(
                 db, project_id, token_to_block, new_status=KeywordStatus.blocked,
                 current_statuses=[KeywordStatus.ungrouped, KeywordStatus.grouped],
@@ -1342,39 +1337,36 @@ async def unblock_keywords(
         raise HTTPException(status_code=400, detail="No keywords selected")
     
     try:
-        check_column_query = sql_text("""
-            SELECT EXISTS (
-                SELECT FROM information_schema.columns 
-                WHERE table_name = 'keywords' AND column_name = 'blocked_token'
-            )
+        update_query = sql_text("""
+            UPDATE keywords
+            SET status = 'ungrouped',
+                blocked_by = NULL,
+                blocked_token = NULL
+            WHERE project_id = :project_id
+            AND status = 'blocked'
+            AND id = ANY(:keyword_ids)
+            RETURNING id
         """)
-        column_exists_result = await db.execute(check_column_query)
-        column_exists = column_exists_result.scalar_one()
-        if column_exists:
-            update_query = sql_text("""
-                UPDATE keywords
-                SET status = 'ungrouped', 
-                    blocked_by = NULL,
-                    blocked_token = NULL
-                WHERE project_id = :project_id
-                AND status = 'blocked'
-                AND id = ANY(:keyword_ids)
-                RETURNING id
-            """)
-            
-            result = await db.execute(update_query, {
-                "project_id": project_id,
-                "keyword_ids": unblock_request.keyword_ids
-            })
-            
+
+        try:
+            result = await db.execute(
+                update_query,
+                {
+                    "project_id": project_id,
+                    "keyword_ids": unblock_request.keyword_ids,
+                },
+            )
             updated_ids = result.fetchall()
             updated_count = len(updated_ids)
-        else:
-            # Fall back to service method if column doesn't exist
+        except Exception:
+            # Backwards-compatible fallback for environments without `blocked_token`.
             update_data = {"status": KeywordStatus.ungrouped.value, "blocked_by": None}
             updated_count = await KeywordService.update_status_by_ids_batched(
-                db, project_id, unblock_request.keyword_ids,
-                update_data, required_current_status=KeywordStatus.blocked
+                db,
+                project_id,
+                unblock_request.keyword_ids,
+                update_data,
+                required_current_status=KeywordStatus.blocked,
             )
 
         await ActivityLogService.log_activity(
