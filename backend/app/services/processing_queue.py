@@ -8,6 +8,7 @@ class ProcessingQueueService:
         self.processing_queue: Dict[int, Deque[Dict[str, str]]] = {}
         self.processing_results: Dict[int, Dict[str, Any]] = {}
         self.processing_current_files: Dict[int, Dict[str, str]] = {}
+        self.batch_uploads: Dict[int, Dict[str, Dict[str, Any]]] = {}
 
     def enqueue(self, project_id: int, file_path: str, file_name: str) -> None:
         queue = self.processing_queue.setdefault(project_id, deque())
@@ -134,6 +135,57 @@ class ProcessingQueueService:
         self.processing_results.pop(project_id, None)
         self.processing_queue.pop(project_id, None)
         self.processing_current_files.pop(project_id, None)
+        self.batch_uploads.pop(project_id, None)
+
+    def register_batch_upload(self, project_id: int, batch_id: str, total_files: int) -> None:
+        project_batches = self.batch_uploads.setdefault(project_id, {})
+        batch_info = project_batches.get(batch_id)
+        if not batch_info:
+            project_batches[batch_id] = {
+                "total_files": total_files,
+                "files": {},
+                "received": set(),
+            }
+            return
+        batch_info["total_files"] = total_files
+
+    def add_batch_file(
+        self,
+        project_id: int,
+        batch_id: str,
+        *,
+        file_name: str,
+        file_path: str,
+        file_index: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        project_batches = self.batch_uploads.setdefault(project_id, {})
+        batch_info = project_batches.setdefault(
+            batch_id,
+            {
+                "total_files": 0,
+                "files": {},
+                "received": set(),
+            },
+        )
+        key = file_index if file_index is not None else file_name
+        if key in batch_info["received"]:
+            return batch_info
+        batch_info["files"][key] = {
+            "file_name": file_name,
+            "file_path": file_path,
+            "file_index": file_index,
+        }
+        batch_info["received"].add(key)
+        return batch_info
+
+    def pop_batch(self, project_id: int, batch_id: str) -> Optional[Dict[str, Any]]:
+        project_batches = self.batch_uploads.get(project_id)
+        if not project_batches:
+            return None
+        batch_info = project_batches.pop(batch_id, None)
+        if not project_batches:
+            self.batch_uploads.pop(project_id, None)
+        return batch_info
 
     def _default_result(self) -> Dict[str, Any]:
         return {

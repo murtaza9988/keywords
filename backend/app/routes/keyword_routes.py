@@ -3,7 +3,6 @@ import time
 import json
 import re
 import os
-import uuid
 from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile, File, BackgroundTasks, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +28,7 @@ from app.routes.keyword_processing import (
     start_next_processing,
 )
 from app.services.processing_queue import processing_queue_service
+from app.services.csv_batch import combine_csv_files
 from app.utils.keyword_utils import keyword_cache
 from fastapi.responses import StreamingResponse
 import io
@@ -36,6 +36,10 @@ import csv
 
 router = APIRouter(tags=["keywords"])
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+
+
+def _sanitize_segment(value: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9._-]", "_", value)
 @router.get("/projects/{project_id}/processing-status", response_model=ProcessingStatus)
 async def get_processing_status(
     project_id: int,
@@ -160,6 +164,10 @@ async def upload_keywords(
     chunkIndex: int = Form(None),
     totalChunks: int = Form(None),
     originalFilename: str = Form(None),
+    uploadId: str = Form(None),
+    batchId: str = Form(None),
+    fileIndex: int = Form(None),
+    totalFiles: int = Form(None),
     fileSize: int = Form(None),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -177,12 +185,25 @@ async def upload_keywords(
         processing_queue_service.set_status(project_id, "uploading")
     
     is_chunked_upload = chunkIndex is not None and totalChunks is not None and originalFilename is not None
+    safe_original_filename = _sanitize_segment(originalFilename or file.filename)
+    safe_batch_id = _sanitize_segment(batchId) if batchId else None
+    safe_upload_id = _sanitize_segment(uploadId or originalFilename or file.filename)
+    resolved_file_index = int(fileIndex) if fileIndex is not None else None
+    resolved_total_files = int(totalFiles) if totalFiles is not None else None
+
+    if batchId and resolved_total_files is None:
+        raise HTTPException(status_code=400, detail="Batch uploads require totalFiles.")
     
     if is_chunked_upload:
-        chunks_dir = os.path.join(settings.UPLOAD_DIR, f"{project_id}_chunks")
+        chunks_dir = os.path.join(
+            settings.UPLOAD_DIR,
+            f"{project_id}_chunks",
+            safe_batch_id or "single",
+            safe_upload_id,
+        )
         os.makedirs(chunks_dir, exist_ok=True)
         
-        chunk_filename = f"{originalFilename}.part{chunkIndex}"
+        chunk_filename = f"{safe_upload_id}.part{chunkIndex}"
         chunk_path = os.path.join(chunks_dir, chunk_filename)
         
         try:
@@ -210,12 +231,16 @@ async def upload_keywords(
         try:
             if processing_queue_service.get_status(project_id) not in {"processing", "queued"}:
                 processing_queue_service.set_status(project_id, "combining")
-            safe_filename = f"{project_id}_{re.sub(r'[^a-zA-Z0-9._-]', '_', originalFilename)}"
-            final_path = os.path.join(settings.UPLOAD_DIR, safe_filename)
+            file_storage_name = f"{project_id}_{safe_upload_id}_{safe_original_filename}"
+            batch_dir = None
+            if safe_batch_id:
+                batch_dir = os.path.join(settings.UPLOAD_DIR, f"{project_id}_batch_{safe_batch_id}")
+                os.makedirs(batch_dir, exist_ok=True)
+            final_path = os.path.join(batch_dir or settings.UPLOAD_DIR, file_storage_name)
             
             with open(final_path, "wb") as outfile:
                 for i in range(int(totalChunks)):
-                    part_filename = f"{originalFilename}.part{i}"
+                    part_filename = f"{safe_upload_id}.part{i}"
                     part_path = os.path.join(chunks_dir, part_filename)
                     
                     if not os.path.exists(part_path):
@@ -235,6 +260,9 @@ async def upload_keywords(
                     
             if os.path.exists(chunks_dir):
                 os.rmdir(chunks_dir)
+            parent_chunks_dir = os.path.dirname(chunks_dir)
+            if parent_chunks_dir and os.path.exists(parent_chunks_dir) and not os.listdir(parent_chunks_dir):
+                os.rmdir(parent_chunks_dir)
                 
             csv_upload = CSVUpload(project_id=project_id, file_name=originalFilename)
             db.add(csv_upload)
@@ -255,7 +283,53 @@ async def upload_keywords(
             
             if originalFilename:
                 processing_queue_service.register_upload(project_id, originalFilename)
-            
+
+            if batchId and resolved_total_files:
+                processing_queue_service.register_batch_upload(
+                    project_id,
+                    batchId,
+                    resolved_total_files,
+                )
+                batch_info = processing_queue_service.add_batch_file(
+                    project_id,
+                    batchId,
+                    file_name=originalFilename,
+                    file_path=final_path,
+                    file_index=resolved_file_index,
+                )
+                if len(batch_info["received"]) < batch_info["total_files"]:
+                    return {
+                        "message": "Batch upload in progress. Waiting for remaining files.",
+                        "status": "uploading",
+                        "file_name": originalFilename,
+                    }
+                batch_info = processing_queue_service.pop_batch(project_id, batchId) or batch_info
+                file_entries = list(batch_info["files"].values())
+                file_entries.sort(
+                    key=lambda entry: entry.get("file_index")
+                    if entry.get("file_index") is not None
+                    else entry.get("file_name", "")
+                )
+                combined_name = f"{project_id}_{safe_batch_id}_combined.csv"
+                combined_path = os.path.join(settings.UPLOAD_DIR, combined_name)
+                try:
+                    combine_csv_files(file_entries, combined_path)
+                except ValueError as exc:
+                    processing_queue_service.mark_error(project_id, message=str(exc))
+                    raise HTTPException(status_code=400, detail=str(exc))
+                for entry in file_entries:
+                    if os.path.exists(entry["file_path"]):
+                        os.remove(entry["file_path"])
+                if batch_dir and os.path.exists(batch_dir) and not os.listdir(batch_dir):
+                    os.rmdir(batch_dir)
+                enqueue_processing_file(project_id, combined_path, f"Combined CSV ({resolved_total_files} files)")
+                await start_next_processing(project_id)
+                return {
+                    "message": "Batch upload complete. Processing queued.",
+                    "status": processing_queue_service.get_status(project_id),
+                    "file_name": originalFilename,
+                }
+
             if originalFilename:
                 enqueue_processing_file(project_id, final_path, originalFilename)
                 await start_next_processing(project_id)
@@ -274,8 +348,12 @@ async def upload_keywords(
             raise HTTPException(status_code=500, detail=f"Error combining chunks: {str(e)}")
 
     else:
-        safe_filename = f"{project_id}_{re.sub(r'[^a-zA-Z0-9._-]', '_', file.filename)}"
-        file_path = os.path.join(settings.UPLOAD_DIR, safe_filename)
+        file_storage_name = f"{project_id}_{safe_upload_id}_{safe_original_filename}"
+        batch_dir = None
+        if safe_batch_id:
+            batch_dir = os.path.join(settings.UPLOAD_DIR, f"{project_id}_batch_{safe_batch_id}")
+            os.makedirs(batch_dir, exist_ok=True)
+        file_path = os.path.join(batch_dir or settings.UPLOAD_DIR, file_storage_name)
         
         try:
             buffer_size = 256 * 1024
@@ -310,6 +388,54 @@ async def upload_keywords(
         )
         
         processing_queue_service.register_upload(project_id, file.filename)
+
+        if batchId and resolved_total_files:
+            processing_queue_service.register_batch_upload(
+                project_id,
+                batchId,
+                resolved_total_files,
+            )
+            batch_info = processing_queue_service.add_batch_file(
+                project_id,
+                batchId,
+                file_name=file.filename,
+                file_path=file_path,
+                file_index=resolved_file_index,
+            )
+            if len(batch_info["received"]) < batch_info["total_files"]:
+                return {
+                    "message": "Batch upload in progress. Waiting for remaining files.",
+                    "status": "uploading",
+                    "file_name": file.filename,
+                }
+            if processing_queue_service.get_status(project_id) not in {"processing", "queued"}:
+                processing_queue_service.set_status(project_id, "combining")
+            batch_info = processing_queue_service.pop_batch(project_id, batchId) or batch_info
+            file_entries = list(batch_info["files"].values())
+            file_entries.sort(
+                key=lambda entry: entry.get("file_index")
+                if entry.get("file_index") is not None
+                else entry.get("file_name", "")
+            )
+            combined_name = f"{project_id}_{safe_batch_id}_combined.csv"
+            combined_path = os.path.join(settings.UPLOAD_DIR, combined_name)
+            try:
+                combine_csv_files(file_entries, combined_path)
+            except ValueError as exc:
+                processing_queue_service.mark_error(project_id, message=str(exc))
+                raise HTTPException(status_code=400, detail=str(exc))
+            for entry in file_entries:
+                if os.path.exists(entry["file_path"]):
+                    os.remove(entry["file_path"])
+            if batch_dir and os.path.exists(batch_dir) and not os.listdir(batch_dir):
+                os.rmdir(batch_dir)
+            enqueue_processing_file(project_id, combined_path, f"Combined CSV ({resolved_total_files} files)")
+            await start_next_processing(project_id)
+            return {
+                "message": "Batch upload complete. Processing queued.",
+                "status": processing_queue_service.get_status(project_id),
+                "file_name": file.filename,
+            }
         
         enqueue_processing_file(project_id, file_path, file.filename)
         await start_next_processing(project_id)

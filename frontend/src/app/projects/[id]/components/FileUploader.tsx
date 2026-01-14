@@ -19,6 +19,19 @@ function isApiError(error: unknown): error is ApiError {
   return typeof error === 'object' && error !== null && 'message' in error;
 }
 
+const createUploadId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+interface UploadBatchInfo {
+  batchId?: string;
+  fileIndex?: number;
+  totalFiles?: number;
+}
+
 const FileUploader: React.FC<FileUploaderProps> = ({
   projectId,
   onUploadStart,
@@ -55,7 +68,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   };
 
   const uploadSingleFile = useCallback(
-    async (fileToUpload: File) => {
+    async (fileToUpload: File, batchInfo?: UploadBatchInfo) => {
       if (!fileToUpload || !projectId) {
         console.error('File or Project ID missing for upload');
         onUploadError('Cannot start upload: file or project ID missing.');
@@ -65,6 +78,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       const fileSizeInMB = fileToUpload.size / (1024 * 1024);
       const CHUNK_SIZE = fileSizeInMB > 20 ? 2 * 1024 * 1024 : 1024 * 1024;
       const totalChunks = Math.ceil(fileToUpload.size / CHUNK_SIZE);
+      const uploadId = createUploadId();
       let currentChunk = 0;
       let uploadSuccessful = true;
       let uploadMessage = '';
@@ -81,6 +95,16 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           formData.append('totalChunks', String(totalChunks));
           formData.append('originalFilename', fileToUpload.name);
           formData.append('fileSize', String(fileToUpload.size));
+          formData.append('uploadId', uploadId);
+          if (batchInfo?.batchId) {
+            formData.append('batchId', batchInfo.batchId);
+          }
+          if (typeof batchInfo?.fileIndex === 'number') {
+            formData.append('fileIndex', String(batchInfo.fileIndex));
+          }
+          if (typeof batchInfo?.totalFiles === 'number') {
+            formData.append('totalFiles', String(batchInfo.totalFiles));
+          }
           const baseProgress = Math.floor((currentChunk / totalChunks) * 100);
           setUploadProgress(Math.max(prevProgressRef.current, baseProgress));
           setUploadStage('uploading');
@@ -152,11 +176,16 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       let lastMessage = '';
 
       try {
+        const batchId = filesToUpload.length > 1 ? createUploadId() : undefined;
         for (let index = 0; index < filesToUpload.length; index += 1) {
           setCurrentFileIndex(index + 1);
           prevProgressRef.current = 0;
           setUploadProgress(0);
-          const result = await uploadSingleFile(filesToUpload[index]);
+          const result = await uploadSingleFile(filesToUpload[index], {
+            batchId,
+            fileIndex: index,
+            totalFiles: filesToUpload.length,
+          });
           if (result?.status) {
             lastStatus = result.status;
             lastMessage = result.message ?? '';
