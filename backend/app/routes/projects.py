@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status,BackgroundTasks
-from typing import List
+from typing import Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
@@ -17,7 +17,7 @@ async def create_project(
     project_data: ProjectCreate,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> ProjectResponse:
     """Create a new project."""
     project = await ProjectService.create(db, project_data.name)
     return ProjectResponse.from_orm(project)
@@ -26,7 +26,7 @@ async def create_project(
 async def get_projects(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> List[ProjectResponse]:
     """Get all projects."""
     projects = await ProjectService.get_all(db)
     return [ProjectResponse.from_orm(project) for project in projects]
@@ -35,7 +35,7 @@ async def get_projects(
 async def get_projects_with_stats(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """Get all projects with their stats in a single optimized query."""
     # Get all projects
     projects = await ProjectService.get_all(db)
@@ -140,7 +140,7 @@ async def get_project(
     project_id: int,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> ProjectResponse:
     """Get a project by ID."""
     project = await ProjectService.get_by_id(db, project_id)
     
@@ -158,7 +158,7 @@ async def update_project(
     project_data: ProjectCreate,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> ProjectResponse:
     """Update a project."""
     project = await ProjectService.update(db, project_id, project_data.name)
     
@@ -176,7 +176,7 @@ async def delete_project(
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, str]:
     """Delete a project in the background."""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
