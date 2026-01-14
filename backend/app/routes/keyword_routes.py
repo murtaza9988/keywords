@@ -13,7 +13,6 @@ from app.config import settings
 from app.database import get_db, get_db_context
 from app.models.csv_upload import CSVUpload
 from app.schemas.csv_upload import CSVUploadResponse
-from app.services.csv_batch import combine_csv_files
 from app.services.merge_token import TokenMergeService
 from app.services.project import ProjectService
 from app.services.keyword import KeywordService
@@ -515,9 +514,10 @@ async def upload_keywords(
                     # so the processing queue service knows all these files are now "processed".
                     enqueue_processing_file(
                         project_id,
-                        combined_path,
-                        combined_filename,
-                        file_names=original_filenames
+                        entry["file_path"],
+                        entry.get("file_name") or "CSV file",
+                        # Each file tracks itself
+                        file_names=[entry.get("file_name")] if entry.get("file_name") else None
                     )
                     
                     # IMPORTANT: Do NOT delete the individual uploaded files.
