@@ -53,21 +53,22 @@ describe('TokenTable Layout', () => {
     activeTokenView: 'current' as const,
   };
 
-  it('renders with fixed column widths and min-width table', () => {
+  it('renders with fixed column widths and no forced horizontal scroll', () => {
     const { container } = render(<TokenTable {...defaultProps} />);
 
-    // Check table min-width
+    // Check table does not force horizontal scrolling via min-width
     const table = container.querySelector('table');
-    expect(table).toHaveClass('min-w-[600px]');
+    expect(table).not.toHaveClass('min-w-[600px]');
+    expect(table).toHaveClass('w-full');
 
     // Check colgroup widths
     const cols = container.querySelectorAll('col');
     expect(cols).toHaveLength(6);
-    expect(cols[0]).toHaveClass('w-[40px]'); // Checkbox
+    expect(cols[0]).toHaveClass('w-[36px]'); // Checkbox
     expect(cols[1]).toHaveClass('w-auto');   // Token
-    expect(cols[2]).toHaveClass('w-[60px]'); // Count
-    expect(cols[3]).toHaveClass('w-[70px]'); // Vol
-    expect(cols[4]).toHaveClass('w-[60px]'); // Diff
-    expect(cols[5]).toHaveClass('w-[60px]'); // Action
+    expect(cols[2]).toHaveClass('w-[52px]'); // Count
+    expect(cols[3]).toHaveClass('w-[64px]'); // Vol
+    expect(cols[4]).toHaveClass('w-[52px]'); // Diff
+    expect(cols[5]).toHaveClass('w-[56px]'); // Action
   });
 });
