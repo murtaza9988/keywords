@@ -536,7 +536,8 @@ class ApiClient {
   }
   async fetchCSVUploads(projectId: string): Promise<CSVUpload[]> {
     const url = `/api/projects/${projectId}/csv-uploads`;
-    const data = await this.request<CSVUpload[]>('get', url, undefined, undefined, true);
+    // Do not cache CSV uploads list: users expect it to reflect recent uploads immediately.
+    const data = await this.request<CSVUpload[]>('get', url, undefined, undefined, false);
     return data;
   }
 
@@ -547,6 +548,7 @@ class ApiClient {
   ): Promise<{ message: string; status: ProcessingStatus; file_name?: string }> {
     try {
       this.cache.invalidate(`/api/projects/${projectId}`);
+      this.cache.invalidate(`/api/projects/${projectId}/csv-uploads`);
       const chunkIndex = formData.get('chunkIndex');
       const totalChunks = formData.get('totalChunks');
       const url = `/api/projects/${projectId}/upload?_t=${Date.now()}`;
