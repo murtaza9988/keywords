@@ -204,6 +204,8 @@ async def upload_keywords(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
+    print(f"[Project {project_id}] Upload request: file={file.filename}, batchId={batchId}, fileIndex={fileIndex}, totalFiles={totalFiles}")
+    
     project = await ProjectService.get_by_id(db, project_id)
     if not project: 
         raise HTTPException(status_code=404, detail="Project not found")
@@ -211,7 +213,10 @@ async def upload_keywords(
     if not file.filename or not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     current_status = processing_queue_service.get_status(project_id)
+    print(f"[Project {project_id}] Current processing status: {current_status}")
+    
     if current_status not in {"processing", "queued", "uploading", "combining"}:
+        print(f"[Project {project_id}] Resetting for new batch (current status: {current_status})")
         processing_queue_service.reset_for_new_batch(project_id)
     if current_status not in {"processing", "queued"}:
         processing_queue_service.set_status(project_id, "uploading")
@@ -335,6 +340,7 @@ async def upload_keywords(
                         "status": "uploading",
                         "file_name": originalFilename,
                     }
+                print(f"[Project {project_id}] BATCH COMPLETE: All {resolved_total_files} files received, combining...")
                 batch_info = processing_queue_service.pop_batch(project_id, batchId) or batch_info
                 file_entries = list(batch_info["files"].values())
                 file_entries.sort(
@@ -346,7 +352,9 @@ async def upload_keywords(
                 combined_path = os.path.join(settings.UPLOAD_DIR, combined_name)
                 try:
                     combine_csv_files(file_entries, combined_path)
+                    print(f"[Project {project_id}] Combined {len(file_entries)} files into: {combined_name}")
                 except ValueError as exc:
+                    print(f"[Project {project_id}] ERROR combining files: {exc}")
                     processing_queue_service.mark_error(project_id, message=str(exc))
                     raise HTTPException(status_code=400, detail=str(exc))
                 for entry in file_entries:
@@ -359,6 +367,7 @@ async def upload_keywords(
                     for entry in file_entries
                     if entry.get("file_name")
                 ]
+                print(f"[Project {project_id}] Enqueueing combined CSV with original file names: {batch_file_names}")
                 enqueue_processing_file(
                     project_id,
                     combined_path,
@@ -366,10 +375,14 @@ async def upload_keywords(
                     file_names=batch_file_names,
                 )
                 await start_next_processing(project_id)
+                final_status = processing_queue_service.get_status(project_id)
+                print(f"[Project {project_id}] Processing started. Final status: {final_status}")
                 return {
                     "message": "Batch upload complete. Processing queued.",
-                    "status": processing_queue_service.get_status(project_id),
+                    "status": final_status,
                     "file_name": originalFilename,
+                    "batch_file_count": resolved_total_files,
+                    "batch_files": batch_file_names,
                 }
 
             if originalFilename:
@@ -432,6 +445,7 @@ async def upload_keywords(
         processing_queue_service.register_upload(project_id, file.filename)
 
         if batchId and resolved_total_files:
+            print(f"[Project {project_id}] Batch upload: file {resolved_file_index + 1 if resolved_file_index is not None else '?'}/{resolved_total_files}")
             processing_queue_service.register_batch_upload(
                 project_id,
                 batchId,
@@ -444,12 +458,17 @@ async def upload_keywords(
                 file_path=file_path,
                 file_index=resolved_file_index,
             )
-            if len(batch_info["received"]) < batch_info["total_files"]:
+            received_count = len(batch_info["received"])
+            print(f"[Project {project_id}] Batch progress: {received_count}/{batch_info['total_files']} files received")
+            if received_count < batch_info["total_files"]:
                 return {
-                    "message": "Batch upload in progress. Waiting for remaining files.",
+                    "message": f"Batch upload in progress. Received {received_count}/{batch_info['total_files']} files.",
                     "status": "uploading",
                     "file_name": file.filename,
+                    "batch_received": received_count,
+                    "batch_total": batch_info["total_files"],
                 }
+            print(f"[Project {project_id}] BATCH COMPLETE (non-chunked): All {resolved_total_files} files received")
             if processing_queue_service.get_status(project_id) not in {"processing", "queued"}:
                 processing_queue_service.set_status(project_id, "combining")
             batch_info = processing_queue_service.pop_batch(project_id, batchId) or batch_info
@@ -463,7 +482,9 @@ async def upload_keywords(
             combined_path = os.path.join(settings.UPLOAD_DIR, combined_name)
             try:
                 combine_csv_files(file_entries, combined_path)
+                print(f"[Project {project_id}] Combined {len(file_entries)} files into: {combined_name}")
             except ValueError as exc:
+                print(f"[Project {project_id}] ERROR combining files: {exc}")
                 processing_queue_service.mark_error(project_id, message=str(exc))
                 raise HTTPException(status_code=400, detail=str(exc))
             for entry in file_entries:
@@ -476,6 +497,7 @@ async def upload_keywords(
                 for entry in file_entries
                 if entry.get("file_name")
             ]
+            print(f"[Project {project_id}] Enqueueing combined CSV with original file names: {batch_file_names}")
             enqueue_processing_file(
                 project_id,
                 combined_path,
@@ -483,10 +505,14 @@ async def upload_keywords(
                 file_names=batch_file_names,
             )
             await start_next_processing(project_id)
+            final_status = processing_queue_service.get_status(project_id)
+            print(f"[Project {project_id}] Processing started. Final status: {final_status}")
             return {
                 "message": "Batch upload complete. Processing queued.",
-                "status": processing_queue_service.get_status(project_id),
+                "status": final_status,
                 "file_name": file.filename,
+                "batch_file_count": resolved_total_files,
+                "batch_files": batch_file_names,
             }
         
         enqueue_processing_file(project_id, file_path, file.filename)

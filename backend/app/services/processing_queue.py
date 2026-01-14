@@ -106,6 +106,7 @@ class ProcessingQueueService:
             result["message"] = message
         self.processing_results[project_id] = result
         self.processing_tasks[project_id] = "processing"
+        self._touch(project_id)  # Update timestamp to prevent stale detection
 
     def register_upload(self, project_id: int, file_name: str) -> None:
         result = self.processing_results.setdefault(project_id, self._default_result())
@@ -172,6 +173,7 @@ class ProcessingQueueService:
         if keywords is not None:
             result["keywords"] = keywords
         self.processing_tasks[project_id] = "complete" if not has_more_in_queue else "queued"
+        self._touch(project_id)  # Update timestamp
 
     def mark_error(self, project_id: int, *, message: str) -> None:
         result = self.processing_results.setdefault(project_id, self._default_result())
@@ -179,6 +181,7 @@ class ProcessingQueueService:
         result["progress"] = 0.0
         result["message"] = message
         self.processing_tasks[project_id] = "error"
+        self._touch(project_id)  # Update timestamp to prevent further stale checks
 
     def set_status(self, project_id: int, status: str) -> None:
         self.processing_tasks[project_id] = status

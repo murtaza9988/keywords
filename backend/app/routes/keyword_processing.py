@@ -158,21 +158,56 @@ def enqueue_processing_file(
     )
 
 async def start_next_processing(project_id: int) -> None:
+    """Start processing the next file in the queue for a project."""
     next_item = processing_queue_service.start_next(project_id)
     if not next_item:
+        print(f"[Project {project_id}] No items in queue or already processing")
         return
+    
+    file_name = next_item.get("file_name", "CSV")
+    file_names = next_item.get("file_names")
+    file_count = len(file_names) if file_names else 1
+    
+    print(f"[Project {project_id}] Starting processing: {file_name} (contains {file_count} file(s))")
+    
+    # Initialize processing state - only call once, not again in process_csv_file
     processing_queue_service.start_file_processing(
         project_id,
-        message=f"Processing {next_item.get('file_name')}" if next_item.get("file_name") else "Processing CSV",
+        message=f"Processing {file_name}" if file_name else "Processing CSV",
     )
-    asyncio.create_task(
-        process_csv_file(
-            next_item["file_path"],
-            project_id,
-            next_item.get("file_name"),
-            file_names=next_item.get("file_names"),
+    
+    # Create the background task with proper error handling
+    try:
+        task = asyncio.create_task(
+            process_csv_file(
+                next_item["file_path"],
+                project_id,
+                next_item.get("file_name"),
+                file_names=next_item.get("file_names"),
+            )
         )
-    )
+        # Add a callback to catch any unhandled exceptions in the task
+        def handle_task_exception(t: asyncio.Task) -> None:
+            try:
+                exc = t.exception()
+                if exc:
+                    print(f"[Project {project_id}] Background task failed with exception: {exc}")
+                    processing_queue_service.mark_error(
+                        project_id,
+                        message=f"Processing failed: {str(exc)}"
+                    )
+            except asyncio.CancelledError:
+                print(f"[Project {project_id}] Background task was cancelled")
+            except asyncio.InvalidStateError:
+                pass  # Task is not done yet, this shouldn't happen in done callback
+        
+        task.add_done_callback(handle_task_exception)
+    except Exception as e:
+        print(f"[Project {project_id}] Failed to create processing task: {e}")
+        processing_queue_service.mark_error(
+            project_id,
+            message=f"Failed to start processing: {str(e)}"
+        )
 
 async def process_csv_file(
     file_path: str,
@@ -182,10 +217,11 @@ async def process_csv_file(
     file_names: Optional[List[str]] = None,
 ) -> None:
     """Process the CSV file in the background with optimized performance using new merge operations structure."""
-    processing_queue_service.start_file_processing(
-        project_id,
-        message=f"Processing {file_name}" if file_name else "Processing CSV",
-    )
+    file_count = len(file_names) if file_names else 1
+    print(f"[Project {project_id}] process_csv_file started for: {file_name} (batch of {file_count} files)")
+    
+    # NOTE: start_file_processing is already called in start_next_processing
+    # Just update progress to initialize counters
     processing_queue_service.update_progress(
         project_id,
         processed_count=0,
@@ -535,7 +571,7 @@ async def process_csv_file(
             )
 
     except Exception as e:
-        print(f"Error during CSV processing for project {project_id}: {e}")
+        print(f"[Project {project_id}] Error during CSV processing: {e}")
         import traceback
         traceback.print_exc()
         processing_queue_service.mark_error(
@@ -548,15 +584,27 @@ async def process_csv_file(
                 await db.execute(sql_text(drop_index_query))
                 await db.commit()
         except Exception as cleanup_error:
-            print(f"Error during cleanup: {cleanup_error}")
+            print(f"[Project {project_id}] Error during cleanup: {cleanup_error}")
     finally:
+        # Clean up the temporary file
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
-                print(f"Removed temporary file: {file_path}")
+                print(f"[Project {project_id}] Removed temporary file: {file_path}")
             except OSError as e:
-                print(f"Error removing file {file_path}: {e}")
-        await start_next_processing(project_id)
+                print(f"[Project {project_id}] Error removing file {file_path}: {e}")
+        
+        # Check for more files in queue and process them
+        queue_length = len(processing_queue_service.get_queue(project_id))
+        current_status = processing_queue_service.get_status(project_id)
+        print(f"[Project {project_id}] Processing finished. Status: {current_status}, Queue length: {queue_length}")
+        
+        try:
+            await start_next_processing(project_id)
+        except Exception as e:
+            print(f"[Project {project_id}] Error starting next processing: {e}")
+            import traceback
+            traceback.print_exc()
 
 async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) -> None:
     """Group any remaining ungrouped keywords with identical tokens."""
