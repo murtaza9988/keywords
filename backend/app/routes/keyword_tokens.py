@@ -2,7 +2,7 @@ import asyncio
 import json
 import hashlib
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text as sql_text
@@ -18,15 +18,23 @@ from app.schemas.keyword import (
 )
 
 # Cache configuration
-_token_cache = {}
+_token_cache: Dict[str, Tuple[TokenListResponse, float, int]] = {}
 _CACHE_TTL = 300  # 5 minutes
 _MAX_CACHE_SIZE = 1000
 
 router = APIRouter(tags=["token"])
 
-def _get_cache_key(project_id: int, view: str, page: int, limit: int, sort: str, 
-                   direction: str, search: Optional[str], show_merged: bool, 
-                   blocked_by: Optional[str]) -> str:
+def _get_cache_key(
+    project_id: int,
+    view: str,
+    page: int,
+    limit: int,
+    sort: str,
+    direction: str,
+    search: Optional[str],
+    show_merged: bool,
+    blocked_by: Optional[str],
+) -> str:
     """Generate cache key for token search results."""
     cache_data = {
         "project_id": project_id,
@@ -53,7 +61,7 @@ def _get_cached_result(cache_key: str) -> Optional[TokenListResponse]:
             del _token_cache[cache_key]
     return None
 
-def _cache_result(cache_key: str, result: TokenListResponse, project_id: int):
+def _cache_result(cache_key: str, result: TokenListResponse, project_id: int) -> None:
     """Cache token search result."""
     global _token_cache
     _token_cache[cache_key] = (result, time.time(), project_id)
@@ -68,7 +76,7 @@ def _cache_result(cache_key: str, result: TokenListResponse, project_id: int):
         for key in expired_keys:
             _token_cache.pop(key, None)
 
-def _invalidate_token_cache(project_id: int):
+def _invalidate_token_cache(project_id: int) -> None:
     """Invalidate all cached token results for a project."""
     global _token_cache
     keys_to_remove = []
@@ -97,7 +105,7 @@ async def get_tokens(
     blocked_by: Optional[str] = Query(None, enum=["user", "system"]),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> TokenListResponse:
     """
     Get tokens with precise parent-child relationships using optimized queries.
     Supports multiple token searches (comma-separated) with exact token matching.
@@ -398,7 +406,7 @@ async def block_tokens(
     block_request: BlockTokensRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     if not block_request.tokens or not all(t.strip() for t in block_request.tokens):
         raise HTTPException(status_code=400, detail="At least one valid token is required")
 
@@ -457,7 +465,7 @@ async def unblock_tokens(
     unblock_request: UnblockTokensRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """Unblock specific tokens."""
     if not unblock_request.tokens or not all(t.strip() for t in unblock_request.tokens):
         raise HTTPException(status_code=400, detail="At least one valid token is required")
@@ -527,7 +535,7 @@ async def merge_tokens_endpoint(
     run_in_background: bool = Query(False),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """
     Merge tokens using the new relational merge operations structure.
     Keywords can now participate in multiple merge operations.
@@ -617,7 +625,7 @@ async def unmerge_token_endpoint(
     run_in_background: bool = Query(False),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """
     Unmerge a token and reset all keywords that use it back to their original state.
     Supports running in background for large operations.
@@ -695,7 +703,7 @@ async def unmerge_individual_token_endpoint(
     child_token: str = Query(..., description="The individual child token to unmerge"),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """
     Unmerge an individual child token from a parent token using the same logic as full unmerge.
     This will restore the child token in keywords that contain it and remove them from the merge operation.
@@ -876,7 +884,7 @@ async def create_token(
     request: CreateTokenRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """
     Create a new token from a search term and add it to all keywords containing that term.
     """
@@ -926,7 +934,7 @@ async def get_group_suggestions(
     search: str = Query("", min_length=1),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> List[str]:
     """Get group name suggestions based on input search term."""
     
     if not search or len(search.strip()) == 0:
@@ -983,7 +991,7 @@ async def get_serp_features(
     project_id: int,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """Get unique SERP features for a project."""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:

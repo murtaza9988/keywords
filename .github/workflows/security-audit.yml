@@ -1,0 +1,52 @@
+name: Security Audits
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend-audits:
+    name: Backend audits (high/critical)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install audit tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pip-audit bandit
+
+      - name: pip-audit (high/critical)
+        run: pip-audit -r backend/requirements.txt --severity high
+
+      - name: bandit (high/critical)
+        run: bandit -r backend/app --severity-level high
+
+  frontend-audit:
+    name: Frontend npm audit (high/critical)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: npm audit (high/critical)
+        working-directory: frontend
+        run: npm audit --audit-level=high

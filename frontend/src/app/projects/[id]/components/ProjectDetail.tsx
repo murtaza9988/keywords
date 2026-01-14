@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store/store';
 import { setKeywordsForView, setChildrenForGroup, setProjectStats } from '@/store/projectSlice';
@@ -121,7 +121,6 @@ class ApiCache {
 
 
 export default function ProjectDetail() {
-  const router = useRouter();
   const params = useParams();
   const projectIdNum = Number(params?.id);
   const projectIdStr = params?.id ? String(params.id) : '';
@@ -297,7 +296,7 @@ const fetchProjectStats = useCallback(async () => {
     console.error('Error fetching project stats:', error);
     addSnackbarMessage(`Error fetching stats: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
   }
-}, [projectIdStr, router, addSnackbarMessage]);
+}, [projectIdStr, addSnackbarMessage]);
   const calculateMaintainedPage = useCallback((
     currentPage: number,
     currentLimit: number,
@@ -630,7 +629,6 @@ const fetchProjectStats = useCallback(async () => {
     selectedSerpFeatures,
     projectIdNum, 
     dispatch, 
-    router, 
     addSnackbarMessage, 
     apiCache
   ]);
@@ -686,7 +684,7 @@ const fetchChildren = useCallback(async (groupId: string) => {
     } finally {
       setIsExporting(false);
     }
-  }, [activeView, projectIdStr, addSnackbarMessage, router]);
+  }, [activeView, projectIdStr, addSnackbarMessage]);
 
   const handleExportParentKeywords = useCallback(async () => {
 
@@ -711,7 +709,7 @@ const fetchChildren = useCallback(async (groupId: string) => {
     } finally {
       setIsExportingParent(false);
     }
-  }, [projectIdStr, addSnackbarMessage, router]);
+  }, [projectIdStr, addSnackbarMessage]);
   const handleImportParentKeywords = useCallback(async (file: File) => {
 
     setIsImportingParent(true);
@@ -744,7 +742,7 @@ const fetchChildren = useCallback(async (groupId: string) => {
     } finally {
       setIsImportingParent(false);
     }
-  }, [projectIdStr, addSnackbarMessage, router, fetchKeywords, pagination, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]);
+  }, [projectIdStr, addSnackbarMessage, fetchKeywords, pagination, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]);
 
 const handleViewChange = useCallback((newView: ActiveKeywordView) => {
   if (activeView !== newView) {
@@ -1253,7 +1251,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         });
       }
     }
-  }, [projectIdStr, childrenCache, router, dispatch, addSnackbarMessage, expandedGroups, fetchChildren]);
+  }, [projectIdStr, childrenCache, dispatch, addSnackbarMessage, expandedGroups, fetchChildren]);
 
   const handleConfirmKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1314,7 +1312,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, router, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
 
   const handleUnconfirmKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1375,7 +1373,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, router, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
 
   const handleGroupKeywords = useCallback(async (overrideGroupName?: string) => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1516,7 +1514,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, router, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating]);
+  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating]);
 
   useEffect(() => {
       const blurActiveCheckboxes = () => {
@@ -1690,7 +1688,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, router, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
 
   const handleUnblockKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1737,7 +1735,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, router, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
     
     const handleMiddleClickGroup = useCallback(async (keywordIds: number[]) => {
     if (activeView !== 'ungrouped') {
@@ -1804,7 +1802,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     } finally {
       setIsProcessingAction(false);
     }
-  }, [activeView, groupName, projectIdStr, ungroupedKeywords, addSnackbarMessage, router, setGroupName,
+  }, [activeView, groupName, projectIdStr, ungroupedKeywords, addSnackbarMessage, setGroupName,
       fetchKeywords, pagination, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, 
       setSelectedKeywordIds, setIsProcessingAction]);
       
@@ -1921,7 +1919,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setProcessingProgress(0);
     }
   }, [
-    projectIdStr, processingStatus, stopProcessingCheck, router, 
+    projectIdStr, processingStatus, stopProcessingCheck, 
     fetchKeywords, pagination.limit, activeView, sortParams, 
     selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, addSnackbarMessage, 
     dispatch, projectIdNum, fetchProjectStats
@@ -2022,7 +2020,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     } finally {
       setIsLoadingData(false);
     }
-  }, [projectIdStr, router, pagination.limit, activeView, dispatch, projectIdNum, startProcessingCheck, addSnackbarMessage, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter]);
+  }, [projectIdStr, pagination.limit, activeView, dispatch, projectIdNum, startProcessingCheck, addSnackbarMessage, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter]);
   
   const handleUploadStart = useCallback(() => {
     setIsUploading(true);
@@ -2336,7 +2334,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   
       debouncedFetch();
     },
-    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
+    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
   );
   
   const handleMaxLengthChange = useCallback(
@@ -2362,7 +2360,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   
       debouncedFetch();
     },
-    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
+    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
   );
 
   const handleSerpFilterChange = useCallback((features: string[]) => {

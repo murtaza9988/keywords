@@ -16,9 +16,9 @@ from app.models.keyword import Keyword, KeywordStatus
 
 class KeywordService:
     @staticmethod
-    async def create_many(db: AsyncSession, keywords_data: List[Dict]):
+    async def create_many(db: AsyncSession, keywords_data: List[Dict[str, Any]]) -> bool:
         if not keywords_data:
-            return []
+            return False
 
         values = [
             {
@@ -44,7 +44,7 @@ class KeywordService:
 
         return True
     @staticmethod
-    async def delete_by_project(db: AsyncSession, project_id: int):
+    async def delete_by_project(db: AsyncSession, project_id: int) -> None:
         """Delete all keywords for a project."""
         stmt = delete(Keyword).where(Keyword.project_id == project_id)
         await db.execute(stmt)
@@ -473,7 +473,7 @@ class KeywordService:
 
 
     @staticmethod
-    async def update(db: AsyncSession, keyword_id: int, update_data: Dict[str, Any]):
+    async def update(db: AsyncSession, keyword_id: int, update_data: Dict[str, Any]) -> None:
         """Update a keyword by ID."""
         await db.execute(
             update(Keyword)
@@ -735,7 +735,7 @@ class KeywordService:
         return keywords_by_status
    
     @staticmethod
-    async def find_parent_by_group_id(db: AsyncSession, group_id: str):
+    async def find_parent_by_group_id(db: AsyncSession, group_id: str) -> Optional[Keyword]:
         """Find the parent keyword for a specific group."""
         query = select(Keyword).where(
             and_(
@@ -748,7 +748,11 @@ class KeywordService:
         return result.scalars().first()
 
     @staticmethod
-    async def find_children_by_group_id(db: AsyncSession, group_id: str, status: Optional[str] = None):
+    async def find_children_by_group_id(
+        db: AsyncSession,
+        group_id: str,
+        status: Optional[str] = None,
+    ) -> List[Keyword]:
         """Find all child keywords for a specific group, optionally filtering by status."""
         query = select(Keyword).where(
             and_(
@@ -840,7 +844,7 @@ class KeywordService:
         return group_count
     
     @staticmethod
-    async def get_token_volumes(db: AsyncSession, project_id: int, tokens: List[str]) -> List[Dict]:
+    async def get_token_volumes(db: AsyncSession, project_id: int, tokens: List[str]) -> List[Dict[str, Any]]:
         """Helper to determine token volumes."""
         stmt = text("""
             SELECT token, SUM(volume) AS total_volume
@@ -1210,7 +1214,7 @@ class KeywordService:
         return result.scalars().all() or []
 
     @staticmethod
-    async def find_group_by_name(db: AsyncSession, project_id: int, group_name: str):
+    async def find_group_by_name(db: AsyncSession, project_id: int, group_name: str) -> Optional[Keyword]:
         """Find a group by name in the project."""
         query = select(Keyword).where(
             and_(
@@ -1254,7 +1258,7 @@ class KeywordService:
         return result.scalars().all() or []
 
     @staticmethod
-    async def find_group_by_name(db: AsyncSession, project_id: int, group_name: str):
+    async def find_group_by_name(db: AsyncSession, project_id: int, group_name: str) -> Optional[Keyword]:
         """Find a group by name in the project."""
         query = select(Keyword).where(
             and_(
@@ -1284,7 +1288,7 @@ class KeywordService:
         return result.scalars().all()
 
     @staticmethod
-    async def update(db: AsyncSession, keyword_id: int, update_data: Dict[str, Any]):
+    async def update(db: AsyncSession, keyword_id: int, update_data: Dict[str, Any]) -> None:
         """Update a keyword by ID."""
         await db.execute(
             update(Keyword)

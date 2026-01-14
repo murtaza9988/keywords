@@ -67,6 +67,15 @@ seo-project-manager/
    uvicorn app.main:app --reload
    ```
 
+## Linting
+
+Run the backend linters from the repository root:
+
+```
+ruff check backend/app backend/alembic
+black --check backend/app backend/alembic
+```
+
 ## API Endpoints
 
 The application provides the following API endpoints:
