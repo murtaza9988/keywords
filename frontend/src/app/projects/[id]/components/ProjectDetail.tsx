@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
@@ -41,7 +39,7 @@ function isError(error: unknown): error is Error {
   return error instanceof Error;
 }
 
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number,
   options: { immediate?: boolean } = {}
@@ -50,7 +48,7 @@ function debounce<T extends (...args: any[]) => any>(
   let lastArgs: Parameters<T> | null = null;
   let lastCallTime: number | null = null;
   
-  return function(this: any, ...args: Parameters<T>): void {
+  return function(this: unknown, ...args: Parameters<T>): void {
     const time = Date.now();
     lastArgs = args;
     lastCallTime = time;
@@ -73,7 +71,7 @@ function debounce<T extends (...args: any[]) => any>(
   };
 }
 class ApiCache {
-  private cache: Map<string, CacheEntry<any>> = new Map();
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
   private defaultTTLMs: number;
 
   constructor(defaultTTLMs = 30000) {
@@ -90,7 +88,7 @@ class ApiCache {
       return null;
     }
 
-    return entry.data;
+    return entry.data as T;
   }
 
   set<T>(key: string, data: T, ttlMs?: number): void {
@@ -256,7 +254,7 @@ export default function ProjectDetail() {
   }, [processingProgress, displayProgress]);
 
   const getCurrentViewData = useCallback(() => {
-    let data: any[] = [];
+    let data: Keyword[] = [];
     
     switch (activeView) {
       case 'ungrouped': 
@@ -652,7 +650,9 @@ const fetchProjectStats = useCallback(async () => {
     apiCache
   ]);
 
-const getSerpFeatures = (keyword: any): string[] => {
+const getSerpFeatures = (
+  keyword: Keyword | { serpFeatures?: string[] | string | null }
+): string[] => {
   if (!keyword || !keyword.serpFeatures) return [];
   if (Array.isArray(keyword.serpFeatures)) return keyword.serpFeatures;
   if (typeof keyword.serpFeatures === 'string') {
@@ -862,7 +862,7 @@ const formatDataForDisplay = useMemo(() => {
   const keywords = getCurrentViewData();
   
   return keywords.map(parent => {
-    let children: any[] = [];
+    let children: Keyword[] = [];
     
     if (parent.groupId && expandedGroups.has(parent.groupId)) {
       children = childrenCache[parent.groupId] || [];
@@ -1563,8 +1563,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if ((window as any).__handlingShiftPress) return;
-        (window as any).__handlingShiftPress = true;
+        if (window.__handlingShiftPress) return;
+        window.__handlingShiftPress = true;
 
         try {
           blurActiveCheckboxes();
@@ -1600,7 +1600,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           }
         } finally {
           setTimeout(() => {
-            (window as any).__handlingShiftPress = false;
+            window.__handlingShiftPress = false;
           }, 300);
         }
       }
@@ -1615,8 +1615,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if ((window as any).__handlingCtrlPress) return;
-        (window as any).__handlingCtrlPress = true;
+        if (window.__handlingCtrlPress) return;
+        window.__handlingCtrlPress = true;
 
         try {
           blurActiveCheckboxes();
@@ -1628,7 +1628,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           }
         } finally {
           setTimeout(() => {
-            (window as any).__handlingCtrlPress = false;
+            window.__handlingCtrlPress = false;
           }, 300);
         }
       }
@@ -2007,7 +2007,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }
         
         if (initialData.currentView?.keywords) {
-          const transformedKeywords = initialData.currentView.keywords.map((kw: { original_volume: any; volume: any; status: any; keyword: any; }) => ({
+          const transformedKeywords = (initialData.currentView.keywords as Keyword[]).map((kw) => ({
             ...kw,
             original_volume: kw.original_volume || kw.volume || 0,
             project_id: projectIdNum,
