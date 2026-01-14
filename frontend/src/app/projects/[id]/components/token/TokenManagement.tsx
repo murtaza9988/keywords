@@ -165,6 +165,8 @@ export function TokenManagement({
             hasChildren: kw.hasChildren || false,
             childTokens: kw.childTokens || [],
           }));
+          const mergedParentTokens = new Set();
+          const mergedChildTokens = new Set();
           const searchTerms = search.split(',').map(term => term.trim()).filter(term => term.length > 0);
           if (searchTerms.length > 0) {
             currentTokens = currentTokens.filter(token =>
@@ -394,7 +396,7 @@ export function TokenManagement({
       tokensArray.sort((a, b) => (b.volume || 0) - (a.volume || 0));
       const parentToken = tokensArray[0].tokenName;
       const childTokens = tokensArray.slice(1).map(t => t.tokenName);
-      await apiClient.mergeTokens(projectId, parentToken, childTokens);
+              const response = await apiClient.mergeTokens(projectId, parentToken, childTokens);
       addSnackbarMessage(`Successfully merged ${childTokens.length + 1} tokens under "${parentToken}".`, 'success');
       setSelectedTokenNames(new Set());
       setIsLoading(true);
@@ -562,7 +564,7 @@ export function TokenManagement({
   const handleUnblockSingleToken = async (tokenName: string) => {
     setIsProcessingAction(true);
     try {
-      await apiClient.unblockTokens(projectId, [tokenName]);
+              const response = await apiClient.unblockTokens(projectId, [tokenName]);
       addSnackbarMessage(`Successfully unblocked token "${tokenName}".`, 'success');
       setIsLoading(true);
       setFetchTrigger(prev => prev + 1);
@@ -579,7 +581,7 @@ export function TokenManagement({
     setIsProcessingAction(true);
 
     try {
-      await apiClient.unmergeToken(projectId, tokenName);
+              const response = await apiClient.unmergeToken(projectId, tokenName);
       addSnackbarMessage(`Successfully unmerged token "${tokenName}".`, 'success');
       setIsLoading(true);
       setFetchTrigger(prev => prev + 1);
@@ -660,7 +662,7 @@ export function TokenManagement({
     setIsProcessingAction(true);
 
     try {
-      await apiClient.unmergeIndividualToken(projectId, parentToken, childToken);
+              const response = await apiClient.unmergeIndividualToken(projectId, parentToken, childToken);
       addSnackbarMessage(`Successfully unmerged "${childToken}" from "${parentToken}".`, 'success');
       setIsLoading(true);
       setFetchTrigger(prev => prev + 1);

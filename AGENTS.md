@@ -1,3 +1,152 @@
+# Development Best Practices & Guidelines
+
+> **This file is the single source of truth for development standards in this repository.**
+> All contributors, human or AI, must adhere to these guidelines.
+
+---
+
+## 1. Core Philosophy & Architecture
+
+### Backend: The Service Pattern
+- **Routers (`app/routes`)**: strictly for HTTP transport (parsing params, validating input, returning responses). **No business logic here.**
+- **Services (`app/services`)**: contain the business logic. They receive Pydantic schemas or primitives, perform operations (often using Repositories or Models), and return results.
+- **Models (`app/models`)**: Database table definitions (SQLAlchemy).
+- **Schemas (`app/schemas`)**: Data transfer objects (Pydantic). Use these for input validation and output serialization.
+
+### Frontend: Modern React & State
+- **Server Components**: Default to Server Components for fetching data. Use Client Components (`"use client"`) only for interactivity (hooks, event listeners).
+- **Redux Toolkit**: Used for global client state (e.g., project data, UI preferences).
+  - Use `createSlice`.
+  - Do not put non-serializable data (functions, class instances) in Redux.
+- **Tailwind CSS 4**: The exclusive source of styling.
+  - Avoid inline styles (`style={{...}}`).
+  - Use utility classes over custom CSS files.
+  - Follow the **Design Guidelines** (`frontend/src/app/design-guidelines/page.tsx`) for colors/typography.
+
+---
+
+## 2. Workflow & Hygiene
+
+### Git & Commits
+- **Branch Naming**: `feat/short-description`, `fix/issue-description`, `docs/update-readme`.
+- **Commit Messages**: Conventional Commits style.
+  - `feat: add keyword grouping`
+  - `fix: resolve jwt expiration bug`
+  - `chore: update dependencies`
+
+### Pre-Commit Checklist
+Before submitting a PR, ensure:
+1. **Linting**:
+   - Frontend: `npm run lint` (ESLint)
+   - Backend: `ruff check .` & `black --check .`
+2. **Types**:
+   - Frontend: `npm run typecheck` (TypeScript)
+   - Backend: `mypy .`
+3. **Tests**:
+   - Frontend: `npm test` (Jest)
+   - Backend: `pytest`
+
+---
+
+## 3. Frontend Guidelines (Next.js 15 + React 19)
+
+### Component Structure
+- **Co-location**: Keep related files together.
+  ```
+  components/
+  ├── UserProfile/
+  │   ├── UserProfile.tsx
+  │   ├── UserProfile.test.tsx
+  │   └── types.ts
+  ```
+- **Props**: Use `interface` for props, not `type`. Define them explicitly (avoid `any`).
+  - **Guardrail**: Avoid duplicate JSX props. Run `eslint-plugin-react` checks to catch this.
+
+### Performance
+- **Virtualization**: Use `react-virtuoso` for any list > 50 items (e.g., Keyword Table).
+- **Images**: Always use `next/image` with defined `width`/`height` to prevent layout shift.
+
+### State Management
+- **Local State**: Use `useState` for simple component-local UI state (e.g., isModalOpen).
+- **Global State**: Use Redux for data shared across pages.
+- **Server State**: Prefer fetching fresh data in Server Components or using `SWR`/`React Query` if client-side polling is needed.
+
+### Testing
+- **Jest + React Testing Library**:
+  - Test *behavior*, not implementation details.
+  - Example: `fireEvent.click(screen.getByText('Submit'))` instead of checking internal state.
+- **Snapshot Testing**: Use sparingly. They are brittle. Prefer explicit assertions.
+
+---
+
+## 4. Backend Guidelines (FastAPI + Async SQLAlchemy)
+
+### Database & Migrations
+- **Async Only**: Use `async`/`await` for all DB operations (`aiosqlite`, `asyncpg`, `aiomysql`).
+- **PostgreSQL Priority**: The codebase uses `JSONB` operators. **PostgreSQL is the required production DB**.
+  - *Note*: `aiosqlite` is acceptable for local dev IF `JSONB` features are not strictly required or if SQLite JSON1 extension is enabled/compatible.
+- **Migrations (Alembic)**:
+  - Never modify `models/*.py` without generating a migration: `alembic revision --autogenerate -m "message"`.
+  - Inspect the generated migration file before applying.
+
+### Error Handling
+- Use `HTTPException` for expected errors (404, 400).
+- Let unexpected exceptions bubble up to the global exception handler (500).
+
+### Security
+- **Authentication**: Use `Depends(get_current_user)` on all protected routes.
+- **Secrets**: NEVER commit secrets. Use `.env` and `pydantic-settings`.
+- **SQL Injection**: Always use the ORM or bound parameters. Never string concatenation.
+
+### Testing
+- **Pytest**:
+  - Use `conftest.py` for fixtures (DB session, auth tokens).
+  - Test coverage should include happy paths AND error cases.
+
+---
+
+## 5. Anti-Patterns & Known Risks
+
+> ⚠️ **Avoid these common mistakes identified in this repository.**
+
+1. **Hardcoded Credentials**:
+   - *Bad*: `if username == "admin" and password == "secret":`
+   - *Good*: Use a proper auth service backed by the DB.
+
+2. **Database Engine Mismatch**:
+   - The code uses Postgres-specific features (JSONB `?`, `@>`).
+   - *Risk*: Running this on standard MySQL or SQLite without specific extensions will cause runtime 500 errors.
+   - *Fix*: Ensure your local env matches production (Postgres) or strictly test your query compatibility.
+
+3. **Prop Drilling**:
+   - *Bad*: Passing `user` through 5 layers of components.
+   - *Good*: Use Context or Redux.
+
+4. **Duplicate JSX Props**:
+   - *Bad*: `<Input value={val} onChange={change} value={val2} />`
+   - *Why*: This causes subtle bugs and build warnings. Linting is configured to catch this, do not ignore it.
+
+5. **Ignoring Types**:
+   - *Bad*: `const data: any = response;`
+   - *Good*: Define the shape. `const data: UserResponse = response;`
+
+---
+
+## 6. Troubleshooting & Maintenance
+
+### "Invalid Project Directory" in Next Lint
+If `next lint` fails in CI, ensure it's running from the `frontend` workspace or that the ESLint config points to the correct root.
+
+### Token Backfill
+When changing tokenizer logic, you must run the backfill script:
+```bash
+cd backend
+python -m app.scripts.backfill_compounds --project-id <id>
+```
+
+### Build & CI Hygiene
+- Treat TypeScript errors and Lint warnings as **Blockers**.
+- Do not merge if `npm run typecheck` fails.
 # Development Best Practices
 
 ## Build and CI hygiene

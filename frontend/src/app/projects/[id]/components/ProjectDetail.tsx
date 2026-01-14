@@ -400,12 +400,12 @@ const fetchProjectStats = useCallback(async () => {
           totalCount: cachedTotalCount,
         }));
         
-        setPagination({
+        setPagination(prev => ({
           total: cachedTotalCount,
           page: validPage,
           limit: limit,
           pages: totalPages
-        });
+        }));
         
         setIsTableLoading(false);
         return;
@@ -560,12 +560,12 @@ const fetchProjectStats = useCallback(async () => {
           totalCount: totalItems,
         }));
 
-        setPagination({
+        setPagination(prev => ({
           total: totalItems,
           page: validPage,
           limit: limit,
           pages: totalPages
-        });
+        }));
         
         setIsTableLoading(false);
         return;
@@ -621,12 +621,12 @@ const fetchProjectStats = useCallback(async () => {
         })),
         totalCount: totalItems,
       }));
-      setPagination({
+      setPagination(prev => ({
         total: totalItems,
         page: validPage,
         limit: limit,
         pages: totalPages
-      });
+      }));
     } catch (error) {
       console.error('Error fetching keywords:', error);
       addSnackbarMessage(`Error loading keywords: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
@@ -659,25 +659,26 @@ const fetchProjectStats = useCallback(async () => {
     apiCache
   ]);
 
-  const getSerpFeatures = (
-    keyword: Keyword | { serpFeatures?: string[] | string | null }
-  ): string[] => {
-    if (!keyword || !keyword.serpFeatures) return [];
-    if (Array.isArray(keyword.serpFeatures)) return keyword.serpFeatures;
-    if (typeof keyword.serpFeatures === 'string') {
-      try {
-        const parsed = JSON.parse(keyword.serpFeatures);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
+const getSerpFeatures = (
+  keyword: Keyword | { serpFeatures?: string[] | string | null }
+): string[] => {
+  if (!keyword || !keyword.serpFeatures) return [];
+  if (Array.isArray(keyword.serpFeatures)) return keyword.serpFeatures;
+  if (typeof keyword.serpFeatures === 'string') {
+    try {
+      const parsed = JSON.parse(keyword.serpFeatures);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
     }
-    return [];
-  };
-  const fetchChildren = useCallback(async (groupId: string) => {
+  }
+  return [];
+};
+const fetchChildren = useCallback(async (groupId: string) => {
     if (!projectIdStr) return [];
     try {
-      const data = await apiClient.fetchChildren(projectIdStr, groupId);
+      const timestamp = new Date().getTime();
+              const data = await apiClient.fetchChildren(projectIdStr, groupId);
       return data.children;
     } catch (error) {
       console.error('Error fetching children:', error);
@@ -972,6 +973,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         newSelected.clear();
         setGroupName('');
       } else {
+        const selectedKeyword = filteredAndSortedKeywords.find(k => k.id === keywordId) ||
+          Object.values(childrenCache).flat().find(k => k.id === keywordId);
+
         if (newSelected.has(keywordId)) {
           newSelected.delete(keywordId);
           // NO AUTO-DESELECTION - only deselect what the user explicitly clicks
@@ -1258,6 +1262,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       });
     } else {
       setExpandedGroups(prev => new Set(prev).add(groupId));
+      const groupData = childrenCache[groupId];
+
       setLoadingChildren(prevLoading => new Set(prevLoading).add(groupId));
       try {
         const children = await fetchChildren(groupId);
@@ -1277,7 +1283,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         });
       }
     }
-  }, [projectIdStr, dispatch, addSnackbarMessage, expandedGroups, fetchChildren]);
+  }, [projectIdStr, childrenCache, dispatch, addSnackbarMessage, expandedGroups, fetchChildren]);
 
   const handleConfirmKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1426,9 +1432,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     
     try {
       let data;
+      let targetEndpoint = 'group';
       let messagePrefix = 'grouped';
       
       if (activeView === 'grouped') {
+        targetEndpoint = 'regroup';
         messagePrefix = 'regrouped';
         const selectedParents = keywordIds
           .map(id => filteredAndSortedKeywords.find(k => k.id === id))
@@ -1808,7 +1816,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   
     setIsProcessingAction(true);
     try {
-      await apiClient.groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
+              const data = await apiClient.groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
       addSnackbarMessage(`Grouped ${keywordInfo} as "${trimmedGroupName}"`, 'success');
   
       await fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
