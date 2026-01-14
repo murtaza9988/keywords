@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { BarChart3, Calendar, Edit2, Trash2, Loader2, ArrowUpDown } from 'lucide-react';
 import { Project } from '@/lib/types';
 import { ProjectWithStats } from '../page';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
@@ -26,7 +25,6 @@ interface ProjectsTableProps {
   setShowDeleteModal: (value: boolean) => void;
   setEditingProject: (project: Project | null) => void;
   searchTerm: string;
-  setSearchTerm: (value: string) => void;
   sortConfig: { key: string; order: 'asc' | 'desc' };
   setSortConfig: (config: { key: string; order: 'asc' | 'desc' }) => void;
 }
@@ -71,7 +69,6 @@ export default function ProjectsTable({
   setShowDeleteModal,
   setEditingProject,
   searchTerm,
-  setSearchTerm,
   sortConfig,
   setSortConfig,
 }: ProjectsTableProps) {
@@ -126,7 +123,7 @@ export default function ProjectsTable({
   };
 
   return (
-    <Card className="overflow-hidden w-full text-[13px] text-foreground">
+    <div className="overflow-hidden w-full text-[13px] text-foreground">
       {isLoadingProjects ? (
         <div className="flex justify-center items-center py-20">
           <div className="text-center">
@@ -142,22 +139,6 @@ export default function ProjectsTable({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <div className="flex items-center justify-start gap-6 mb-6 px-6 pt-6">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">Projects</h2>
-              <p className="text-[13px] text-muted mt-1">Manage your [{filteredProjects.length}] SEO keyword projects</p>
-            </div>
-            <div className="flex items-center mt-8 gap-4">
-              <Input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search projects..."
-                className="w-64 text-[13px]"
-              />
-              
-            </div>
-          </div>
           <table className="w-full divide-y divide-border text-[13px]">
             <thead className="bg-surface-muted">
               <tr>
@@ -383,6 +364,6 @@ export default function ProjectsTable({
           </div>
         </div>
       )}
-    </Card>
+    </div>
   );
 }
