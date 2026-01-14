@@ -30,6 +30,44 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## End-to-end tests (Playwright)
+
+This project includes a Playwright E2E test that covers:
+
+1. Logging in
+2. Opening a project
+3. Uploading a CSV fixture
+4. Waiting for processing
+5. Grouping keywords and verifying the grouped view
+
+### Setup
+
+1. Install dependencies (from `frontend/`):
+
+   ```bash
+   npm install
+   npx playwright install
+   ```
+
+2. Provide environment variables used by the test:
+
+   ```bash
+   export E2E_USERNAME="your-username"
+   export E2E_PASSWORD="your-password"
+   # Optional: target a specific project row by name
+   export E2E_PROJECT_NAME="My Project"
+   # Optional: override base URL (defaults to http://localhost:3000)
+   export PLAYWRIGHT_BASE_URL="http://localhost:3000"
+   ```
+
+3. Start the app (and API) locally, then run:
+
+   ```bash
+   npm run test:e2e
+   ```
+
+The CSV fixture used by the test lives in `frontend/e2e/fixtures/sample-keywords.csv`.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
