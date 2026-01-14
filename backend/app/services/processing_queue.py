@@ -49,6 +49,34 @@ class ProcessingQueueService:
     def reset_results(self, project_id: int) -> None:
         self.processing_results[project_id] = self._default_result()
 
+    def reset_for_new_batch(self, project_id: int) -> None:
+        self.processing_results[project_id] = self._default_result()
+
+    def start_file_processing(self, project_id: int, *, message: Optional[str] = None) -> None:
+        existing = self.processing_results.get(project_id, self._default_result())
+        result = self._default_result()
+        result["uploaded_files"] = existing.get("uploaded_files", [])
+        result["processed_files"] = existing.get("processed_files", [])
+        result["validation_error"] = None
+        if message is not None:
+            result["message"] = message
+        self.processing_results[project_id] = result
+        self.processing_tasks[project_id] = "processing"
+
+    def register_upload(self, project_id: int, file_name: str) -> None:
+        result = self.processing_results.setdefault(project_id, self._default_result())
+        uploaded_files = result.setdefault("uploaded_files", [])
+        if file_name not in uploaded_files:
+            uploaded_files.append(file_name)
+
+    def mark_file_processed(self, project_id: int, file_name: Optional[str] = None) -> None:
+        if not file_name:
+            return
+        result = self.processing_results.setdefault(project_id, self._default_result())
+        processed_files = result.setdefault("processed_files", [])
+        if file_name not in processed_files:
+            processed_files.append(file_name)
+
     def update_progress(
         self,
         project_id: int,
@@ -78,15 +106,18 @@ class ProcessingQueueService:
         project_id: int,
         *,
         message: str,
+        file_name: Optional[str] = None,
+        has_more_in_queue: bool = False,
         keywords: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         result = self.processing_results.setdefault(project_id, self._default_result())
-        result["complete"] = True
-        result["progress"] = 100.0
+        self.mark_file_processed(project_id, file_name)
+        result["complete"] = not has_more_in_queue
+        result["progress"] = 100.0 if not has_more_in_queue else result.get("progress", 0.0)
         result["message"] = message
         if keywords is not None:
             result["keywords"] = keywords
-        self.processing_tasks[project_id] = "complete"
+        self.processing_tasks[project_id] = "complete" if not has_more_in_queue else "queued"
 
     def mark_error(self, project_id: int, *, message: str) -> None:
         result = self.processing_results.setdefault(project_id, self._default_result())
@@ -114,6 +145,9 @@ class ProcessingQueueService:
             "total_rows": 0,
             "progress": 0.0,
             "message": "",
+            "uploaded_files": [],
+            "processed_files": [],
+            "validation_error": None,
         }
 
 

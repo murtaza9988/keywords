@@ -101,6 +101,12 @@ interface ApiInitialDataResponse {
     message?: string;
     currentFileName?: string | null;
     queuedFiles?: string[];
+    queueLength?: number;
+    uploadedFiles?: string[];
+    processedFiles?: string[];
+    uploadedFileCount?: number;
+    processedFileCount?: number;
+    validationError?: string | null;
   };
 }
 

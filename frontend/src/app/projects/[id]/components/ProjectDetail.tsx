@@ -394,28 +394,26 @@ export default function ProjectDetail(): React.ReactElement {
     if (!projectIdStr) return;
     try {
       const statsData = await fetchProjectStatsApi(projectIdStr);
-      if (statsData) {
-        detailDispatch({
-          type: 'setStats',
-          payload: {
-            ungroupedCount: statsData.ungroupedCount || 0,
-            groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
-            groupedPages: statsData.groupedPages || 0,
-            confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
-            confirmedPages: statsData.confirmedPages || 0,
-            blockedCount: statsData.blockedCount || 0,
-            totalParentKeywords: statsData.totalParentKeywords || 0,
-            totalKeywords: statsData.totalKeywords ||
-              (statsData.ungroupedCount + statsData.groupedKeywordsCount +
-                (statsData.confirmedKeywordsCount ?? 0) + statsData.blockedCount),
-          },
-        });
+      detailDispatch({
+        type: 'setStats',
+        payload: {
+          ungroupedCount: statsData.ungroupedCount || 0,
+          groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
+          groupedPages: statsData.groupedPages || 0,
+          confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
+          confirmedPages: statsData.confirmedPages || 0,
+          blockedCount: statsData.blockedCount || 0,
+          totalParentKeywords: statsData.totalParentKeywords || 0,
+          totalKeywords: statsData.totalKeywords ||
+            (statsData.ungroupedCount + statsData.groupedKeywordsCount +
+              (statsData.confirmedKeywordsCount ?? 0) + statsData.blockedCount),
+        },
+      });
 
-        dispatch(setProjectStats({
-          projectId: projectIdStr,
-          stats: statsData
-        }));
-      }
+      dispatch(setProjectStats({
+        projectId: projectIdStr,
+        stats: statsData,
+      }));
     } catch (error) {
       console.error('Error fetching project stats:', error);
       addSnackbarMessage(
@@ -835,7 +833,6 @@ export default function ProjectDetail(): React.ReactElement {
   }, [activeView, projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
 
   const handleExportParentKeywords = useCallback(async () => {
-
     detailDispatch({
       type: 'updateProcessing',
       payload: { isExportingParent: true },
@@ -861,10 +858,15 @@ export default function ProjectDetail(): React.ReactElement {
         'Error exporting parent keywords: ' + (isError(error) ? error.message : 'Unknown error'),
         'error'
       );
+    } finally {
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isExportingParent: false },
+      });
     }
   }, [projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
-  const handleImportParentKeywords = useCallback(async (file: File) => {
 
+  const handleImportParentKeywords = useCallback(async (file: File) => {
     detailDispatch({
       type: 'updateProcessing',
       payload: { isImportingParent: true },
@@ -874,10 +876,10 @@ export default function ProjectDetail(): React.ReactElement {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       await importParentKeywords(projectIdStr, formData);
       addSnackbarMessage('Parent keywords imported successfully', 'success');
-      
+
       await fetchKeywords(
         pagination.page,
         pagination.limit,
@@ -901,7 +903,7 @@ export default function ProjectDetail(): React.ReactElement {
     }
   }, [projectIdStr, addSnackbarMessage, fetchKeywords, pagination, activeView, sortParams, filterParams, bumpLogsRefresh]);
 
-const handleViewChange = useCallback((newView: ActiveKeywordView) => {
+  const handleViewChange = useCallback((newView: ActiveKeywordView) => {
   if (activeView !== newView) {
     detailDispatch({
       type: 'updateView',
@@ -2126,6 +2128,15 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         },
       });
 
+      if (validationError && data.status === 'complete') {
+        setProcessingStatus('error');
+        setIsUploading(false);
+        setProcessingProgress(0);
+        addSnackbarMessage(validationError, 'error');
+        stopProcessingCheck();
+        return;
+      }
+
       if (data.status === 'complete') {
         detailDispatch({
           type: 'updateProcessing',
@@ -2354,6 +2365,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             message?: string;
             currentFileName?: string | null;
             queuedFiles?: string[];
+            uploadedFiles?: string[];
           };
           detailDispatch({
             type: 'updateProcessing',
@@ -2401,6 +2413,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     startProcessingCheck();
     bumpLogsRefresh();
   }, [startProcessingCheck, bumpLogsRefresh]);  
+  const handleUploadBatchStart = useCallback((files: File[]) => {
+    setExpectedUploadFiles(files.map((file) => file.name));
+  }, []);
   const handleUploadSuccess = useCallback(
     (status: ProcessingStatus, message?: string) => {
       detailDispatch({
@@ -2424,10 +2439,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         fetchProjectStats();
         fetchKeywords(1, pagination.limit, activeView, sortParams, filterParams, true);
         bumpLogsRefresh();
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
       } else if (status === 'queued' || status === 'processing') {
         startProcessingCheck();
         addSnackbarMessage('Upload complete', 'success', {
@@ -2861,6 +2872,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     processingCurrentFile={processingCurrentFile}
                     processingQueue={processingQueue}
                     onUploadStart={handleUploadStart}
+                    onUploadBatchStart={handleUploadBatchStart}
                     onUploadSuccess={handleUploadSuccess}
                     onUploadError={handleUploadError}
                   />

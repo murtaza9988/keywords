@@ -140,6 +140,10 @@ async def start_next_processing(project_id: int) -> None:
     next_item = processing_queue_service.start_next(project_id)
     if not next_item:
         return
+    processing_queue_service.start_file_processing(
+        project_id,
+        message=f"Processing {next_item.get('file_name')}" if next_item.get("file_name") else "Processing CSV",
+    )
     asyncio.create_task(
         process_csv_file(
             next_item["file_path"],
@@ -150,7 +154,10 @@ async def start_next_processing(project_id: int) -> None:
 
 async def process_csv_file(file_path: str, project_id: int, file_name: Optional[str] = None) -> None:
     """Process the CSV file in the background with optimized performance using new merge operations structure."""
-    processing_queue_service.set_status(project_id, "processing")
+    processing_queue_service.start_file_processing(
+        project_id,
+        message=f"Processing {file_name}" if file_name else "Processing CSV",
+    )
     processing_queue_service.update_progress(
         project_id,
         processed_count=0,
@@ -467,9 +474,12 @@ async def process_csv_file(file_path: str, project_id: int, file_name: Optional[
             await db.commit()
 
             # Mark processing as complete after final grouping and cleanup
+            remaining_queue = processing_queue_service.get_queue(project_id)
             processing_queue_service.mark_complete(
                 project_id,
                 message=f"Completed processing {file_name}" if file_name else "Processing complete.",
+                file_name=file_name,
+                has_more_in_queue=len(remaining_queue) > 0,
             )
 
     except Exception as e:
