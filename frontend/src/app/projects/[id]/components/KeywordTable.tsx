@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, { memo, useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { Keyword, GroupedKeywordsDisplay, ActiveKeywordView, SortParams } from './types';
@@ -33,10 +33,6 @@ interface KeywordTableProps {
 interface FilterState {
   serpFeatures: string[];
 }
-
-type SerpFeatureSource = {
-  serpFeatures?: string[] | string | null;
-};
 
 const TableScroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
@@ -121,7 +117,6 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
     fetchSerpFeaturesData();
   }, [projectId]);
 
-  const getSerpFeatures = (item: SerpFeatureSource | null | undefined): string[] => {
   const getSerpFeatures = (
     item: Keyword | { serpFeatures?: string[] | string | null }
   ): string[] => {
@@ -131,9 +126,9 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
       try {
         const parsed = JSON.parse(item.serpFeatures);
         return Array.isArray(parsed) ? parsed : [];
-      } catch (e) {
-        return [];
-      }
+    } catch {
+      return [];
+    }
     }
     return [];
   };
