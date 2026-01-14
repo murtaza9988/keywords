@@ -571,112 +571,33 @@ async def upload_keywords(
                         "file_name": None,
                     }
 
-                # Combine files into a single CSV to ensure robust clustering
-                try:
-                    combined_filename = f"combined_batch_{batchId}.csv"
-                    combined_path = os.path.join(settings.UPLOAD_DIR, f"{project_id}_{combined_filename}")
-                    
-                    await ActivityLogService.log_activity(
-                        db,
-                        project_id=project_id,
-                        action="batch_merge_start",
-                        details={
-                            "batch_id": batchId,
-                            "file_count": len(file_entries)
-                        },
-                        user=current_user.get("username", "admin"),
-                    )
-                    
-                    # Retry logic for combining files (handle transient IO errors)
-                    max_retries = 3
-                    for attempt in range(max_retries):
-                        try:
-                            # Run in executor to avoid blocking event loop
-                            await asyncio.to_thread(combine_csv_files, processable_entries, combined_path)
-                            break
-                        except Exception as e:
-                            print(f"Attempt {attempt+1}/{max_retries} failed to combine CSVs: {e}")
-                            if attempt == max_retries - 1:
-                                raise e
-                            await asyncio.sleep(0.5 * (attempt + 1))
-                    
-                    # Log the combined file upload for tracking
-                    csv_upload = CSVUpload(
-                        project_id=project_id,
-                        file_name=combined_filename,
-                        storage_path=_rel_upload_path(combined_path),
-                    )
-                    db.add(csv_upload)
-                    
-                    await ActivityLogService.log_activity(
-                        db,
-                        project_id=project_id,
-                        action="batch_merge_success",
-                        details={
-                            "batch_id": batchId,
-                            "output_file": combined_filename
-                        },
-                        user=current_user.get("username", "admin"),
-                    )
-                    
-                    await db.commit()
-                    
-                    # Collect original filenames to mark as processed later
-                    original_filenames = [
-                        entry.get("file_name") 
-                        for entry in processable_entries
-                        if entry.get("file_name")
-                    ]
-                    
-                    # Enqueue the single combined file, but pass the list of ORIGINAL files
-                    # so the processing queue service knows all these files are now "processed".
+                await ActivityLogService.log_activity(
+                    db,
+                    project_id=project_id,
+                    action="batch_processing_queue",
+                    details={
+                        "batch_id": batchId,
+                        "file_count": len(processable_entries),
+                        "strategy": "sequential",
+                    },
+                    user=current_user.get("username", "admin"),
+                )
+                await db.commit()
+
+                # Enqueue each file separately to ensure sequential processing.
+                for entry in processable_entries:
                     enqueue_processing_file(
                         project_id,
                         entry["file_path"],
                         entry.get("file_name") or "CSV file",
-                        # Each file tracks itself
-                        file_names=[entry.get("file_name")] if entry.get("file_name") else None
                     )
-                    
-                    # IMPORTANT: Do NOT delete the individual uploaded files.
-                    # Users must be able to re-download any uploaded CSV.
-                    
-                    await start_next_processing(project_id)
-                    
-                    return {
-                        "message": "Batch upload complete. Files combined and processing queued.",
-                        "status": processing_queue_service.get_status(project_id),
-                        "file_name": combined_filename,
-                    }
-                except Exception as e:
-                    print(f"Error combining batch files: {e}")
-                    
-                    await ActivityLogService.log_activity(
-                        db,
-                        project_id=project_id,
-                        action="batch_merge_failed",
-                        details={
-                            "batch_id": batchId,
-                            "error": str(e),
-                            "fallback": "individual_processing"
-                        },
-                        user=current_user.get("username", "admin"),
-                    )
-                    
-                    # Fallback to individual processing if combination fails
-                    for entry in processable_entries:
-                        enqueue_processing_file(
-                            project_id,
-                            entry["file_path"],
-                            entry.get("file_name") or "CSV file",
-                        )
-                    await start_next_processing(project_id)
-                    
-                    return {
-                        "message": f"Batch upload complete (individual fallback: {str(e)}). Processing queued.",
-                        "status": processing_queue_service.get_status(project_id),
-                        "file_name": originalFilename,
-                    }
+                await start_next_processing(project_id)
+
+                return {
+                    "message": "Batch upload complete. Files queued for sequential processing.",
+                    "status": processing_queue_service.get_status(project_id),
+                    "file_name": originalFilename,
+                }
 
             if duplicate_info and originalFilename and not batchId:
                 # Avoid leaving the project stuck in "uploading" when we skipped processing.
