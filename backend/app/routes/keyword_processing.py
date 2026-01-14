@@ -3,169 +3,56 @@ import csv
 import os
 import json
 import uuid
-import unicodedata
-import string
-import re
 from collections import deque
-import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
 from typing import Any, Dict, List, Optional, Set, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text as sql_text
 from app.config import settings
 from app.database import get_db_context
 from app.services.keyword import KeywordService
+from nltk.tokenize import word_tokenize
+from app.services.keyword_processing import (
+    apply_stopwords,
+    build_keyword_payload,
+    get_synonyms,
+    lemmatizer,
+    lemmatize,
+    map_synonyms,
+    normalize_text,
+    parse_metrics,
+    stop_words,
+    tokenize,
+)
 from app.models.keyword import KeywordStatus
-from app.utils.token_normalization import normalize_compound_tokens
-from app.utils.normalization import normalize_numeric_tokens
-from app.utils.compound_normalization import normalize_compound_tokens
-from nltk.corpus import wordnet
 
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
-
-nltk_stop_words = set(stopwords.words('english'))
-custom_stop_words_list = [
-    'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'at', 'before',
-    'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'by', 'down', 'during', 'except',
-    'for', 'from', 'in', 'inside', 'into', 'like', 'near', 'of', 'off', 'on', 'onto', 'outside',
-    'over', 'since', 'through', 'throughout', 'till', 'to', 'toward', 'under', 'until', 'up',
-    'upon', 'with', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has',
-    'had', 'having', 'do', 'does', 'did', 'will', 'would', 'shall', 'should', 'may', 'might',
-    'can', 'could', 'must', 'ought', 'very', 'really', 'quite', 'rather', 'somewhat', 'too',
-    'so', 'more', 'most', 'less', 'least', 'much', 'many', 'few', 'little', 'well', 'better',
-    'best', 'worse', 'worst', 'here', 'there', 'now', 'then', 'today', 'yesterday', 'tomorrow',
-    'always', 'never', 'sometimes', 'often', 'usually', 'rarely', 'seldom', 'again', 'still',
-    'yet', 'already', 'just', 'only', 'also', 'even', 'almost', 'nearly', 'quite', 'rather',
-    'pretty', 'fairly', 'actually', 'basically', 'essentially', 'fundamentally', 'generally',
-    'normally', 'typically', 'usually', 'often', 'sometimes', 'rarely', 'never', 'always',
-    'definitely', 'certainly', 'probably', 'possibly', 'maybe', 'perhaps', 'obviously',
-    'clearly', 'apparently', 'supposedly', 'allegedly', 'all', 'any', 'both', 'each', 'every',
-    'few', 'many', 'much', 'no', 'none', 'one', 'several', 'some', 'such', 'another', 'other',
-    'either', 'neither', 'enough', 'little', 'less', 'more', 'most', 'own', 'same', 'and',
-    'but', 'or', 'nor', 'yet', 'oh', 'ah', 'um', 'uh', 'well', 'yes', 'no', 'okay', 'ok',
-    'sure', 'right'
-]
-stop_words = nltk_stop_words.union(set(custom_stop_words_list))
-lemmatizer = WordNetLemmatizer()
-
-EXTENDED_PUNCTUATION = string.punctuation + "®–—™"
 processing_tasks: Dict[int, str] = {}
 processing_results: Dict[int, Dict[str, Any]] = {}
 processing_queue: Dict[int, deque] = {}
 processing_current_files: Dict[int, Dict[str, str]] = {}
-question_words = {'what', 'why', 'how', 'when', 'where', 'who', 'which', 'whose', 'whom','can'}
-
-def get_synonyms(word: str) -> Set[str]:
-    synonyms = set()
-    for syn in wordnet.synsets(word):
-        for lemma in syn.lemmas():
-            synonym = lemma.name().lower().replace('_', ' ')
-            synonyms.add(synonym)
-    return synonyms
 
 def process_keyword(row_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], bool]:
     try:
         keyword = row_dict.get("Keyword")
         if not keyword or not isinstance(keyword, str) or len(keyword.strip()) == 0:
             return None, False
-        keyword = keyword.strip()
-        keyword = keyword.replace("'", "'").replace(""", "\"").replace(""", "\"").replace("–", "-").replace("—", "-")
-        keyword = keyword.replace("\\", "")
-        keyword = normalize_numeric_tokens(keyword)
-        has_non_english = any(
-            ord(char) > 127 and unicodedata.category(char).startswith('L')
-            for char in keyword
+        keyword = normalize_text(keyword)
+        tokens = tokenize(keyword, tokenizer=word_tokenize)
+        lemmatized_tokens = lemmatize(
+            tokens,
+            lemmatizer_override=lemmatizer,
+            stop_words_override=stop_words,
         )
-        status = KeywordStatus.blocked if has_non_english else KeywordStatus.ungrouped
-        blocked_by = "system" if has_non_english else None
-        try:
-            tokens = word_tokenize(keyword.lower())
-        except Exception as e:
-            print(f"Tokenization failed for '{keyword}': {e}")
-            tokens = [keyword.lower()]
-        tokens = normalize_compound_tokens(tokens)
-
-        tokens = normalize_compound_tokens(tokens)
-
-        lemmatized_tokens = []
-        synonym_map = {}
-        for token in tokens:
-            token_cleaned = token.translate(str.maketrans("", "", EXTENDED_PUNCTUATION))
-            token_cleaned = token_cleaned.replace("\\", "")
-            if not token_cleaned:
-                continue
-            
-            if any(ord(char) > 127 and unicodedata.category(char).startswith('L') for char in token_cleaned):
-                continue
-            
-            if token_cleaned in question_words:
-                lemmatized_tokens.append(token_cleaned)
-                continue
-                
-            if token_cleaned in stop_words and token_cleaned not in question_words:
-                continue
-            
-            verb_lemma = lemmatizer.lemmatize(token_cleaned, pos='v')
-            noun_lemma = lemmatizer.lemmatize(token_cleaned, pos='n')
-            lemmatized_token = noun_lemma if noun_lemma != token_cleaned else verb_lemma
-            
-            if lemmatized_token == "tradelines":
-                lemmatized_token = "tradeline"
-            
-            if lemmatized_token in stop_words and lemmatized_token not in question_words:
-                continue
-                
-            synonyms = get_synonyms(lemmatized_token)
-            base_token = lemmatized_token
-            for syn in synonyms:
-                if syn in lemmatized_tokens:
-                    base_token = min(syn, lemmatized_token)
-                    synonym_map[syn] = base_token
-            if lemmatized_token not in synonym_map:
-                synonym_map[lemmatized_token] = base_token
-                lemmatized_tokens.append(base_token)
-
-        final_tokens = []
-        for token in lemmatized_tokens:
-            final_tokens.append(synonym_map.get(token, token))
-        
-        final_tokens = sorted(list(set(final_tokens)))
-
-        volume_str = row_dict.get("Volume")
-        difficulty_str = row_dict.get("Difficulty")
-        serp_features_str = row_dict.get("SERP Features")
-        
-        try:
-            volume = int(float(str(volume_str).replace(',', ''))) if volume_str is not None and str(volume_str).strip() != '' else 0
-        except (ValueError, TypeError):
-            volume = 0
-        try:
-            difficulty = float(difficulty_str) if difficulty_str is not None and str(difficulty_str).strip() != '' else 0.0
-        except (ValueError, TypeError):
-            difficulty = 0.0
-            
-        serp_features = []
-        if serp_features_str:
-            if isinstance(serp_features_str, str):
-                serp_features = [f.strip() for f in serp_features_str.split(',') if f.strip()]
-            elif isinstance(serp_features_str, list):
-                serp_features = serp_features_str
-                
-        processed_keyword_data = {
-            "keyword": keyword,
-            "tokens": final_tokens,
-            "volume": volume,
-            "difficulty": difficulty,
-            "status": status,
-            "is_parent": False,
-            "group_id": None,
-            "blocked_by": blocked_by,
-            "serp_features": serp_features
-        }
+        lemmatized_tokens = apply_stopwords(
+            lemmatized_tokens,
+            stop_words_override=stop_words,
+        )
+        final_tokens = map_synonyms(lemmatized_tokens)
+        metrics = parse_metrics(row_dict)
+        processed_keyword_data = build_keyword_payload(
+            keyword,
+            final_tokens,
+            metrics,
+        )
         return processed_keyword_data, True
     except Exception as e:
         print(f"Error processing keyword row '{row_dict.get('Keyword')}': {e}")
