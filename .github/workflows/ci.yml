@@ -7,11 +7,26 @@ on:
       - main
 
 jobs:
+  lint-backend:
   typecheck:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Ruff
+        run: ruff check backend/app backend/alembic
+
+      - name: Black
+        run: black --check backend/app backend/alembic
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
