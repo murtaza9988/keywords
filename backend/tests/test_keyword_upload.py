@@ -186,6 +186,13 @@ def test_upload_keywords_batch_combines_files(
     assert mock_processing_tasks[1] == "processing"
     assert mock_processing_results[1]["complete"] is False
 
+    # Batch should enqueue both files (one started, one queued)
+    assert 1 in mock_processing_queue
+    queued = list(mock_processing_queue[1])
+    # One file should remain in queue after processing starts
+    assert len(queued) == 1
+    assert queued[0]["file_name"] in {"keywords-one.csv", "keywords-two.csv"}
+
 
 def test_processing_status_idle_returns_complete(
     test_api_client,
@@ -207,7 +214,7 @@ def test_processing_status_idle_returns_complete(
 
     monkeypatch.setattr(
         KeywordService,
-        "count_parents_by_project",
+        "count_total_by_project",
         AsyncMock(return_value=3),
     )
 

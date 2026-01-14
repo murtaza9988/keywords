@@ -208,23 +208,31 @@ async def process_csv_file(
             await db.execute(sql_text(index_query))
             await db.commit()            
             
-            async def refresh_existing_token_groups() -> Dict[str, str]:
-                """Get existing token groups from keywords table (for legacy support)"""
-                existing_token_groups = {}
+            async def refresh_existing_token_groups() -> Dict[str, Dict[str, str]]:
+                """
+                Get existing grouped parents keyed by token set.
+                We only need parent rows so we can also derive a stable display group_name.
+                """
+                existing_token_groups: Dict[str, Dict[str, str]] = {}
                 keywords_query = """
-                    SELECT id, group_id, tokens 
-                    FROM keywords 
-                    WHERE project_id = :project_id 
-                    AND group_id IS NOT NULL 
-                    AND status = 'grouped'
+                    SELECT group_id, group_name, keyword, tokens
+                    FROM keywords
+                    WHERE project_id = :project_id
+                      AND group_id IS NOT NULL
+                      AND status = 'grouped'
+                      AND is_parent = TRUE
                 """
                 result = await db.execute(sql_text(keywords_query), {"project_id": project_id})
-                existing_keywords = result.fetchall()                
-                for kw in existing_keywords:
+                existing_parents = result.fetchall()
+                for kw in existing_parents:
                     if kw.group_id and kw.tokens:
                         token_key = json.dumps(sorted(kw.tokens))
-                        existing_token_groups[token_key] = kw.group_id
-                return existing_token_groups            
+                        display_name = kw.group_name or kw.keyword
+                        existing_token_groups[token_key] = {
+                            "group_id": kw.group_id,
+                            "group_name": display_name,
+                        }
+                return existing_token_groups
             
             existing_token_groups = await refresh_existing_token_groups()
             
@@ -344,7 +352,6 @@ async def process_csv_file(
             processed_count = 0
             skipped_count = 0
             duplicate_count = 0
-            token_groups = {}
             seen_keywords = set()
             
             # Process the CSV file
@@ -392,17 +399,21 @@ async def process_csv_file(
                                 
                                 processed_keyword_data["project_id"] = project_id
                                 processed_keyword_data["original_volume"] = processed_keyword_data["volume"]
-                                token_key = json.dumps(sorted(processed_keyword_data["tokens"]))                            
-                                
-                                # Check if tokens match existing groups (legacy support)
-                                if token_key in existing_token_groups:
-                                    processed_keyword_data["group_id"] = existing_token_groups[token_key]
+                                token_key = json.dumps(sorted(processed_keyword_data["tokens"]))
+
+                                # Attach to an existing group (cross-file clustering)
+                                existing_group = existing_token_groups.get(token_key)
+                                if existing_group:
+                                    processed_keyword_data["group_id"] = existing_group["group_id"]
+                                    processed_keyword_data["group_name"] = existing_group["group_name"]
                                     processed_keyword_data["is_parent"] = False
                                     processed_keyword_data["status"] = KeywordStatus.grouped
-                                elif token_key in token_groups:
-                                    token_groups[token_key].append(processed_keyword_data)
                                 else:
-                                    token_groups[token_key] = [processed_keyword_data]
+                                    # Default: import as an ungrouped parent keyword.
+                                    processed_keyword_data["group_id"] = None
+                                    processed_keyword_data["group_name"] = None
+                                    processed_keyword_data["is_parent"] = True
+                                    processed_keyword_data["status"] = KeywordStatus.ungrouped
                                 
                                 processed_count += 1
                                 chunk_results.append(processed_keyword_data)
@@ -421,88 +432,24 @@ async def process_csv_file(
                         
                         # Save keywords when batch is full or at end
                         if len(chunk_results) >= batch_size or i == total_rows - 1:
-                            final_keywords_to_save = []
-                            
-                            # Handle keywords going into existing groups
-                            keywords_for_existing_groups = [kw for kw in chunk_results if kw.get("group_id") and kw["group_id"] in existing_token_groups.values()]                            
-                            for keyword in keywords_for_existing_groups:
-                                keyword["original_state"] = json.dumps({
-                                    "keyword": keyword["keyword"],
-                                    "volume": keyword["original_volume"],
-                                    "difficulty": keyword["difficulty"],
-                                    "is_parent": keyword["is_parent"],
-                                    "group_id": keyword["group_id"],
-                                    "status": keyword["status"].value,
-                                    "serp_features": keyword.get("serp_features", [])
-                                })
-                                final_keywords_to_save.append(keyword)
-                            
-                            # Handle new groups (create keyword groups, not merge operations)
-                            for token_key, group_members in token_groups.items():
-                                if not group_members:
-                                    continue
-                                
-                                new_group_id = f"group_{project_id}_{uuid.uuid4().hex}"
-                                
-                                if len(group_members) == 1:
-                                    # Single keyword stays ungrouped
-                                    keyword = group_members[0]
-                                    keyword["is_parent"] = True
-                                    keyword["group_id"] = None
-                                    keyword["status"] = KeywordStatus.ungrouped
-                                    keyword["original_state"] = json.dumps({
-                                        "keyword": keyword["keyword"],
-                                        "volume": keyword["original_volume"],
-                                        "difficulty": keyword["difficulty"],
-                                        "is_parent": keyword["is_parent"],
-                                        "group_id": keyword["group_id"],
-                                        "status": keyword["status"].value,
-                                        "serp_features": keyword.get("serp_features", [])
-                                    })
-                                    final_keywords_to_save.append(keyword)
-                                else:
-                                    # Multi-keyword group
-                                    group_members.sort(key=lambda k: (k.get("volume", 0), -(k.get("difficulty", 0))), reverse=True)
-                                    total_volume = sum(k.get("volume", 0) for k in group_members)
-                                    difficulties = [k.get("difficulty", 0) for k in group_members if k.get("difficulty") is not None]
-                                    avg_difficulty = sum(difficulties) / len(difficulties) if difficulties else 0.0
-                                    
-                                    for j, keyword in enumerate(group_members):
-                                        keyword["group_id"] = new_group_id
-                                        keyword["status"] = KeywordStatus.grouped
-                                        if j == 0:
-                                            keyword["is_parent"] = True
-                                            keyword["volume"] = total_volume
-                                            keyword["difficulty"] = round(avg_difficulty, 2)
-                                        else:
-                                            keyword["is_parent"] = False
-                                            keyword["volume"] = keyword["original_volume"]
-                                        
-                                        keyword["original_state"] = json.dumps({
-                                            "keyword": keyword["keyword"],
-                                            "volume": keyword["original_volume"],
-                                            "difficulty": keyword["difficulty"],
-                                            "is_parent": keyword["is_parent"],
-                                            "group_id": keyword["group_id"],
-                                            "status": keyword["status"].value,
-                                            "serp_features": keyword.get("serp_features", [])
-                                        })
-                                        final_keywords_to_save.append(keyword)
-                            
-                            # Save keywords to database
+                            final_keywords_to_save = list(chunk_results)
+
                             if final_keywords_to_save:
                                 await KeywordService.create_many(db, final_keywords_to_save)
-                                
-                                # Update existing group parents if needed
-                                affected_group_ids = {kw["group_id"] for kw in final_keywords_to_save if kw["group_id"] in existing_token_groups.values()}
+
+                                # Update existing group parents if we appended children.
+                                affected_group_ids = {
+                                    kw["group_id"]
+                                    for kw in final_keywords_to_save
+                                    if kw.get("group_id")
+                                }
                                 for group_id in affected_group_ids:
                                     await KeywordService.update_group_parent(db, project_id, group_id)
                                 await db.commit()
-                                
-                                # Refresh existing groups for next iteration
-                                existing_token_groups = await refresh_existing_token_groups()                                
-                                token_groups.clear()
-                                
+
+                                # Refresh existing groups for next iteration (helps later chunks attach).
+                                existing_token_groups = await refresh_existing_token_groups()
+
                                 processing_queue_service.update_progress(
                                     project_id,
                                     processed_count=processed_count,
@@ -516,7 +463,7 @@ async def process_csv_file(
                         
                         current_chunk = []
             
-            # Final grouping pass for any remaining ungrouped keywords
+            # Final grouping pass for any remaining ungrouped keywords (global clustering)
             await group_remaining_ungrouped_keywords(db, project_id)
 
             # Clean up temporary index
@@ -595,6 +542,7 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) 
                     group_members.sort(key=lambda k: (k['volume'], -k['difficulty']), reverse=True)
                     
                     new_group_id = f"group_{project_id}_{uuid.uuid4().hex}"
+                    group_name = group_members[0]["keyword"]
                     total_volume = sum(k['volume'] for k in group_members)
                     difficulties = [k['difficulty'] for k in group_members if k['difficulty'] is not None]
                     avg_difficulty = sum(difficulties) / len(difficulties) if difficulties else 0.0
@@ -607,6 +555,7 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) 
                         updates_to_apply.append({
                             'id': keyword_data['id'],
                             'group_id': new_group_id,
+                            'group_name': group_name,
                             'is_parent': is_parent,
                             'volume': volume_to_use,
                             'difficulty': difficulty_to_use,
@@ -623,6 +572,7 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) 
                         update_query = """
                             UPDATE keywords 
                             SET group_id = :group_id, 
+                                group_name = :group_name,
                                 is_parent = :is_parent,
                                 volume = :volume,
                                 difficulty = :difficulty,
@@ -632,6 +582,7 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) 
                         await db.execute(sql_text(update_query), {
                             'id': update['id'],
                             'group_id': update['group_id'],
+                            'group_name': update['group_name'],
                             'is_parent': update['is_parent'],
                             'volume': update['volume'],
                             'difficulty': update['difficulty'],

@@ -29,7 +29,6 @@ from app.routes.keyword_processing import (
     start_next_processing,
 )
 from app.services.processing_queue import processing_queue_service
-from app.services.csv_batch import combine_csv_files
 from app.utils.keyword_utils import keyword_cache
 from fastapi.responses import StreamingResponse
 import io
@@ -126,7 +125,7 @@ async def get_processing_status(
         }
 
     if status == "complete" or result.get("complete", False):
-        keyword_count = await KeywordService.count_parents_by_project(db, project_id)
+        keyword_count = await KeywordService.count_total_by_project(db, project_id)
         return {
             "status": "complete",
             "keywordCount": keyword_count,
@@ -147,7 +146,7 @@ async def get_processing_status(
             "validationError": validation_error,
         }
     elif status == "idle":
-        count = await KeywordService.count_parents_by_project(db, project_id)
+        count = await KeywordService.count_total_by_project(db, project_id)
         if count > 0:
             return {
                 "status": "complete",
@@ -342,29 +341,14 @@ async def upload_keywords(
                     if entry.get("file_index") is not None
                     else entry.get("file_name", "")
                 )
-                combined_name = f"{project_id}_{safe_batch_id}_combined.csv"
-                combined_path = os.path.join(settings.UPLOAD_DIR, combined_name)
-                try:
-                    combine_csv_files(file_entries, combined_path)
-                except ValueError as exc:
-                    processing_queue_service.mark_error(project_id, message=str(exc))
-                    raise HTTPException(status_code=400, detail=str(exc))
+                # Enqueue each file separately to avoid brittle header-combine failures.
+                # The processor already auto-detects keyword/volume/difficulty columns per file.
                 for entry in file_entries:
-                    if os.path.exists(entry["file_path"]):
-                        os.remove(entry["file_path"])
-                if batch_dir and os.path.exists(batch_dir) and not os.listdir(batch_dir):
-                    os.rmdir(batch_dir)
-                batch_file_names = [
-                    entry.get("file_name")
-                    for entry in file_entries
-                    if entry.get("file_name")
-                ]
-                enqueue_processing_file(
-                    project_id,
-                    combined_path,
-                    f"Combined CSV ({resolved_total_files} files)",
-                    file_names=batch_file_names,
-                )
+                    enqueue_processing_file(
+                        project_id,
+                        entry["file_path"],
+                        entry.get("file_name") or "CSV file",
+                    )
                 await start_next_processing(project_id)
                 return {
                     "message": "Batch upload complete. Processing queued.",
@@ -459,29 +443,13 @@ async def upload_keywords(
                 if entry.get("file_index") is not None
                 else entry.get("file_name", "")
             )
-            combined_name = f"{project_id}_{safe_batch_id}_combined.csv"
-            combined_path = os.path.join(settings.UPLOAD_DIR, combined_name)
-            try:
-                combine_csv_files(file_entries, combined_path)
-            except ValueError as exc:
-                processing_queue_service.mark_error(project_id, message=str(exc))
-                raise HTTPException(status_code=400, detail=str(exc))
+            # Enqueue each file separately to avoid brittle header-combine failures.
             for entry in file_entries:
-                if os.path.exists(entry["file_path"]):
-                    os.remove(entry["file_path"])
-            if batch_dir and os.path.exists(batch_dir) and not os.listdir(batch_dir):
-                os.rmdir(batch_dir)
-            batch_file_names = [
-                entry.get("file_name")
-                for entry in file_entries
-                if entry.get("file_name")
-            ]
-            enqueue_processing_file(
-                project_id,
-                combined_path,
-                f"Combined CSV ({resolved_total_files} files)",
-                file_names=batch_file_names,
-            )
+                enqueue_processing_file(
+                    project_id,
+                    entry["file_path"],
+                    entry.get("file_name") or "CSV file",
+                )
             await start_next_processing(project_id)
             return {
                 "message": "Batch upload complete. Processing queued.",

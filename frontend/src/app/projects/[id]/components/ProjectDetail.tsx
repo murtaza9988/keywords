@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
-import React, { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store/store';
@@ -2105,6 +2105,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       statusCheckIntervalRef.current = null;
     }
   }, []);
+  const [csvUploadsRefreshKey, setCsvUploadsRefreshKey] = useState(0);
 
   const checkProcessingStatus = useCallback(async () => {
     if (!projectIdStr) return;
@@ -2401,6 +2402,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         processingMessage: 'Uploading CSV...',
       },
     });
+    setCsvUploadsRefreshKey((prev) => prev + 1);
     startProcessingCheck();
     bumpLogsRefresh();
   }, [startProcessingCheck, bumpLogsRefresh]);  
@@ -2409,6 +2411,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       type: 'updateProcessing',
       payload: { processingQueue: files.map((file) => file.name) },
     });
+    setCsvUploadsRefreshKey((prev) => prev + 1);
   }, [detailDispatch]);
   const handleUploadSuccess = useCallback(
     (status: ProcessingStatus, message?: string) => {
@@ -2419,6 +2422,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingMessage: message || '',
         },
       });
+      setCsvUploadsRefreshKey((prev) => prev + 1);
       if (status === 'complete') {
         detailDispatch({
           type: 'updateProcessing',
@@ -2468,6 +2472,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingMessage: message,
         },
       });
+      setCsvUploadsRefreshKey((prev) => prev + 1);
       addSnackbarMessage(message, 'error');
       stopProcessingCheck();
     },
@@ -2865,6 +2870,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     displayProgress={displayProgress}
                     processingCurrentFile={processingCurrentFile}
                     processingQueue={processingQueue}
+                    csvUploadsRefreshKey={csvUploadsRefreshKey}
                     onUploadStart={handleUploadStart}
                     onUploadBatchStart={handleUploadBatchStart}
                     onUploadSuccess={handleUploadSuccess}
