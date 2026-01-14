@@ -9,7 +9,8 @@
     "build": "npm run build -w frontend",
     "vercel-build": "npm run build -w frontend",
     "start": "npm run start -w frontend",
-    "lint": "npm run lint -w frontend"
+    "lint": "npm run lint -w frontend",
+    "typecheck": "npm run typecheck -w frontend"
   },
   "dependencies": {
     "next": "15.2.3",
