@@ -15,6 +15,8 @@ interface ProcessingPanelProps {
   displayProgress: number;
   processingCurrentFile: string | null;
   processingQueue: string[];
+  processingStage?: string | null;
+  processingStageDetail?: string | null;
   csvUploadsRefreshKey?: number;
   onUploadStart: () => void;
   onUploadBatchStart: (files: File[]) => void;
@@ -30,6 +32,8 @@ export function ProcessingPanel({
   displayProgress,
   processingCurrentFile,
   processingQueue,
+  processingStage,
+  processingStageDetail,
   csvUploadsRefreshKey,
   onUploadStart,
   onUploadBatchStart,
@@ -80,6 +84,8 @@ export function ProcessingPanel({
         currentFileName={processingCurrentFile}
         queuedFiles={processingQueue}
         message={processingMessage}
+        stage={processingStage}
+        stageDetail={processingStageDetail}
         projectId={projectId}
         onReset={() => {
           // Trigger status refresh after reset

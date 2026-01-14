@@ -136,6 +136,8 @@ class ProcessingStatus(BaseModel):
     total_rows: int = Field(0, alias="totalRows")
     progress: float = Field(0.0, alias="progress")
     message: Optional[str] = Field(None, alias="message")
+    stage: Optional[str] = Field(None, alias="stage")
+    stage_detail: Optional[str] = Field(None, alias="stageDetail")
     current_file_name: Optional[str] = Field(None, alias="currentFileName")
     queued_files: List[str] = Field([], alias="queuedFiles")
     queue_length: int = Field(0, alias="queueLength")

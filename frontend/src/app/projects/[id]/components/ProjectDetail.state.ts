@@ -40,6 +40,8 @@ export interface ProcessingState {
   snackbarMessages: SnackbarMessage[];
   processingProgress: number;
   processingMessage: string;
+  processingStage?: string | null;
+  processingStageDetail?: string | null;
   processingCurrentFile: string | null;
   processingQueue: string[];
   displayProgress: number;
@@ -135,6 +137,8 @@ export const initialProjectDetailState: ProjectDetailState = {
     snackbarMessages: [],
     processingProgress: 0,
     processingMessage: '',
+    processingStage: null,
+    processingStageDetail: null,
     processingCurrentFile: null,
     processingQueue: [],
     displayProgress: 0,

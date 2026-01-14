@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '@/lib/apiClient';
-import { ChevronDown, FileText } from 'lucide-react';
+import { ChevronDown, Download, FileText } from 'lucide-react';
 import { CSVUpload } from '@/lib/types';
 
 interface CSVUploadDropdownProps {
@@ -12,6 +12,7 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
   const [csvUploads, setCsvUploads] = useState<CSVUpload[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchCSVUploads = async () => {
@@ -35,6 +36,26 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
     setIsOpen(!isOpen);
   };
 
+  const handleDownload = async (upload: CSVUpload) => {
+    if (!projectId || downloadingId === upload.id) return;
+    setDownloadingId(upload.id);
+    try {
+      const blobData = await apiClient.downloadCSVUpload(projectId, upload.id);
+      const url = window.URL.createObjectURL(blobData);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', upload.file_name);
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading CSV upload:', error);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   return (
     <div className="relative">
       <button
@@ -53,11 +74,26 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
               <p className="text-muted text-[13px] p-2">No CSV uploads yet.</p>
             ) : (
               csvUploads.map((upload) => (
-                <div key={upload.id} className="p-2 hover:bg-surface-muted rounded-md">
-                  <p className="text-[13px] font-medium text-foreground">{upload.file_name}</p>
-                  <p className="text-[13px] text-muted">
-                    Uploaded: {new Date(upload.uploaded_at).toLocaleDateString()}
-                  </p>
+                <div
+                  key={upload.id}
+                  className="flex items-start justify-between gap-3 p-2 hover:bg-surface-muted rounded-md"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium text-foreground truncate">{upload.file_name}</p>
+                    <p className="text-[13px] text-muted">
+                      Uploaded: {new Date(upload.uploaded_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(upload)}
+                    disabled={downloadingId === upload.id}
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1 text-[11px] font-medium text-foreground hover:bg-surface-muted disabled:opacity-50"
+                    title="Download this CSV"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    {downloadingId === upload.id ? '...' : 'Download'}
+                  </button>
                 </div>
               ))
             )}

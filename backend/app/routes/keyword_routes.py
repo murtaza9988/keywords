@@ -33,6 +33,8 @@ from app.utils.keyword_utils import keyword_cache
 from fastapi.responses import StreamingResponse
 import io
 import csv
+from fastapi.responses import FileResponse
+import glob
 
 router = APIRouter(tags=["keywords"])
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -40,6 +42,52 @@ os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
 def _sanitize_segment(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9._-]", "_", value)
+
+
+def _rel_upload_path(path: str) -> str:
+    """Return path relative to UPLOAD_DIR (best effort)."""
+    try:
+        return os.path.relpath(path, settings.UPLOAD_DIR)
+    except Exception:
+        return path
+
+
+def _resolve_csv_upload_path(project_id: int, upload: CSVUpload) -> Optional[str]:
+    """
+    Resolve the stored file path for a CSVUpload.
+
+    Supports legacy rows where storage_path is NULL by probing known patterns.
+    """
+    if upload.storage_path:
+        candidate = (
+            upload.storage_path
+            if os.path.isabs(upload.storage_path)
+            else os.path.join(settings.UPLOAD_DIR, upload.storage_path)
+        )
+        return candidate if os.path.exists(candidate) else None
+
+    # Legacy fallback patterns:
+    # 1) Combined batch file: uploads/{project_id}_combined_batch_<id>.csv
+    direct = os.path.join(settings.UPLOAD_DIR, f"{project_id}_{upload.file_name}")
+    if os.path.exists(direct):
+        return direct
+
+    # 2) Upload file: uploads/{project_id}_<uploadId>_<originalFilename>
+    glob_candidates: List[str] = []
+    glob_candidates.extend(
+        glob.glob(os.path.join(settings.UPLOAD_DIR, f"{project_id}_*_{upload.file_name}"))
+    )
+    glob_candidates.extend(
+        glob.glob(
+            os.path.join(
+                settings.UPLOAD_DIR, f"{project_id}_batch_*", f"{project_id}_*_{upload.file_name}"
+            )
+        )
+    )
+    if not glob_candidates:
+        return None
+    glob_candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    return glob_candidates[0]
 @router.post("/projects/{project_id}/reset-processing", status_code=status.HTTP_200_OK)
 async def reset_processing_status(
     project_id: int,
@@ -167,6 +215,8 @@ async def get_processing_status(
             "totalRows": result.get("total_rows", 0),
             "progress": progress,
             "message": validation_error,
+            "stage": result.get("stage"),
+            "stageDetail": result.get("stage_detail"),
             "currentFileName": current_file.get("file_name") if current_file else None,
             "queuedFiles": queued_files,
             "queueLength": len(queued_files),
@@ -189,6 +239,8 @@ async def get_processing_status(
             "totalRows": result.get("total_rows", 0),
             "progress": 100.0,
             "message": result.get("message", ""),
+            "stage": result.get("stage"),
+            "stageDetail": result.get("stage_detail"),
             "currentFileName": current_file.get("file_name") if current_file else None,
             "queuedFiles": queued_files,
             "queueLength": len(queued_files),
@@ -211,6 +263,8 @@ async def get_processing_status(
                 "totalRows": result.get("total_rows", 0),
                 "progress": 100.0,
                 "message": result.get("message", ""),
+                "stage": result.get("stage"),
+                "stageDetail": result.get("stage_detail"),
                 "currentFileName": current_file.get("file_name") if current_file else None,
                 "queuedFiles": queued_files,
                 "queueLength": len(queued_files),
@@ -231,6 +285,8 @@ async def get_processing_status(
         "totalRows": result.get("total_rows", 0),
         "progress": progress,
         "message": result.get("message", ""),
+        "stage": result.get("stage"),
+        "stageDetail": result.get("stage_detail"),
         "currentFileName": current_file.get("file_name") if current_file else None,
         "queuedFiles": queued_files,
         "queueLength": len(queued_files),
@@ -347,7 +403,11 @@ async def upload_keywords(
             if parent_chunks_dir and os.path.exists(parent_chunks_dir) and not os.listdir(parent_chunks_dir):
                 os.rmdir(parent_chunks_dir)
                 
-            csv_upload = CSVUpload(project_id=project_id, file_name=originalFilename)
+            csv_upload = CSVUpload(
+                project_id=project_id,
+                file_name=originalFilename,
+                storage_path=_rel_upload_path(final_path),
+            )
             db.add(csv_upload)
             await db.commit()
 
@@ -393,22 +453,65 @@ async def upload_keywords(
                     if entry.get("file_index") is not None
                     else entry.get("file_name", "")
                 )
-                # FIRST PRINCIPLES: Process files individually to avoid combination errors.
-                # We skip the fragile "combine CSVs" step and just queue them up.
-
-                await ActivityLogService.log_activity(
-                    db,
-                    project_id=project_id,
-                    action="batch_upload_complete",
-                    details={
-                        "batch_id": batchId,
-                        "file_count": len(file_entries)
-                    },
-                    user=current_user.get("username", "admin"),
-                )
-
-                # Enqueue each file individually
-                for entry in file_entries:
+                # Combine files into a single CSV to ensure robust clustering
+                try:
+                    combined_filename = f"combined_batch_{batchId}.csv"
+                    combined_path = os.path.join(settings.UPLOAD_DIR, f"{project_id}_{combined_filename}")
+                    
+                    await ActivityLogService.log_activity(
+                        db,
+                        project_id=project_id,
+                        action="batch_merge_start",
+                        details={
+                            "batch_id": batchId,
+                            "file_count": len(file_entries)
+                        },
+                        user=current_user.get("username", "admin"),
+                    )
+                    
+                    # Retry logic for combining files (handle transient IO errors)
+                    max_retries = 3
+                    for attempt in range(max_retries):
+                        try:
+                            # Run in executor to avoid blocking event loop
+                            await asyncio.to_thread(combine_csv_files, file_entries, combined_path)
+                            break
+                        except Exception as e:
+                            print(f"Attempt {attempt+1}/{max_retries} failed to combine CSVs: {e}")
+                            if attempt == max_retries - 1:
+                                raise e
+                            await asyncio.sleep(0.5 * (attempt + 1))
+                    
+                    # Log the combined file upload for tracking
+                    csv_upload = CSVUpload(
+                        project_id=project_id,
+                        file_name=combined_filename,
+                        storage_path=_rel_upload_path(combined_path),
+                    )
+                    db.add(csv_upload)
+                    
+                    await ActivityLogService.log_activity(
+                        db,
+                        project_id=project_id,
+                        action="batch_merge_success",
+                        details={
+                            "batch_id": batchId,
+                            "output_file": combined_filename
+                        },
+                        user=current_user.get("username", "admin"),
+                    )
+                    
+                    await db.commit()
+                    
+                    # Collect original filenames to mark as processed later
+                    original_filenames = [
+                        entry.get("file_name") 
+                        for entry in file_entries 
+                        if entry.get("file_name")
+                    ]
+                    
+                    # Enqueue the single combined file, but pass the list of ORIGINAL files
+                    # so the processing queue service knows all these files are now "processed".
                     enqueue_processing_file(
                         project_id,
                         entry["file_path"],
@@ -416,14 +519,46 @@ async def upload_keywords(
                         # Each file tracks itself
                         file_names=[entry.get("file_name")] if entry.get("file_name") else None
                     )
-
-                await start_next_processing(project_id)
-
-                return {
-                    "message": "Batch upload complete. Processing queued.",
-                    "status": processing_queue_service.get_status(project_id),
-                    "file_name": originalFilename,
-                }
+                    
+                    # IMPORTANT: Do NOT delete the individual uploaded files.
+                    # Users must be able to re-download any uploaded CSV.
+                    
+                    await start_next_processing(project_id)
+                    
+                    return {
+                        "message": "Batch upload complete. Files combined and processing queued.",
+                        "status": processing_queue_service.get_status(project_id),
+                        "file_name": combined_filename,
+                    }
+                except Exception as e:
+                    print(f"Error combining batch files: {e}")
+                    
+                    await ActivityLogService.log_activity(
+                        db,
+                        project_id=project_id,
+                        action="batch_merge_failed",
+                        details={
+                            "batch_id": batchId,
+                            "error": str(e),
+                            "fallback": "individual_processing"
+                        },
+                        user=current_user.get("username", "admin"),
+                    )
+                    
+                    # Fallback to individual processing if combination fails
+                    for entry in file_entries:
+                        enqueue_processing_file(
+                            project_id,
+                            entry["file_path"],
+                            entry.get("file_name") or "CSV file",
+                        )
+                    await start_next_processing(project_id)
+                    
+                    return {
+                        "message": f"Batch upload complete (individual fallback: {str(e)}). Processing queued.",
+                        "status": processing_queue_service.get_status(project_id),
+                        "file_name": originalFilename,
+                    }
 
             if originalFilename:
                 enqueue_processing_file(project_id, final_path, originalFilename)
@@ -467,6 +602,7 @@ async def upload_keywords(
             await file.close()
             
         csv_upload = CSVUpload(project_id=project_id, file_name=file.filename)
+        csv_upload.storage_path = _rel_upload_path(file_path)
         db.add(csv_upload)
         await db.commit()
 
@@ -552,6 +688,52 @@ async def get_csv_uploads(
     csv_uploads = result.scalars().all()
     
     return csv_uploads
+
+
+@router.get(
+    "/projects/{project_id}/csv-uploads/{upload_id}/download",
+    response_class=FileResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def download_csv_upload(
+    project_id: int,
+    upload_id: int = Path(..., ge=1),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> FileResponse:
+    """Download a previously uploaded (or combined) CSV for a project."""
+    project = await ProjectService.get_by_id(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    result = await db.execute(
+        select(CSVUpload).where(CSVUpload.id == upload_id, CSVUpload.project_id == project_id)
+    )
+    upload = result.scalar_one_or_none()
+    if not upload:
+        raise HTTPException(status_code=404, detail="CSV upload not found")
+
+    resolved_path = _resolve_csv_upload_path(project_id, upload)
+    if not resolved_path:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Uploaded CSV file is missing on the server. "
+                "This can happen if it was deleted by an older version of the system."
+            ),
+        )
+
+    # Best-effort: if this row is missing storage_path, backfill it.
+    if not upload.storage_path:
+        upload.storage_path = _rel_upload_path(resolved_path)
+        db.add(upload)
+        await db.commit()
+
+    return FileResponse(
+        resolved_path,
+        media_type="text/csv",
+        filename=upload.file_name,
+    )
 @router.get("/projects/{project_id}/keywords", response_model=KeywordListResponse)
 async def get_keywords(
     project_id: int,
