@@ -125,7 +125,14 @@ async def _find_duplicate_csv_upload(
         .order_by(CSVUpload.uploaded_at.desc())
         .limit(25)
     )
-    existing_uploads = result.scalars().all()
+    # SQLAlchemy returns a synchronous ScalarResult for .scalars(), but in tests
+    # we often use AsyncMock objects where .scalars() may itself be awaitable.
+    scalars_result = result.scalars()
+    if asyncio.iscoroutine(scalars_result):
+        scalars_result = await scalars_result
+    existing_uploads = scalars_result.all()
+    if asyncio.iscoroutine(existing_uploads):
+        existing_uploads = await existing_uploads
     if not existing_uploads:
         return None
 
