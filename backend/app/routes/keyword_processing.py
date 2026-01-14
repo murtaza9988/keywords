@@ -450,11 +450,6 @@ async def process_csv_file(file_path: str, project_id: int) -> None:
                         
                         current_chunk = []
             
-            # Mark processing as complete
-            processing_results[project_id]["complete"] = True
-            processing_results[project_id]["progress"] = 100.0
-            processing_tasks[project_id] = "complete"
-            
             # Final grouping pass for any remaining ungrouped keywords
             await group_remaining_ungrouped_keywords(db, project_id)
 
@@ -462,6 +457,11 @@ async def process_csv_file(file_path: str, project_id: int) -> None:
             drop_index_query = f"DROP INDEX IF EXISTS temp_tokens_idx_{project_id}"
             await db.execute(sql_text(drop_index_query))
             await db.commit()
+
+            # Mark processing as complete after final grouping and cleanup
+            processing_results[project_id]["complete"] = True
+            processing_results[project_id]["progress"] = 100.0
+            processing_tasks[project_id] = "complete"
 
     except Exception as e:
         print(f"Error during CSV processing for project {project_id}: {e}")
