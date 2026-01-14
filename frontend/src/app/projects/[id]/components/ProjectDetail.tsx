@@ -2851,7 +2851,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       <div className="flex-1 w-full">
         <div className="mx-auto w-full max-w-[1720px] px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col xl:flex-row gap-4">
-            <main className="flex-1 min-w-0 flex flex-col">
+            <main className="w-full xl:basis-3/4 xl:flex-[3] min-w-0 flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 sm:p-6 flex flex-col flex-grow h-full">
                 <ProjectDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
                 {activeTab === 'overview' && (
@@ -2978,7 +2978,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                 )}
               </div>
             </main>
-            <aside className="w-full xl:w-[560px] 2xl:w-[640px] xl:flex-shrink-0 flex flex-col">
+            <aside className="w-full xl:basis-1/4 xl:flex-[1] xl:min-w-[380px] xl:max-w-[460px] flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-hidden">
                 <TokenManagement
                   projectId={projectIdStr}
