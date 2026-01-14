@@ -508,6 +508,15 @@ async def process_csv_file(
                         if chunk_results:
                             current_stage = "persist"
                             try:
+                                processing_queue_service.update_progress(
+                                    project_id,
+                                    processed_count=processed_count,
+                                    skipped_count=skipped_count,
+                                    duplicate_count=duplicate_count,
+                                    progress=current_progress,
+                                    stage=current_stage,
+                                    stage_detail="Saving batch to database...",
+                                )
                                 await KeywordService.create_many(db, chunk_results)
 
                                 # Update existing group parents if we appended children.
@@ -533,9 +542,29 @@ async def process_csv_file(
                                     stage=current_stage,
                                     stage_detail="Saved a batch to the database",
                                 )
+                                # Return to import stage for next chunk.
+                                current_stage = "import_rows"
+                                processing_queue_service.update_progress(
+                                    project_id,
+                                    processed_count=processed_count,
+                                    skipped_count=skipped_count,
+                                    duplicate_count=duplicate_count,
+                                    progress=current_progress,
+                                    stage=current_stage,
+                                    stage_detail=None,
+                                )
                             except Exception as db_err:
                                 print(f"[PROCESS] Error saving batch to DB: {db_err}")
                                 await db.rollback()
+                                processing_queue_service.update_progress(
+                                    project_id,
+                                    processed_count=processed_count,
+                                    skipped_count=skipped_count,
+                                    duplicate_count=duplicate_count,
+                                    progress=current_progress,
+                                    stage=current_stage,
+                                    stage_detail=f"Database write failed: {db_err}",
+                                )
                             
                             await asyncio.sleep(0.005)
                         
