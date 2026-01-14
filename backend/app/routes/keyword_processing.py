@@ -595,6 +595,13 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) 
         
         print(f"[GROUPING] Found {len(all_ungrouped_keywords)} ungrouped keywords")
         
+        # DEBUG: Log a sample of keywords and their tokens
+        if len(all_ungrouped_keywords) > 0:
+             sample_size = min(5, len(all_ungrouped_keywords))
+             print(f"[GROUPING] Sample keywords and tokens:")
+             for i in range(sample_size):
+                 print(f"  - {all_ungrouped_keywords[i].keyword}: {all_ungrouped_keywords[i].tokens}")
+
         if not all_ungrouped_keywords:
             print(f"[GROUPING] No ungrouped keywords to group")
             return
@@ -617,7 +624,7 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) 
                     'original_volume': kw.original_volume or kw.volume or 0
                 })
         
-        print(f"[GROUPING] Found {len(token_groups_final)} unique token sets")
+        print(f"[GROUPING] Found {len(token_groups_final)} unique token sets from {len(all_ungrouped_keywords)} keywords")
         
         # Count how many groups have multiple members (will be grouped)
         multi_member_groups = sum(1 for members in token_groups_final.values() if len(members) > 1)
