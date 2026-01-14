@@ -172,3 +172,4 @@ python -m app.scripts.backfill_compounds --project-id <id>
 ## Incident log
 - 2026-01-14: Vercel build failed due to duplicate React state declaration (`activeTab`) in `ProjectDetail.tsx`, triggering a client component SSR error. Prevention: enable `react/jsx-no-duplicate-props` lint rule, review for duplicate declarations/props during edits, and keep lint/typecheck required before commits.
 - 2026-01-14: Multi-CSV uploads failed because the backend rejected new uploads while processing and the UI surfaced only a generic error. Prevention: queue uploads per project, expose queue metadata in processing status, and show step-by-step progress with detailed error messages.
+- 2026-01-14: Vercel build failed due to an incomplete duplicate `const transformedKeywords` block in `ProjectDetail.tsx`, causing a syntax error in `next build`. Prevention: remove duplicate declarations, verify block structure, and keep lint/typecheck running before builds.

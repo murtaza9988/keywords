@@ -679,6 +679,20 @@ export default function ProjectDetail(): React.ReactElement {
     apiCache
   ]);
 
+  const getSerpFeatures = (
+    keyword: Keyword | SerpFeatureCarrier | null | undefined
+  ): string[] => {
+    if (!keyword || !keyword.serpFeatures) return [];
+    if (Array.isArray(keyword.serpFeatures)) return keyword.serpFeatures;
+    if (typeof keyword.serpFeatures === 'string') {
+      try {
+        const parsed = JSON.parse(keyword.serpFeatures);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
   const getSerpFeatures = (keyword: SerpFeatureCarrier | null | undefined): string[] => {
   if (!keyword || !keyword.serpFeatures) return [];
   if (Array.isArray(keyword.serpFeatures)) return keyword.serpFeatures;
@@ -715,7 +729,7 @@ export default function ProjectDetail(): React.ReactElement {
     addSnackbarMessage('Starting export, please wait...', 'success');
 
     try {
-              const blobData = await apiClient.exportGroupedKeywords(projectIdStr, activeView);
+      const blobData = await apiClient.exportGroupedKeywords(projectIdStr, activeView);
       const url = window.URL.createObjectURL(blobData);
       const link = document.createElement('a');
       link.href = url;
@@ -2135,7 +2149,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             groupName: typeof kw.groupName === 'string' ? kw.groupName : null,
             status: normalizeKeywordStatus(kw.status, activeView),
             childCount: typeof kw.childCount === 'number' ? kw.childCount : 0,
-            original_volume: typeof kw.original_volume === 'number' ? kw.original_volume : (typeof kw.volume === 'number' ? kw.volume : 0),
             serpFeatures: Array.isArray(kw.serpFeatures) ? kw.serpFeatures : [],
           }));
           

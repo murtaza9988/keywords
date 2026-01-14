@@ -97,6 +97,9 @@ interface ApiInitialDataResponse {
     status?: ProcessingStatus;
     progress?: number;
     complete?: boolean;
+    message?: string;
+    currentFileName?: string | null;
+    queuedFiles?: string[];
   };
 }
 
