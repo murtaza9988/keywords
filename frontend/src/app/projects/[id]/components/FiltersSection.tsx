@@ -16,6 +16,8 @@ interface FiltersSectionProps {
   isUploading: boolean;
   processingStatus: ProcessingStatus;
   selectedTokens: string[];
+  isUploading: boolean;
+  processingStatus: ProcessingStatus;
   handleIncludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleExcludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   setGroupName: (value: string) => void;
@@ -43,6 +45,8 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
   isUploading,
   processingStatus,
   selectedTokens,
+  isUploading,
+  processingStatus,
   handleIncludeFilterChange,
   handleExcludeFilterChange,
   setGroupName,

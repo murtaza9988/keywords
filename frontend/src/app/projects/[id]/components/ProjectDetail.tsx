@@ -2556,9 +2556,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         </div>
       </div>
       <div className="flex-1 w-full">
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-4">
+        <div className="mx-auto w-full max-w-[1720px] px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col xl:flex-row gap-4">
-            <aside className="w-full xl:w-[220px] xl:flex-shrink-0 flex flex-col">
+            <aside className="w-full xl:w-[280px] xl:flex-shrink-0 flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-auto">
                 <TextAreaInputs projectId={projectIdStr} />
               </div>
@@ -2657,6 +2657,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       isUploading={isUploading}
                       processingStatus={processingStatus}
                       selectedTokens={selectedTokens}
+                      isUploading={isUploading}
+                      processingStatus={processingStatus}
                       handleIncludeFilterChange={handleIncludeFilterChange}
                       handleExcludeFilterChange={handleExcludeFilterChange}
                       setGroupName={setGroupName}
@@ -2724,7 +2726,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                 )}
               </div>
             </main>
-            <aside className="w-full xl:w-[300px] xl:flex-shrink-0 flex flex-col">
+            <aside className="w-full xl:w-[280px] xl:flex-shrink-0 flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-hidden">
                 <TokenManagement
                   projectId={projectIdStr}
