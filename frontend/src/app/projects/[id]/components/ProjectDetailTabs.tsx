@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-export type ProjectDetailTab = 'overview' | 'process' | 'group' | 'logs';
+export type ProjectDetailTab = 'overview' | 'process' | 'group' | 'notes' | 'logs';
 
 interface ProjectDetailTabsProps {
   activeTab: ProjectDetailTab;
@@ -15,7 +15,7 @@ export function ProjectDetailTabs({
 }: ProjectDetailTabsProps): React.ReactElement {
   return (
     <div className="flex flex-wrap gap-2 border border-border rounded-lg bg-surface-muted/40 p-1 mb-4 justify-center">
-      {(['overview', 'process', 'group', 'logs'] as const).map(tab => (
+      {(['overview', 'process', 'group', 'notes', 'logs'] as const).map(tab => (
         <button
           key={tab}
           onClick={() => onTabChange(tab)}
@@ -32,6 +32,8 @@ export function ProjectDetailTabs({
             ? 'Process'
             : tab === 'group'
             ? 'Group'
+            : tab === 'notes'
+            ? 'Notes'
             : 'Logs'}
         </button>
       ))}

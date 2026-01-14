@@ -2851,11 +2851,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       <div className="flex-1 w-full">
         <div className="mx-auto w-full max-w-[1720px] px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col xl:flex-row gap-4">
-            <aside className="w-full xl:w-[280px] xl:flex-shrink-0 flex flex-col">
-              <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-auto">
-                <TextAreaInputs projectId={projectIdStr} />
-              </div>
-            </aside>
             <main className="flex-1 min-w-0 flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 sm:p-6 flex flex-col flex-grow h-full">
                 <ProjectDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -2967,6 +2962,13 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                 {activeTab === 'process' && (
                   <ProjectDetailProcess />
                 )}
+                {activeTab === 'notes' && (
+                  <div className="w-full">
+                    <div className="bg-white border border-border rounded-lg p-4">
+                      <TextAreaInputs projectId={projectIdStr} />
+                    </div>
+                  </div>
+                )}
                 {activeTab === 'logs' && (
                   <ProjectDetailLogs
                     projectId={projectIdStr}
@@ -2976,7 +2978,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                 )}
               </div>
             </main>
-            <aside className="w-full xl:w-[280px] xl:flex-shrink-0 flex flex-col">
+            <aside className="w-full xl:w-[560px] 2xl:w-[640px] xl:flex-shrink-0 flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-hidden">
                 <TokenManagement
                   projectId={projectIdStr}

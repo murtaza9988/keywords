@@ -103,18 +103,18 @@ export function TokenTable({
 
   return (
    <div className="relative h-full">
-        <table className="w-full min-w-[600px] table-fixed divide-y divide-gray-200 text-xs">
+        <table className="w-full table-fixed divide-y divide-gray-200 text-xs">
           <colgroup>
-            <col className="w-[40px]" />
+            <col className="w-[36px]" />
             <col className="w-auto" />
-            <col className="w-[60px]" />
-            <col className="w-[70px]" />
-            <col className="w-[60px]" />
-            <col className="w-[60px]" />
+            <col className="w-[52px]" />
+            <col className="w-[64px]" />
+            <col className="w-[52px]" />
+            <col className="w-[56px]" />
           </colgroup>
           <thead className="bg-surface-muted sticky top-0 z-5">
             <tr>
-              <th scope="col" className="px-1 py-1.5 text-left sticky left-0 z-20 bg-surface-muted">
+              <th scope="col" className="px-1 py-1.5 text-left">
                 <input
                   type="checkbox"
                   className="rounded border-border w-4 h-4 text-blue-600"
@@ -124,7 +124,7 @@ export function TokenTable({
                   aria-label={allSelected ? 'Deselect all tokens' : 'Select all tokens'}
                 />
               </th>
-              {renderSortableHeader('tokenName', 'Token', 'left', 'sticky left-[40px] z-10 bg-surface-muted')}
+              {renderSortableHeader('tokenName', 'Token', 'left')}
               {renderSortableHeader('count', 'Ct.', 'right')}
               {renderSortableHeader('volume', 'Vol', 'right')}
               {renderSortableHeader('difficulty', 'Diff', 'right')}
@@ -151,7 +151,7 @@ export function TokenTable({
                         hasChildren ? 'border-b-0' : ''
                       }`}
                     >
-                      <td className={`px-1 py-1 whitespace-nowrap sticky left-0 z-10 ${isSelected ? 'bg-surface-muted' : rowBgClass}`}>
+                      <td className={`px-1 py-1 whitespace-nowrap ${isSelected ? 'bg-surface-muted' : rowBgClass}`}>
                         <input
                           type="checkbox"
                           className="rounded border-border text-blue-600"
@@ -162,19 +162,17 @@ export function TokenTable({
                         />
                       </td>
                       <td
-                        className={`pr-0.5 pl-1 py-1 whitespace-nowrap text-[13px] font-medium text-foreground relative sticky left-[40px] z-10 ${isSelected ? 'bg-surface-muted' : rowBgClass}`}
+                        className={`pr-0.5 pl-1 py-1 whitespace-nowrap text-[13px] font-medium text-foreground relative ${isSelected ? 'bg-surface-muted' : rowBgClass}`}
                         onMouseEnter={() => onTokenHover(token.tokenName)}
                         onMouseLeave={() => onTokenHover(null)}
                       >
-                        <div className="flex items-center max-w-[160px]">
+                        <div className="flex items-center min-w-0">
                           <span
                             onClick={() => onTokenClick(token.tokenName)}
-                            className="hover:text-blue-500 hover:underline cursor-pointer"
+                            className="hover:text-blue-500 hover:underline cursor-pointer truncate"
                             title={token.tokenName}
                           >
-                            {token.tokenName.length > 18
-                              ? `${token.tokenName.slice(0, 18)}...`
-                              : token.tokenName}
+                            {token.tokenName}
                           </span>
                           {hasChildren && (
                             <button
