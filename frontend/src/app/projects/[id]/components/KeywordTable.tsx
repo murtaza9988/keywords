@@ -124,8 +124,9 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
   }, [projectId]);
 
   const getSerpFeatures = (
-    item: Keyword | { serpFeatures?: string[] | string | null }
+    item: Keyword | SerpFeatureSource | null | undefined
   ): string[] => {
+  const getSerpFeatures = (item: SerpFeatureSource | null | undefined): string[] => {
     if (!item || !item.serpFeatures) return [];
     if (Array.isArray(item.serpFeatures)) return item.serpFeatures;
     if (typeof item.serpFeatures === 'string') {

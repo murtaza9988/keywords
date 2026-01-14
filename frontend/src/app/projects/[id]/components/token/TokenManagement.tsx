@@ -95,8 +95,10 @@ export function TokenManagement({
       if (currentKeywords.length === 0 && activeViewKeywords.length > 0) {
         currentKeywords = activeViewKeywords
           .flatMap(token => {
+          .flatMap((token) => {
             const tokenList = Array.isArray(token.tokens) ? token.tokens : [];
-            return tokenList.map(t => ({
+            return tokenList.map((t): Keyword => ({
+            return tokenList.map((t) => ({
               id: 0,
               keyword: t,
               volume: token.volume || 0,
