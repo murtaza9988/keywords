@@ -9,7 +9,7 @@ from app.utils.security import authenticate_user, create_access_token, create_re
 router = APIRouter(prefix="", tags=["authentication"])
 
 @router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
     """Login endpoint to get JWT token."""
     user_authenticated = authenticate_user(form_data.username, form_data.password)
     
@@ -29,7 +29,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"token": access_token, "token_type": "bearer"}
 
 @router.post("/login", response_model=TokenResponse)
-async def login(login_data: LoginRequest):
+async def login(login_data: LoginRequest) -> TokenResponse:
     """Alternative login endpoint with JSON request body."""
     user_authenticated = authenticate_user(login_data.username, login_data.password)
     
@@ -58,7 +58,7 @@ async def login(login_data: LoginRequest):
     }
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_data: RefreshTokenRequest):
+async def refresh_token(refresh_data: RefreshTokenRequest) -> TokenResponse:
     """Refresh access token using refresh token."""
     try:
         user_data = await validate_refresh_token(refresh_data.refresh_token)

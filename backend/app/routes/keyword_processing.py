@@ -10,7 +10,7 @@ import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text as sql_text
 from app.config import settings
@@ -50,7 +50,7 @@ lemmatizer = WordNetLemmatizer()
 
 EXTENDED_PUNCTUATION = string.punctuation + "®–—™"
 processing_tasks: Dict[int, str] = {}
-processing_results: Dict[int, Dict] = {}
+processing_results: Dict[int, Dict[str, Any]] = {}
 question_words = {'what', 'why', 'how', 'when', 'where', 'who', 'which', 'whose', 'whom','can'}
 
 def get_synonyms(word: str) -> Set[str]:
@@ -61,7 +61,7 @@ def get_synonyms(word: str) -> Set[str]:
             synonyms.add(synonym)
     return synonyms
 
-def process_keyword(row_dict: Dict) -> Tuple[Optional[Dict], bool]:
+def process_keyword(row_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], bool]:
     try:
         keyword = row_dict.get("Keyword")
         if not keyword or not isinstance(keyword, str) or len(keyword.strip()) == 0:
@@ -161,7 +161,7 @@ def process_keyword(row_dict: Dict) -> Tuple[Optional[Dict], bool]:
         print(f"Error processing keyword row '{row_dict.get('Keyword')}': {e}")
         return None, False
 
-async def process_csv_file(file_path: str, project_id: int):
+async def process_csv_file(file_path: str, project_id: int) -> None:
     """Process the CSV file in the background with optimized performance using new merge operations structure."""
     processing_tasks[project_id] = "processing"
     processing_results[project_id] = {
@@ -185,7 +185,7 @@ async def process_csv_file(file_path: str, project_id: int):
             await db.execute(sql_text(index_query))
             await db.commit()            
             
-            async def refresh_existing_token_groups():
+            async def refresh_existing_token_groups() -> Dict[str, str]:
                 """Get existing token groups from keywords table (for legacy support)"""
                 existing_token_groups = {}
                 keywords_query = """
@@ -478,7 +478,7 @@ async def process_csv_file(file_path: str, project_id: int):
             except OSError as e:
                 print(f"Error removing file {file_path}: {e}")
 
-async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int):
+async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) -> None:
     """Group any remaining ungrouped keywords with identical tokens."""
     try:
         ungrouped_keywords_query = """
@@ -569,7 +569,7 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int):
 def get_processing_status(project_id: int) -> str:
     return processing_tasks.get(project_id, "not_started")
 
-def get_processing_results(project_id: int) -> Dict:
+def get_processing_results(project_id: int) -> Dict[str, Any]:
     return processing_results.get(project_id, {
         "processed_count": 0,
         "skipped_count": 0,
@@ -580,7 +580,7 @@ def get_processing_results(project_id: int) -> Dict:
         "progress": 0.0
     })
 
-def cleanup_processing_data(project_id: int):
+def cleanup_processing_data(project_id: int) -> None:
     """Clean up processing data for a project."""
     if project_id in processing_tasks:
         del processing_tasks[project_id]
