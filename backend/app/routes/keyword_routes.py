@@ -340,7 +340,7 @@ async def get_processing_status(
 async def upload_keywords(
     project_id: int,
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(..., alias="file"),
     chunkIndex: int = Form(None),
     totalChunks: int = Form(None),
     originalFilename: str = Form(None),
@@ -356,19 +356,169 @@ async def upload_keywords(
     if not project: 
         raise HTTPException(status_code=404, detail="Project not found")
     
-    if not file.filename or not file.filename.lower().endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Only CSV files are supported")
-    
     # Signal upload starting - this handles all state reset logic internally
     # If there's stale/error state, it will be cleared automatically
     processing_queue_service.begin_upload(project_id)
     
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided for upload")
+
+    invalid_files = [
+        upload_file
+        for upload_file in files
+        if not upload_file.filename
+        or not upload_file.filename.lower().endswith(".csv")
+    ]
+    if invalid_files:
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
+
     is_chunked_upload = chunkIndex is not None and totalChunks is not None and originalFilename is not None
-    safe_original_filename = _sanitize_segment(originalFilename or file.filename)
     safe_batch_id = _sanitize_segment(batchId) if batchId else None
-    safe_upload_id = _sanitize_segment(uploadId or originalFilename or file.filename)
     resolved_file_index = int(fileIndex) if fileIndex is not None else None
     resolved_total_files = int(totalFiles) if totalFiles is not None else None
+
+    if len(files) > 1:
+        if is_chunked_upload:
+            raise HTTPException(
+                status_code=400,
+                detail="Chunked uploads must send a single file per request.",
+            )
+        if resolved_file_index is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="fileIndex is not supported when uploading multiple files in one request.",
+            )
+        if resolved_total_files is not None and resolved_total_files != len(files):
+            raise HTTPException(
+                status_code=400,
+                detail="totalFiles must match the number of uploaded files.",
+            )
+
+        resolved_total_files = len(files)
+        if not safe_batch_id:
+            safe_batch_id = _sanitize_segment(f"multi_{uuid.uuid4().hex}")
+
+        batch_dir = os.path.join(settings.UPLOAD_DIR, f"{project_id}_batch_{safe_batch_id}")
+        os.makedirs(batch_dir, exist_ok=True)
+        processable_entries = []
+        duplicate_files = []
+
+        for index, upload_file in enumerate(files):
+            safe_original_filename = _sanitize_segment(upload_file.filename or "upload.csv")
+            safe_upload_id = _sanitize_segment(f"{uploadId or uuid.uuid4().hex}_{index}")
+            file_storage_name = f"{project_id}_{safe_upload_id}_{safe_original_filename}"
+            file_path = os.path.join(batch_dir, file_storage_name)
+
+            try:
+                buffer_size = 256 * 1024
+                with open(file_path, "wb") as buffer:
+                    while True:
+                        chunk = await upload_file.read(buffer_size)
+                        if not chunk:
+                            break
+                        buffer.write(chunk)
+                        await asyncio.sleep(0.0005)
+            except Exception as e:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                raise HTTPException(status_code=500, detail=f"Error saving uploaded file: {str(e)}")
+            finally:
+                await upload_file.close()
+
+            duplicate_info: Optional[Tuple[int, str]] = None
+            if upload_file.filename:
+                duplicate_info = await _find_duplicate_csv_upload(
+                    db,
+                    project_id=project_id,
+                    file_name=upload_file.filename,
+                    candidate_path=file_path,
+                )
+
+            if duplicate_info:
+                duplicate_files.append(upload_file.filename)
+                try:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                except Exception:
+                    pass
+
+                await ActivityLogService.log_activity(
+                    db,
+                    project_id=project_id,
+                    action="csv_upload_duplicate",
+                    details={
+                        "file_name": upload_file.filename,
+                        "existing_upload_id": duplicate_info[0],
+                        "chunked": False,
+                        "file_size": os.path.getsize(file_path) if os.path.exists(file_path) else None,
+                    },
+                    user=current_user.get("username", "admin"),
+                )
+                await db.commit()
+                continue
+
+            csv_upload = CSVUpload(project_id=project_id, file_name=upload_file.filename)
+            csv_upload.storage_path = _rel_upload_path(file_path)
+            db.add(csv_upload)
+            await db.commit()
+
+            await ActivityLogService.log_activity(
+                db,
+                project_id=project_id,
+                action="csv_upload",
+                details={
+                    "file_name": upload_file.filename,
+                    "chunked": False,
+                    "file_size": os.path.getsize(file_path) if os.path.exists(file_path) else None,
+                },
+                user=current_user.get("username", "admin"),
+            )
+            await db.commit()
+
+            processing_queue_service.register_upload(project_id, upload_file.filename)
+            processable_entries.append(
+                {"file_path": file_path, "file_name": upload_file.filename}
+            )
+
+        if not processable_entries:
+            processing_queue_service.set_status(project_id, "complete")
+            return {
+                "message": "All uploaded CSVs were duplicates and were skipped.",
+                "status": "complete",
+                "file_name": None,
+            }
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="batch_processing_queue",
+            details={
+                "batch_id": safe_batch_id,
+                "file_count": len(processable_entries),
+                "strategy": "sequential",
+            },
+            user=current_user.get("username", "admin"),
+        )
+        await db.commit()
+
+        for entry in processable_entries:
+            enqueue_processing_file(
+                project_id,
+                entry["file_path"],
+                entry.get("file_name") or "CSV file",
+            )
+        await start_next_processing(project_id)
+
+        return {
+            "message": "Batch upload complete. Files queued for sequential processing.",
+            "status": processing_queue_service.get_status(project_id),
+            "file_name": None,
+            "duplicateFiles": duplicate_files,
+        }
+
+    file = files[0]
+    safe_original_filename = _sanitize_segment(originalFilename or file.filename)
+    safe_upload_id = _sanitize_segment(uploadId or originalFilename or file.filename)
 
     if batchId and resolved_total_files is None:
         raise HTTPException(status_code=400, detail="Batch uploads require totalFiles.")

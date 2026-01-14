@@ -79,3 +79,6 @@ venv/
 env/
 .env
 *.log
+backend/.coverage
+backend/uploads/processing_state/
+backend/htmlcov/
