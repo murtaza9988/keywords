@@ -145,7 +145,7 @@ export const KeywordRow: React.FC<{
           )}
           {!showCheckbox && <span className="w-6 inline-block"></span>}
         </td>
-        <td className="w-[30%] py-1 text-[13px] font-light text-gray-800">
+        <td className="w-[38%] py-1 text-[13px] font-light text-gray-800">
           <div className={`flex items-start gap-x-0.5 ${keywordPaddingClass}`}>
             <span className="break-words leading-tight" title={displayText}>{displayText}</span>
             <span className="w-5 h-5 inline-flex items-center justify-center flex-shrink-0 flex-shrink-0" onClick={handleRowClick}>
@@ -163,7 +163,7 @@ export const KeywordRow: React.FC<{
             </span>
           </div>
         </td>
-        <td className="w-[18%] py-1 text-[13px] text-gray-800 whitespace-nowrap">
+        <td className="w-[26%] py-1 text-[13px] text-gray-800 whitespace-nowrap">
           <div className="flex flex-wrap gap-1 items-center">
             {orderedTokens.length > 0 ? (
               orderedTokens.map((token, index) => (
@@ -184,7 +184,7 @@ export const KeywordRow: React.FC<{
             )}
           </div>
         </td>
-        <td className="w-[10%] px-2 py-1 text-[13px] text-gray-800 overflow-hidden group relative">
+        <td className="w-10 px-2 py-1 text-[12px] text-gray-800 overflow-hidden group relative">
           {keyword.serpFeatures && keyword.serpFeatures.length > 0 ? (
             <div
               className="truncate max-w-full cursor-default relative"

@@ -152,7 +152,7 @@ export default function Projects() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-[1570px] mx-auto px-4 py-8">
+      <main className="max-w-[1100px] mx-auto px-4 py-8">
         <CreateProjectForm
           newProjectName={newProjectName}
           setNewProjectName={setNewProjectName}
