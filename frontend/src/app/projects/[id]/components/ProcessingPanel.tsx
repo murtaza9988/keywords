@@ -16,6 +16,7 @@ interface ProcessingPanelProps {
   processingCurrentFile: string | null;
   processingQueue: string[];
   onUploadStart: () => void;
+  onUploadBatchStart: (files: File[]) => void;
   onUploadSuccess: (status: ProcessingStatus, message?: string) => void;
   onUploadError: (message: string) => void;
 }
@@ -29,6 +30,7 @@ export function ProcessingPanel({
   processingCurrentFile,
   processingQueue,
   onUploadStart,
+  onUploadBatchStart,
   onUploadSuccess,
   onUploadError,
 }: ProcessingPanelProps): React.ReactElement {
@@ -45,6 +47,7 @@ export function ProcessingPanel({
               <FileUploader
                 projectId={projectId}
                 onUploadStart={onUploadStart}
+                onUploadBatchStart={onUploadBatchStart}
                 onUploadSuccess={onUploadSuccess}
                 onUploadError={onUploadError}
               />
