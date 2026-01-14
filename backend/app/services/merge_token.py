@@ -410,30 +410,21 @@ class TokenMergeService:
                     group_count += 1
 
             if updates_to_apply:
-                batch_size = 100
+                batch_size = 1000
                 for i in range(0, len(updates_to_apply), batch_size):
                     batch = updates_to_apply[i:i + batch_size]
                     
-                    for update in batch:
-                        update_query = text("""
-                            UPDATE keywords 
-                            SET group_id = :group_id,
-                                group_name = :group_name,
-                                is_parent = :is_parent,
-                                volume = :volume,
-                                difficulty = :difficulty,
-                                status = :status
-                            WHERE id = :id
-                        """)
-                        await db.execute(update_query, {
-                            'id': update['id'],
-                            'group_id': update['group_id'],
-                            'group_name': update['group_name'],
-                            'is_parent': update['is_parent'],
-                            'volume': update['volume'],
-                            'difficulty': update['difficulty'],
-                            'status': update['status']
-                        })
+                    update_query = text("""
+                        UPDATE keywords
+                        SET group_id = :group_id,
+                            group_name = :group_name,
+                            is_parent = :is_parent,
+                            volume = :volume,
+                            difficulty = :difficulty,
+                            status = :status
+                        WHERE id = :id
+                    """)
+                    await db.execute(update_query, batch)
             
             return group_count
 

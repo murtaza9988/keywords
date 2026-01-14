@@ -292,7 +292,7 @@ async def process_csv_file(file_path: str, project_id: int) -> None:
                 return
             
             # Processing variables
-            batch_size = 200 
+            batch_size = 1000
             processed_count = 0
             skipped_count = 0
             duplicate_count = 0
@@ -440,8 +440,14 @@ async def process_csv_file(file_path: str, project_id: int) -> None:
                                     await KeywordService.update_group_parent(db, project_id, group_id)
                                 await db.commit()
                                 
-                                # Refresh existing groups for next iteration
-                                existing_token_groups = await refresh_existing_token_groups()                                
+                                # Update existing_token_groups in-memory for next iteration
+                                for token_key, group_members in token_groups.items():
+                                     if group_members and len(group_members) > 1:
+                                         # Find the group_id from the first member as they share the same group_id
+                                         group_id = group_members[0].get("group_id")
+                                         if group_id:
+                                             existing_token_groups[token_key] = group_id
+
                                 token_groups.clear()
                                 
                                 processing_results[project_id]["keywords"] = final_keywords_to_save[-50:]
