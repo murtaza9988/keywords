@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
@@ -95,8 +93,9 @@ export function TokenManagement({
 
       if (currentKeywords.length === 0 && activeViewKeywords.length > 0) {
         currentKeywords = activeViewKeywords
-          .flatMap(token =>
-            token.tokens?.map((t: any) => ({
+          .flatMap(token => {
+            const tokenList = Array.isArray(token.tokens) ? token.tokens : [];
+            return tokenList.map(t => ({
               id: 0,
               keyword: t,
               volume: token.volume || 0,
@@ -115,8 +114,8 @@ export function TokenManagement({
               childCount: 0,
               serpFeatures: [] as string[],
               length: (t || '').length,
-            })) || []
-          )
+            }));
+          })
           .filter(kw => kw.keyword);
       }
 
