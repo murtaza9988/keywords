@@ -15,6 +15,7 @@ interface FiltersSectionProps {
   isProcessingAction: boolean;
   isUploading: boolean;
   processingStatus: ProcessingStatus;
+  processingMessage?: string;
   selectedTokens: string[];
   handleIncludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleExcludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -42,6 +43,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
   isProcessingAction,
   isUploading,
   processingStatus,
+  processingMessage,
   selectedTokens,
   handleIncludeFilterChange,
   handleExcludeFilterChange,
@@ -386,7 +388,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
             </div>
           ) : processingStatus === 'error' && !isUploading && !isProcessing ? (
             <div className="text-red-600 text-xs">
-              Processing failed. Try uploading again.
+              {processingMessage || 'Processing failed. Try uploading again.'}
             </div>
           ) : (
             <span className="text-xs text-transparent">Status</span>
