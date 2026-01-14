@@ -44,20 +44,20 @@ export const NoteEditor = memo(({
   return (
     <div className="note-section border border-border rounded-lg overflow-hidden bg-surface shadow-sm">
       <div className="header flex items-center gap-2 p-2 bg-surface-muted border-b border-border">
-        <label htmlFor={id} className="text-[13px] font-medium mr-2 text-foreground">
+        <label htmlFor={id} className="text-[12px] font-medium mr-2 text-foreground">
           {label}
         </label>
         <div className="toolbar flex gap-2 items-center">
           <button
             onClick={() => formatText("bold")}
-            className="px-2.5 py-1 text-[13px] bg-surface border border-border rounded hover:bg-surface-strong text-foreground transition-colors font-bold"
+            className="px-2.5 py-1 text-[12px] bg-surface border border-border rounded hover:bg-surface-strong text-foreground transition-colors font-bold"
             title="Bold"
           >
             B
           </button>
           <select
             onChange={(e) => formatText("fontSize", e.target.value)}
-            className="text-[13px] bg-surface border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            className="text-[12px] bg-surface border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
             title="Font Size"
           >
             <option value="">Size</option>
@@ -91,7 +91,7 @@ export const NoteEditor = memo(({
         contentEditable
         onInput={onChange}
         onWheel={onWheel}
-        className="w-full text-foreground p-3 resize-y"
+        className="w-full text-[13px] text-foreground p-3 resize-y"
         style={{
           whiteSpace: "pre-wrap",
           minHeight: "150px",
