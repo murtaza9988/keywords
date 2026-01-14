@@ -65,6 +65,10 @@ export interface StatsState {
   blockedCount: number;
   totalKeywords: number;
   totalParentKeywords: number;
+  totalChildKeywords: number;
+  groupCount: number;
+  parentTokenCount: number;
+  childTokenCount: number;
 }
 
 export interface ProjectDetailState {
@@ -155,6 +159,10 @@ export const initialProjectDetailState: ProjectDetailState = {
     blockedCount: 0,
     totalKeywords: 0,
     totalParentKeywords: 0,
+    totalChildKeywords: 0,
+    groupCount: 0,
+    parentTokenCount: 0,
+    childTokenCount: 0,
   },
 };
 

@@ -14,6 +14,10 @@ export interface ProjectStats {
   blockedCount: number;
   totalKeywords: number;
   totalParentKeywords: number;
+  totalChildKeywords?: number;
+  groupCount?: number;
+  parentTokenCount?: number;
+  childTokenCount?: number;
   ungroupedPercent: number;
   groupedPercent: number;
   confirmedPercent: number;
