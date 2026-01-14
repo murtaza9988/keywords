@@ -673,27 +673,26 @@ const fetchProjectStats = useCallback(async () => {
     apiCache
   ]);
 
-const getSerpFeatures = (keyword: SerpFeatureCarrier | null | undefined): string[] => {
-const getSerpFeatures = (
-  keyword: Keyword | { serpFeatures?: string[] | string | null }
-): string[] => {
-  if (!keyword || !keyword.serpFeatures) return [];
-  if (Array.isArray(keyword.serpFeatures)) return keyword.serpFeatures;
-  if (typeof keyword.serpFeatures === 'string') {
-    try {
-      const parsed = JSON.parse(keyword.serpFeatures);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
+  const getSerpFeatures = (
+    keyword: Keyword | SerpFeatureCarrier | null | undefined
+  ): string[] => {
+    if (!keyword || !keyword.serpFeatures) return [];
+    if (Array.isArray(keyword.serpFeatures)) return keyword.serpFeatures;
+    if (typeof keyword.serpFeatures === 'string') {
+      try {
+        const parsed = JSON.parse(keyword.serpFeatures);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
     }
-  }
-  return [];
-};
-const fetchChildren = useCallback(async (groupId: string) => {
+    return [];
+  };
+  const fetchChildren = useCallback(async (groupId: string) => {
     if (!projectIdStr) return [];
     try {
       const timestamp = new Date().getTime();
-              const data = await apiClient.fetchChildren(projectIdStr, groupId);
+      const data = await apiClient.fetchChildren(projectIdStr, groupId);
       return data.children;
     } catch (error) {
       console.error('Error fetching children:', error);
@@ -709,7 +708,7 @@ const fetchChildren = useCallback(async (groupId: string) => {
     addSnackbarMessage('Starting export, please wait...', 'success');
 
     try {
-              const blobData = await apiClient.exportGroupedKeywords(projectIdStr, activeView);
+      const blobData = await apiClient.exportGroupedKeywords(projectIdStr, activeView);
       const url = window.URL.createObjectURL(blobData);
       const link = document.createElement('a');
       link.href = url;
@@ -1923,23 +1922,27 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         if (data.status === 'error') {
           setIsUploading(false);
           setProcessingProgress(0);
-        addSnackbarMessage(data.message || 'File processing failed', 'error');
-        stopProcessingCheck();
-      } else if (data.status === 'idle') {
-        setIsUploading(false);
-        stopProcessingCheck();
-      } else if (data.status === 'uploading' || data.status === 'combining') {
-        setIsUploading(true);
-      } else if (data.status === 'queued' || data.status === 'processing') {
-        setIsUploading(false);
-      }
+          addSnackbarMessage(data.message || 'File processing failed', 'error');
+          stopProcessingCheck();
+        } else if (data.status === 'idle') {
+          setIsUploading(false);
+          stopProcessingCheck();
+        } else if (data.status === 'uploading' || data.status === 'combining') {
+          setIsUploading(true);
+        } else if (data.status === 'queued' || data.status === 'processing') {
+          setIsUploading(false);
+        }
       }
 
       if ((data.status === 'queued' || data.status === 'processing') && 
           data.keywords && data.keywords.length > 0) {
         const keywords = data.keywords.map((kw) => {
           let parsedTokens = [];
-          const serpFeatures = Array.isArray(kw.serpFeatures) ? kw.serpFeatures : [];
+          const serpFeatures = Array.isArray(kw.serpFeatures)
+            ? kw.serpFeatures
+            : Array.isArray(kw.serp_features)
+              ? kw.serp_features
+              : [];
           try {
             if (typeof kw.tokens === 'string') {
               parsedTokens = JSON.parse(kw.tokens);
@@ -1952,9 +1955,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               parsedTokens = kw.tokens.split(',').map((t: string) => t.trim()).filter(Boolean);
             }
           }
-          
-          const serpFeatures = Array.isArray(kw.serp_features) ? kw.serp_features : [];
-
           return {
             id: kw.id || Date.now() + Math.random(),
             project_id: projectIdNum,
@@ -1974,17 +1974,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         });
         
         dispatch(setKeywordsForView({
-            projectId: projectIdStr,
-            view: 'ungrouped',
-            keywords: keywords.map(kw => ({
-              ...kw,
-              original_volume: kw.volume || 0,
-              project_id: projectIdNum,
-              status: 'ungrouped',
-              groupName: kw.keyword || '',
-              serpFeatures: kw.serpFeatures ?? [],
-              length: (kw.keyword || '').length
-            })),
           projectId: projectIdStr,
           view: 'ungrouped',
           keywords: keywords.map(kw => ({
@@ -1993,7 +1982,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             project_id: projectIdNum,
             status: 'ungrouped',
             groupName: kw.keyword || '',
-            serpFeatures: Array.isArray(kw.serpFeatures) ? kw.serpFeatures : [],
+            serpFeatures: kw.serpFeatures ?? [],
             length: (kw.keyword || '').length
           })),
         }));
@@ -2070,8 +2059,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }
         
         if (initialData.currentView?.keywords) {
-          const transformedKeywords = initialData.currentView.keywords.map((kw) => ({
-            id: kw.id,
           const transformedKeywords = (initialData.currentView.keywords as Keyword[]).map((kw) => ({
             ...kw,
             original_volume: kw.original_volume || kw.volume || 0,
@@ -2087,7 +2074,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             groupName: typeof kw.groupName === 'string' ? kw.groupName : null,
             status: normalizeKeywordStatus(kw.status, activeView),
             childCount: typeof kw.childCount === 'number' ? kw.childCount : 0,
-            original_volume: typeof kw.original_volume === 'number' ? kw.original_volume : (typeof kw.volume === 'number' ? kw.volume : 0),
             serpFeatures: Array.isArray(kw.serpFeatures) ? kw.serpFeatures : [],
           }));
           
