@@ -2682,8 +2682,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       isUploading={isUploading}
                       processingStatus={processingStatus}
                       selectedTokens={selectedTokens}
-                      isUploading={isUploading}
-                      processingStatus={processingStatus}
                       handleIncludeFilterChange={handleIncludeFilterChange}
                       handleExcludeFilterChange={handleExcludeFilterChange}
                       setGroupName={setGroupName}
