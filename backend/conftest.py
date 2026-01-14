@@ -11,6 +11,7 @@ from app.models.keyword import Keyword, KeywordStatus
 from app.models.project import Project
 from app.config import settings
 from app.main import app
+from app.services.processing_queue import processing_queue_service
 
 # Ensure test environment
 os.environ["TESTING"] = "True"
@@ -194,32 +195,28 @@ def mock_db() -> Generator[AsyncMock, None, None]:
 def mock_processing_tasks(monkeypatch) -> Dict[int, str]:
     """Mock and return processing_tasks dict."""
     mock_tasks = {}
-    monkeypatch.setattr("app.routes.keyword_processing.processing_tasks", mock_tasks)
-    monkeypatch.setattr("app.routes.keyword_routes.processing_tasks", mock_tasks)
+    monkeypatch.setattr(processing_queue_service, "processing_tasks", mock_tasks)
     return mock_tasks
 
 @pytest.fixture
 def mock_processing_results(monkeypatch) -> Dict[int, Dict[str, Any]]:
     """Mock and return processing_results dict."""
     mock_results = {}
-    monkeypatch.setattr("app.routes.keyword_processing.processing_results", mock_results)
-    monkeypatch.setattr("app.routes.keyword_routes.processing_results", mock_results)
+    monkeypatch.setattr(processing_queue_service, "processing_results", mock_results)
     return mock_results
 
 @pytest.fixture
 def mock_processing_queue(monkeypatch) -> Dict[int, List[Dict[str, Any]]]:
     """Mock and return processing_queue dict."""
     mock_queue = {}
-    monkeypatch.setattr("app.routes.keyword_processing.processing_queue", mock_queue)
-    monkeypatch.setattr("app.routes.keyword_routes.processing_queue", mock_queue)
+    monkeypatch.setattr(processing_queue_service, "processing_queue", mock_queue)
     return mock_queue
 
 @pytest.fixture
 def mock_processing_current_files(monkeypatch) -> Dict[int, Dict[str, str]]:
     """Mock and return processing_current_files dict."""
     mock_current = {}
-    monkeypatch.setattr("app.routes.keyword_processing.processing_current_files", mock_current)
-    monkeypatch.setattr("app.routes.keyword_routes.processing_current_files", mock_current)
+    monkeypatch.setattr(processing_queue_service, "processing_current_files", mock_current)
     return mock_current
 
 # Fixtures for file handling
