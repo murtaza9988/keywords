@@ -15,6 +15,7 @@ class ActivityLogResponse(BaseModel):
     model_config = {
         "from_attributes": True,
         "populate_by_name": True,
+        "serialize_by_alias": True,
     }
 
 

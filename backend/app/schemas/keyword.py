@@ -77,6 +77,7 @@ class KeywordResponse(KeywordBase):
         "from_attributes": True,
         "populate_by_name": True,
         "arbitrary_types_allowed": True,
+        "serialize_by_alias": True,
     }
 
 class GroupedKeywordDetail(BaseModel):
@@ -101,6 +102,7 @@ class KeywordListResponse(BaseModel):
     confirmed_keywords: List[KeywordResponse] = Field([], alias="confirmedKeywords")
     model_config = {
         "populate_by_name": True,
+        "serialize_by_alias": True,
     }
 
 class KeywordChildrenResponse(BaseModel):
@@ -144,7 +146,8 @@ class ProcessingStatus(BaseModel):
     validation_error: Optional[str] = Field(None, alias="validationError")
     
     model_config = {
-        "populate_by_name": True
+        "populate_by_name": True,
+        "serialize_by_alias": True,
     }
 
 # New schemas for optimized endpoints
@@ -160,7 +163,8 @@ class ProjectStats(BaseModel):
     blocked_percent: float = Field(..., alias="blockedPercent")
     
     model_config = {
-        "populate_by_name": True
+        "populate_by_name": True,
+        "serialize_by_alias": True,
     }
 
 class ProjectDetail(BaseModel):
@@ -171,7 +175,8 @@ class ProjectDetail(BaseModel):
     
     model_config = {
         "populate_by_name": True,
-        "from_attributes": True
+        "from_attributes": True,
+        "serialize_by_alias": True,
     }
 
 class KeywordsCacheResponse(BaseModel):
@@ -180,7 +185,8 @@ class KeywordsCacheResponse(BaseModel):
     status: str
     
     model_config = {
-        "populate_by_name": True
+        "populate_by_name": True,
+        "serialize_by_alias": True,
     }
 
 class InitialDataResponse(BaseModel):
@@ -190,7 +196,8 @@ class InitialDataResponse(BaseModel):
     processing_status: ProcessingStatus = Field(..., alias="processingStatus")
     
     model_config = {
-        "populate_by_name": True
+        "populate_by_name": True,
+        "serialize_by_alias": True,
     }
 
 # Enhanced response models for token-based operations
