@@ -479,13 +479,17 @@ class ApiClient {
   async uploadCSV(
     projectId: string,
     formData: FormData,
+    uploadId?: string,
     onUploadProgress?: (progress: number) => void
-  ): Promise<{ message: string; status: ProcessingStatus; file_name?: string }> {
+  ): Promise<{ message: string; status: ProcessingStatus; file_name?: string; upload_id?: string }> {
     try {
       this.cache.invalidate(`/api/projects/${projectId}`);
       const chunkIndex = formData.get('chunkIndex');
       const totalChunks = formData.get('totalChunks');
       const url = `/api/projects/${projectId}/upload?_t=${Date.now()}`;
+      if (uploadId) {
+        formData.set('uploadId', uploadId);
+      }
       
       const authToken = authService.getAccessToken();
       const response = await this.axiosInstance.post(url, formData, {

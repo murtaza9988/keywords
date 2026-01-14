@@ -97,6 +97,7 @@ def test_upload_keywords_chunked_combines_and_queues(
 
     chunk_one = b"Keyword,Volume\nalpha,"
     chunk_two = b"10\n"
+    upload_id = "upload-123"
 
     response_first = test_api_client.post(
         "/api/projects/1/upload",
@@ -104,6 +105,7 @@ def test_upload_keywords_chunked_combines_and_queues(
             "chunkIndex": 0,
             "totalChunks": 2,
             "originalFilename": "keywords.csv",
+            "uploadId": upload_id,
         },
         files={"file": ("keywords.csv", chunk_one, "text/csv")},
     )
@@ -118,6 +120,7 @@ def test_upload_keywords_chunked_combines_and_queues(
             "chunkIndex": 1,
             "totalChunks": 2,
             "originalFilename": "keywords.csv",
+            "uploadId": upload_id,
         },
         files={"file": ("keywords.csv", chunk_two, "text/csv")},
     )

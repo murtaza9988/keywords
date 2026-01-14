@@ -117,6 +117,7 @@ async def upload_keywords(
     chunkIndex: int = Form(None),
     totalChunks: int = Form(None),
     originalFilename: str = Form(None),
+    uploadId: str = Form(None),
     fileSize: int = Form(None),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -133,10 +134,15 @@ async def upload_keywords(
     is_chunked_upload = chunkIndex is not None and totalChunks is not None and originalFilename is not None
     
     if is_chunked_upload:
-        chunks_dir = os.path.join(settings.UPLOAD_DIR, f"{project_id}_chunks")
+        if not uploadId:
+            if int(chunkIndex) > 0:
+                raise HTTPException(status_code=400, detail="uploadId is required for chunked uploads")
+            uploadId = str(uuid.uuid4())
+        safe_original_filename = re.sub(r'[^a-zA-Z0-9._-]', '_', originalFilename)
+        chunks_dir = os.path.join(settings.UPLOAD_DIR, f"{project_id}_{uploadId}_chunks")
         os.makedirs(chunks_dir, exist_ok=True)
         
-        chunk_filename = f"{originalFilename}.part{chunkIndex}"
+        chunk_filename = f"{safe_original_filename}.part{chunkIndex}"
         chunk_path = os.path.join(chunks_dir, chunk_filename)
         
         try:
@@ -158,18 +164,19 @@ async def upload_keywords(
         if int(chunkIndex) < int(totalChunks) - 1:
             return {
                 "message": f"Chunk {int(chunkIndex) + 1} of {totalChunks} received.",
-                "status": "uploading"
+                "status": "uploading",
+                "upload_id": uploadId
             }
             
         try:
             if processing_tasks.get(project_id) not in {"processing", "queued"}:
                 processing_tasks[project_id] = "combining"
-            safe_filename = f"{project_id}_{re.sub(r'[^a-zA-Z0-9._-]', '_', originalFilename)}"
+            safe_filename = f"{project_id}_{uploadId}_{safe_original_filename}"
             final_path = os.path.join(settings.UPLOAD_DIR, safe_filename)
             
             with open(final_path, "wb") as outfile:
                 for i in range(int(totalChunks)):
-                    part_filename = f"{originalFilename}.part{i}"
+                    part_filename = f"{safe_original_filename}.part{i}"
                     part_path = os.path.join(chunks_dir, part_filename)
                     
                     if not os.path.exists(part_path):
@@ -199,12 +206,13 @@ async def upload_keywords(
                 project_id=project_id,
                 action="csv_upload",
                 details={
-                    "file_name": originalFilename,
-                    "chunked": True,
-                    "total_chunks": int(totalChunks),
-                    "file_size": fileSize,
-                },
-                user=current_user.get("username", "admin"),
+                "file_name": originalFilename,
+                "chunked": True,
+                "total_chunks": int(totalChunks),
+                "file_size": fileSize,
+                "upload_id": uploadId,
+            },
+            user=current_user.get("username", "admin"),
             )
             
             if processing_tasks.get(project_id) != "processing":
@@ -224,7 +232,8 @@ async def upload_keywords(
             return {
                 "message": "Upload complete. Processing queued.",
                 "status": processing_tasks.get(project_id, "queued"),
-                "file_name": originalFilename
+                "file_name": originalFilename,
+                "upload_id": uploadId
             }
         except Exception as e:
             if os.path.exists(chunks_dir):

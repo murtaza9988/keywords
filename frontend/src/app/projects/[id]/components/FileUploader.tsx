@@ -66,6 +66,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       let currentChunk = 0;
       let uploadSuccessful = true;
       let uploadMessage = '';
+      const uploadId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       
       try {
         while (currentChunk < totalChunks && uploadSuccessful) {
@@ -78,6 +79,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           formData.append('chunkIndex', String(currentChunk));
           formData.append('totalChunks', String(totalChunks));
           formData.append('originalFilename', fileToUpload.name);
+          formData.append('uploadId', uploadId);
           formData.append('fileSize', String(fileToUpload.size));
           const baseProgress = Math.floor((currentChunk / totalChunks) * 100);
           setUploadProgress(Math.max(prevProgressRef.current, baseProgress));
@@ -86,7 +88,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             if (currentChunk === totalChunks - 1) {
               setUploadStage('combining');
             }
-            const result = await apiClient.uploadCSV(projectId, formData, (chunkProgress) => {
+            const result = await apiClient.uploadCSV(projectId, formData, uploadId, (chunkProgress) => {
               const adjustedChunkProgress = chunkProgress / totalChunks;
               const compositeProgress = Math.floor(baseProgress + adjustedChunkProgress);
               const newProgress = Math.max(prevProgressRef.current, compositeProgress);
