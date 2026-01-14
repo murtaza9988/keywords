@@ -165,6 +165,7 @@ export default function ProjectDetail() {
     groupedPages: 0,
     blockedCount: 0,
     totalKeywords: 0,
+    totalParentKeywords: 0,
   });
   const [sortParams, setSortParams] = useState<SortParams>({
     column: 'volume',
@@ -291,6 +292,7 @@ const fetchProjectStats = useCallback(async () => {
       confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
       confirmedPages: statsData.confirmedPages || 0,               
       blockedCount: statsData.blockedCount || 0,
+      totalParentKeywords: statsData.totalParentKeywords || 0,
       totalKeywords: statsData.totalKeywords || 
         (statsData.ungroupedCount + statsData.groupedKeywordsCount + 
          statsData.confirmedKeywordsCount + statsData.blockedCount),
@@ -1467,6 +1469,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               confirmedPages: statsData.confirmedPages || 0,
               groupedPages: statsData.groupedPages || 0,
               blockedCount: statsData.blockedCount || 0,
+              totalParentKeywords: statsData.totalParentKeywords || 0,
               totalKeywords: statsData.totalKeywords ||
                 (statsData.ungroupedCount + statsData.groupedKeywordsCount + (statsData.confirmedKeywordsCount || 0) + statsData.blockedCount),
             });
@@ -2448,6 +2451,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
 
   const isProcessing = processingStatus === 'queued' || processingStatus === 'processing';
   const showUploadLoader = isUploading || isProcessing;
+  const totalChildKeywords = Math.max(0, stats.totalKeywords - stats.totalParentKeywords);
 
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden">
@@ -2570,6 +2574,32 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       ) : (
                         <span className="text-xs text-transparent">Status</span>
                       )}
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total keywords uploaded</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.totalKeywords.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total parent keywords</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.totalParentKeywords.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total child keywords</p>
+                        <p className="text-lg font-semibold text-foreground">{totalChildKeywords.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Grouped pages</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.groupedPages.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Confirmed pages</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.confirmedPages.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Blocked parent keywords</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.blockedCount.toLocaleString()}</p>
+                      </div>
                     </div>
                   </div>
                 )}
