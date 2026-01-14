@@ -16,6 +16,7 @@ import {
   Note,
   CSVUpload,
   ActivityLog,
+  ActivityLogListResponse,
 } from './types';
 import authService from './authService';
 
@@ -141,6 +142,11 @@ interface ApiActivityLog {
   details?: Record<string, unknown> | null;
   createdAt?: string;
   created_at?: string;
+}
+
+interface ApiActivityLogListResponse {
+  logs: ApiActivityLog[];
+  pagination: PaginationInfo;
 }
 
 const mapKeyword = (keywordData: ApiKeyword): Keyword => {
@@ -369,6 +375,58 @@ class ApiClient {
       createdAt: log.createdAt ?? log.created_at ?? new Date().toISOString(),
       details: log.details ?? null,
     }));
+  }
+
+  async fetchAllActivityLogs(filters: {
+    projectId?: number;
+    user?: string;
+    action?: string;
+    startDate?: string | Date;
+    endDate?: string | Date;
+    page?: number;
+    limit?: number;
+  } = {}): Promise<ActivityLogListResponse> {
+    const params = new URLSearchParams();
+    if (filters.projectId !== undefined) {
+      params.set('projectId', String(filters.projectId));
+    }
+    if (filters.user) {
+      params.set('user', filters.user);
+    }
+    if (filters.action) {
+      params.set('action', filters.action);
+    }
+    if (filters.startDate) {
+      const value =
+        filters.startDate instanceof Date ? filters.startDate.toISOString() : filters.startDate;
+      params.set('startDate', value);
+    }
+    if (filters.endDate) {
+      const value = filters.endDate instanceof Date ? filters.endDate.toISOString() : filters.endDate;
+      params.set('endDate', value);
+    }
+    if (filters.page) {
+      params.set('page', String(filters.page));
+    }
+    if (filters.limit) {
+      params.set('limit', String(filters.limit));
+    }
+    const query = params.toString();
+    const url = query ? `/api/logs?${query}` : '/api/logs';
+    const data = await this.request<ApiActivityLogListResponse>(
+      'get',
+      url,
+      undefined,
+      undefined,
+      false
+    );
+    const logs = data.logs.map((log) => ({
+      ...log,
+      projectId: log.projectId ?? log.project_id ?? 0,
+      createdAt: log.createdAt ?? log.created_at ?? new Date().toISOString(),
+      details: log.details ?? null,
+    }));
+    return { logs, pagination: data.pagination };
   }
 
   async fetchSingleProjectStats(projectId: string): Promise<ApiProjectStats> {
