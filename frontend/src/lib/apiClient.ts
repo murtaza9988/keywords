@@ -922,6 +922,17 @@ class ApiClient {
     
     return data;
   }
+
+  async resetProcessing(projectId: string): Promise<{ message: string; cleared: Record<string, unknown> }> {
+    const data = await this.request<{ message: string; cleared: Record<string, unknown> }>(
+      'post',
+      `/api/projects/${projectId}/reset-processing`
+    );
+    
+    this.cache.invalidate(`/api/projects/${projectId}`);
+    
+    return data;
+  }
 }
 
 const apiClient = new ApiClient(BASE_URL);
