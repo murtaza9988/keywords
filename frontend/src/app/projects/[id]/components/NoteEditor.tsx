@@ -8,7 +8,7 @@ interface NoteEditorProps {
   isSaving: boolean;
   maxHeight: number;
   id: string;
-  editorRef: React.RefObject<HTMLDivElement>;
+  editorRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export const NoteEditor = memo(({
