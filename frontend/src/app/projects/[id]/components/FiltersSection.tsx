@@ -208,139 +208,142 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
 
   return (
     <div className="flex flex-col gap-2 shrink-0">
-      <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-3">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="min-w-[220px] flex flex-col gap-2">
-            <label htmlFor="includeFilter" className="text-xs font-semibold text-foreground uppercase tracking-wide">Include</label>
-            <div className="flex items-center gap-2">
-              <select
-                value={includeMatchType}
-                onChange={(e) => setIncludeMatchType(e.target.value as 'any' | 'all')}
-                className="p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer hover:border-gray-400"
-              >
-                <option value="any">Any</option>
-                <option value="all">All</option>
-              </select>
-              <input
-                id="includeFilter"
-                type="text"
-                placeholder="Contains... (e.g., improve,increase)"
-                value={localIncludeFilter}
-                onChange={handleLocalIncludeChange}
-                className="flex-1 p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
-              />
-            </div>
-          </div>
-          <div className="min-w-[220px] flex flex-col gap-2">
-            <label htmlFor="excludeFilter" className="text-xs font-semibold text-foreground uppercase tracking-wide">Exclude</label>
-            <div className="flex items-center gap-2">
-              <select
-                value={excludeMatchType}
-                onChange={(e) => setExcludeMatchType(e.target.value as 'any' | 'all')}
-                className="p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer hover:border-gray-400"
-              >
-                <option value="any">Any</option>
-                <option value="all">All</option>
-              </select>
-              <input
-                id="excludeFilter"
-                type="text"
-                placeholder="Not contain... (e.g., slow,delay)"
-                value={localExcludeFilter}
-                onChange={handleLocalExcludeChange}
-                className="flex-1 p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
-              />
-            </div>
-          </div>
-          <div className="min-w-[240px] flex flex-col gap-2 relative">
-            <label htmlFor="groupNameInput" className="text-xs font-semibold text-foreground uppercase tracking-wide">Group Name</label>
-            <div className="flex gap-2 items-end">
-              <div className="flex-1 relative">
+      <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-2">
+        <div className="flex flex-col gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">Search</span>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="min-w-[220px] flex flex-col gap-2">
+              <label htmlFor="includeFilter" className="text-xs font-semibold text-foreground uppercase tracking-wide">Include</label>
+              <div className="flex items-center gap-2">
+                <select
+                  value={includeMatchType}
+                  onChange={(e) => setIncludeMatchType(e.target.value as 'any' | 'all')}
+                  className="p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer hover:border-gray-400"
+                >
+                  <option value="any">Any</option>
+                  <option value="all">All</option>
+                </select>
                 <input
-                  ref={inputRef}
-                  id="groupNameInput"
+                  id="includeFilter"
                   type="text"
-                  placeholder="Enter group name..."
-                  value={groupName}
-                  onChange={handleGroupNameChange}
-                  onFocus={() => {
-                    if (groupName.length >= 1) {
-                      fetchSuggestions(groupName);
-                      setShowSuggestions(true);
-                    }
-                  }}
-                  disabled={selectedKeywordIds.size === 0 || isProcessingAction}
-                  className="w-full p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
+                  placeholder="Contains... (e.g., improve,increase)"
+                  value={localIncludeFilter}
+                  onChange={handleLocalIncludeChange}
+                  className="flex-1 p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
                 />
-                {showSuggestions && (
-                  <div
-                    ref={suggestionRef}
-                    className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-52 overflow-y-auto"
-                  >
-                    {isLoadingSuggestions ? (
-                      <div className="flex items-center justify-center p-2">
-                        <Loader2 size={16} className="animate-spin mr-2" />
-                        <span>Loading...</span>
-                      </div>
-                    ) : suggestions.length > 0 ? (
-                      suggestions.map((suggestion, index) => (
-                        <div
-                          key={index}
-                          className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-[13px]"
-                          onClick={() => handleSuggestionClick(suggestion)}
-                        >
-                          {suggestion}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-3 py-2 text-muted text-[13px]">No matching groups found</div>
-                    )}
-                  </div>
-                )}
               </div>
-              {isGroupButtonVisible && (
-                <button
-                  onClick={handleGroupKeywords}
-                  disabled={selectedKeywordIds.size === 0 || !groupName.trim() || isProcessingAction}
-                  className="bg-blue-600 cursor-pointer text-white px-3 py-1.5 border border-transparent rounded-md text-[13px] shadow-sm hover:bg-blue-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+            </div>
+            <div className="min-w-[220px] flex flex-col gap-2">
+              <label htmlFor="excludeFilter" className="text-xs font-semibold text-foreground uppercase tracking-wide">Exclude</label>
+              <div className="flex items-center gap-2">
+                <select
+                  value={excludeMatchType}
+                  onChange={(e) => setExcludeMatchType(e.target.value as 'any' | 'all')}
+                  className="p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer hover:border-gray-400"
                 >
-                  Group
-                </button>
-              )}
-              {isConfirmButtonVisible && (
-                <button
-                  onClick={handleConfirmKeywords}
-                  disabled={selectedKeywordIds.size === 0 || isProcessingAction}
-                  className="bg-green-600 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-green-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
-                >
-                  Confirm
-                </button>
-              )}
-              <button
-                onClick={
-                  isUngroupButtonVisible
-                    ? handleUngroupKeywords
-                    : isUnconfirmButtonVisible
-                      ? handleUnconfirmKeywords
-                      : isUnblockButtonVisible
-                        ? handleUnblockKeywords
-                        : undefined
-                }
-                disabled={(!isUngroupButtonVisible && !isUnconfirmButtonVisible && !isUnblockButtonVisible) || selectedKeywordIds.size === 0 || isProcessingAction}
-                className="bg-yellow-500 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-yellow-600 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
-              >
-                {isProcessingAction && (isUngroupButtonVisible || isUnconfirmButtonVisible || isUnblockButtonVisible) ? (
-                  "Processing..."
-                ) : isUngroupButtonVisible ? (
-                  "Ungroup"
-                ) : isUnconfirmButtonVisible ? (
-                  "Unconfirm"
-                ) : isUnblockButtonVisible ? (
-                  "Unblock"
-                ) : (
-                  "Action"
+                  <option value="any">Any</option>
+                  <option value="all">All</option>
+                </select>
+                <input
+                  id="excludeFilter"
+                  type="text"
+                  placeholder="Not contain... (e.g., slow,delay)"
+                  value={localExcludeFilter}
+                  onChange={handleLocalExcludeChange}
+                  className="flex-1 p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
+                />
+              </div>
+            </div>
+            <div className="min-w-[240px] flex flex-col gap-2 relative">
+              <label htmlFor="groupNameInput" className="text-xs font-semibold text-foreground uppercase tracking-wide">Group Name</label>
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 relative">
+                  <input
+                    ref={inputRef}
+                    id="groupNameInput"
+                    type="text"
+                    placeholder="Enter group name..."
+                    value={groupName}
+                    onChange={handleGroupNameChange}
+                    onFocus={() => {
+                      if (groupName.length >= 1) {
+                        fetchSuggestions(groupName);
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    disabled={selectedKeywordIds.size === 0 || isProcessingAction}
+                    className="w-full p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
+                  />
+                  {showSuggestions && (
+                    <div
+                      ref={suggestionRef}
+                      className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-52 overflow-y-auto"
+                    >
+                      {isLoadingSuggestions ? (
+                        <div className="flex items-center justify-center p-2">
+                          <Loader2 size={16} className="animate-spin mr-2" />
+                          <span>Loading...</span>
+                        </div>
+                      ) : suggestions.length > 0 ? (
+                        suggestions.map((suggestion, index) => (
+                          <div
+                            key={index}
+                            className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-[13px]"
+                            onClick={() => handleSuggestionClick(suggestion)}
+                          >
+                            {suggestion}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-muted text-[13px]">No matching groups found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {isGroupButtonVisible && (
+                  <button
+                    onClick={handleGroupKeywords}
+                    disabled={selectedKeywordIds.size === 0 || !groupName.trim() || isProcessingAction}
+                    className="bg-blue-600 cursor-pointer text-white px-3 py-1.5 border border-transparent rounded-md text-[13px] shadow-sm hover:bg-blue-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                  >
+                    Group
+                  </button>
                 )}
-              </button>
+                {isConfirmButtonVisible && (
+                  <button
+                    onClick={handleConfirmKeywords}
+                    disabled={selectedKeywordIds.size === 0 || isProcessingAction}
+                    className="bg-green-600 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-green-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                  >
+                    Confirm
+                  </button>
+                )}
+                <button
+                  onClick={
+                    isUngroupButtonVisible
+                      ? handleUngroupKeywords
+                      : isUnconfirmButtonVisible
+                        ? handleUnconfirmKeywords
+                        : isUnblockButtonVisible
+                          ? handleUnblockKeywords
+                          : undefined
+                  }
+                  disabled={(!isUngroupButtonVisible && !isUnconfirmButtonVisible && !isUnblockButtonVisible) || selectedKeywordIds.size === 0 || isProcessingAction}
+                  className="bg-yellow-500 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-yellow-600 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                >
+                  {isProcessingAction && (isUngroupButtonVisible || isUnconfirmButtonVisible || isUnblockButtonVisible) ? (
+                    "Processing..."
+                  ) : isUngroupButtonVisible ? (
+                    "Ungroup"
+                  ) : isUnconfirmButtonVisible ? (
+                    "Unconfirm"
+                  ) : isUnblockButtonVisible ? (
+                    "Unblock"
+                  ) : (
+                    "Action"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

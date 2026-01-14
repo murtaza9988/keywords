@@ -12,6 +12,7 @@ import { FiltersSection } from './FiltersSection';
 import { MainContent } from './MainContent';
 import { Snackbar } from './Snackbar';
 import { TokenManagement } from './token/TokenManagement';
+import { LogsTable } from './LogsTable';
 import {TextAreaInputs} from './TextAreaInputs'; 
 import FileUploader from './FileUploader';
 import CSVUploadDropdown from './CSVUploadDropdown';
@@ -2453,10 +2454,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden">
       <Header projectName={project?.name} />
       <div className="bg-surface border-b border-border">
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-end gap-3">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-end gap-2">
           <Button
             onClick={handleExportParentKeywords}
             disabled={isExportingParent}
+            size="sm"
+            className="px-2 py-1 text-[11px]"
           >
             {isExportingParent ? (
               <>
@@ -2469,15 +2472,15 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           </Button>
           <label className="inline-flex items-center">
             <span className="sr-only">Import Parent KWs</span>
-            <Button disabled={isImportingParent}>
+            <Button disabled={isImportingParent} size="sm" className="px-2 py-1 text-[11px]">
               {isImportingParent ? (
                 <>
                   <Spinner size="sm" className="border-white/40 border-t-white" />
                   Importing...
                 </>
-              ) : (
-                'Import Parent KWs'
-              )}
+                ) : (
+                  'Import Parent KWs'
+                )}
             </Button>
             <input
               type="file"
@@ -2520,7 +2523,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             </aside>
             <main className="flex-1 min-w-0 flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 sm:p-6 flex flex-col flex-grow h-full">
-                <div className="flex flex-wrap gap-2 border border-border rounded-lg bg-surface-muted/40 p-1 mb-4">
+                <div className="flex flex-wrap gap-2 border border-border rounded-lg bg-surface-muted/40 p-1 mb-4 justify-center">
                   {(['overview', 'group', 'logs'] as const).map(tab => (
                     <button
                       key={tab}
@@ -2647,9 +2650,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                   </>
                 )}
                 {activeTab === 'logs' && (
-                  <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-6 text-sm text-muted">
-                    Logs will appear here as processing and action history becomes available.
-                  </div>
+                  <LogsTable projectId={projectIdStr} />
                 )}
               </div>
             </main>

@@ -160,3 +160,12 @@ export interface CSVUpload {
   file_name: string;
   uploaded_at: string;
 }
+
+export interface ActivityLog {
+  id: number;
+  projectId: number;
+  user: string;
+  action: string;
+  details?: Record<string, unknown> | null;
+  createdAt: string;
+}
