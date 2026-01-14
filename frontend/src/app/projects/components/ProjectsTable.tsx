@@ -2,8 +2,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart3, Calendar, Edit2, Trash2, Loader2, ArrowUpDown } from 'lucide-react';
-import { Project } from '@/lib/types';
-import { ProjectWithStats } from '../page';
+import { Project, ProjectWithStats } from '@/lib/types';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';

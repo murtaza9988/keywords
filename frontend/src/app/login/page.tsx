@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { setProjects } from '@/store/projectSlice';
-import apiClient from '@/lib/apiClient';
+import { fetchProjects } from '@/lib/api/projects';
 import authService from '@/lib/authService';
 import { useAuth } from '@/components/AuthProvider';
 import { AppDispatch } from '@/store/store';
@@ -39,7 +39,7 @@ export default function Login() {
 
   const fetchInitialData = async (): Promise<void> => {
     try {
-      const projectsData: Project[] = await apiClient.fetchProjects();
+      const projectsData: Project[] = await fetchProjects();
       dispatch(setProjects(projectsData));
     } catch (fetchError: unknown) {
       const errorMessage = isError(fetchError) ? fetchError.message : 'Failed to fetch projects after login.';

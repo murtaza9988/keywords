@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import projectReducer from '@/store/projectSlice';
 import ProjectsPage from '@/app/projects/page';
-import apiClient from '@/lib/apiClient';
+import * as projectsApi from '@/lib/api/projects';
 import authService from '@/lib/authService';
 
 const mockPush = jest.fn();
@@ -16,7 +16,7 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/projects',
 }));
 
-jest.mock('@/lib/apiClient');
+jest.mock('@/lib/api/projects');
 jest.mock('@/lib/authService');
 
 const createTestStore = () =>
@@ -26,7 +26,7 @@ const createTestStore = () =>
     },
   });
 
-const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const mockProjectsApi = projectsApi as jest.Mocked<typeof projectsApi>;
 const mockAuthService = authService as jest.Mocked<typeof authService>;
 
 const baseProjects = [
@@ -56,25 +56,25 @@ describe('Projects page', () => {
   beforeEach(() => {
     mockPush.mockReset();
     mockAuthService.isAuthenticated.mockReturnValue(true);
-    mockApiClient.fetchProjectsWithStats.mockResolvedValue({ projects: baseProjects });
+    mockProjectsApi.fetchProjectsWithStats.mockResolvedValue({ projects: baseProjects });
   });
 
   it('renders project list and supports CRUD modals', async () => {
-    mockApiClient.createProject.mockResolvedValue({
+    mockProjectsApi.createProject.mockResolvedValue({
       id: 2,
       name: 'Beta Project',
       created_at: '2024-02-01T00:00:00Z',
       updated_at: '2024-02-01T00:00:00Z',
     });
-    mockApiClient.updateProject.mockResolvedValue({
+    mockProjectsApi.updateProject.mockResolvedValue({
       id: 1,
       name: 'Alpha Renamed',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-02-10T00:00:00Z',
     });
-    mockApiClient.deleteProject.mockResolvedValue(true);
+    mockProjectsApi.deleteProject.mockResolvedValue(true);
 
-    mockApiClient.fetchProjectsWithStats
+    mockProjectsApi.fetchProjectsWithStats
       .mockResolvedValueOnce({ projects: baseProjects })
       .mockResolvedValueOnce({
         projects: [
@@ -116,8 +116,8 @@ describe('Projects page', () => {
     await user.click(screen.getByRole('button', { name: /create project/i }));
 
     await waitFor(() => {
-      expect(mockApiClient.createProject).toHaveBeenCalledWith('Beta Project');
-      expect(mockApiClient.fetchProjectsWithStats).toHaveBeenCalledTimes(2);
+      expect(mockProjectsApi.createProject).toHaveBeenCalledWith('Beta Project');
+      expect(mockProjectsApi.fetchProjectsWithStats).toHaveBeenCalledTimes(2);
     });
 
     expect(await screen.findByText('Beta Project')).toBeInTheDocument();

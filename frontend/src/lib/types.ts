@@ -5,6 +5,29 @@ export interface Project {
   updated_at: string;
 }
 
+export interface ProjectStats {
+  ungroupedCount: number;
+  groupedKeywordsCount: number;
+  groupedPages: number;
+  confirmedKeywordsCount: number;
+  confirmedPages: number;
+  blockedCount: number;
+  totalKeywords: number;
+  totalParentKeywords: number;
+  ungroupedPercent: number;
+  groupedPercent: number;
+  confirmedPercent: number;
+  blockedPercent: number;
+}
+
+export interface ProjectWithStats extends Project {
+  stats?: ProjectStats;
+}
+
+export interface ProjectsWithStatsResponse {
+  projects: ProjectWithStats[];
+}
+
 export interface Keyword {
   original_volume: number;
   id: number;
@@ -94,6 +117,40 @@ export interface ProcessingStatusResponse {
   queuedFiles?: string[];
   queueLength?: number;
 }
+
+export interface InitialProjectStats {
+  ungroupedCount: number;
+  groupedKeywordsCount: number;
+  groupedPages: number;
+  blockedCount: number;
+  totalKeywords: number;
+  ungroupedPercent: number;
+  groupedPercent: number;
+  blockedPercent: number;
+  confirmedKeywordsCount?: number;
+  confirmedPages?: number;
+  confirmedPercent?: number;
+  totalParentKeywords?: number;
+}
+
+export interface InitialDataResponse {
+  keywords?: Record<string, Keyword[]>;
+  stats?: InitialProjectStats;
+  pagination?: PaginationInfo;
+  currentView?: {
+    status?: string;
+    keywords?: Keyword[];
+  };
+  processingStatus?: {
+    status?: ProcessingStatus;
+    progress?: number;
+    complete?: boolean;
+    message?: string;
+    currentFileName?: string | null;
+    queuedFiles?: string[];
+  };
+}
+
 export interface ProcessingKeyword {
   id?: number;
   keyword?: string;
@@ -122,6 +179,11 @@ export interface BlockTokenResponse {
 export interface UnblockKeywordsResponse {
     message: string;
     count: number;
+}
+
+export interface ConfirmationResponse {
+  message: string;
+  count: number;
 }
 export interface SortParams {
   column: string;
