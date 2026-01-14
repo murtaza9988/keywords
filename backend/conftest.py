@@ -2,6 +2,7 @@ import pytest
 import json
 import os
 import asyncio
+from pathlib import Path
 from unittest.mock import AsyncMock
 from typing import Dict, List, Any, Generator
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -200,12 +201,12 @@ class MockProcessingTasks(dict):
         self._service = service
     
     def __getitem__(self, project_id):
-        state = self._service._projects.get(project_id)
-        return state.status if state else "not_started"
+        return self._service.get_status(project_id)
     
     def __setitem__(self, project_id, value):
         state = self._service._get_or_create(project_id)
         state.status = value
+        self._service._save_state_to_disk(project_id)
     
     def get(self, project_id, default=None):
         try:
@@ -241,6 +242,7 @@ class MockProcessingResults(dict):
             state.complete = value.get("complete", False)
             state.uploaded_files = value.get("uploaded_files", [])
             state.processed_files = value.get("processed_files", [])
+            self._service._save_state_to_disk(project_id)
     
     def get(self, project_id, default=None):
         return self._service.get_result(project_id)
@@ -257,8 +259,7 @@ class MockProcessingQueue(dict):
         return self._service.get_queue(project_id)
     
     def __contains__(self, project_id):
-        state = self._service._projects.get(project_id)
-        return state is not None and len(state.queue) > 0
+        return len(self._service.get_queue(project_id)) > 0
 
 
 class MockCurrentFiles(dict):
@@ -279,6 +280,10 @@ def mock_processing_tasks(monkeypatch) -> Dict[int, str]:
     """Mock and return processing_tasks-like dict."""
     # Clean up before each test
     processing_queue_service._projects.clear()
+    state_dir = Path(settings.UPLOAD_DIR) / "processing_state"
+    if state_dir.exists():
+        for state_file in state_dir.glob("*.json"):
+            state_file.unlink()
     return MockProcessingTasks(processing_queue_service)
 
 @pytest.fixture

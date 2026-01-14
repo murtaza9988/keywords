@@ -20,10 +20,15 @@ All state for a project is stored in ONE ProjectState object, not spread across
 multiple dictionaries. This prevents state from getting out of sync.
 """
 
+import json
+import os
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Deque, Dict, List, Optional
+
+from app.config import settings
 
 # Timeout in seconds - if processing hasn't updated in this time, consider stuck
 PROCESSING_TIMEOUT_SECONDS = 300  # 5 minutes
@@ -120,6 +125,151 @@ class ProjectState:
             "validation_error": None,
         }
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize state for persistence."""
+        return {
+            "status": self.status,
+            "queue": [
+                {
+                    "file_path": f.file_path,
+                    "file_name": f.file_name,
+                    "file_names": f.file_names,
+                    "is_duplicate": f.is_duplicate,
+                }
+                for f in self.queue
+            ],
+            "current_file": {
+                "file_path": self.current_file.file_path,
+                "file_name": self.current_file.file_name,
+                "file_names": self.current_file.file_names,
+                "is_duplicate": self.current_file.is_duplicate,
+            }
+            if self.current_file
+            else None,
+            "processed_count": self.processed_count,
+            "skipped_count": self.skipped_count,
+            "duplicate_count": self.duplicate_count,
+            "total_rows": self.total_rows,
+            "progress": self.progress,
+            "message": self.message,
+            "stage": self.stage,
+            "stage_detail": self.stage_detail,
+            "keywords": self.keywords,
+            "complete": self.complete,
+            "uploaded_files": self.uploaded_files,
+            "processed_files": self.processed_files,
+            "batches": {
+                batch_id: {
+                    "total_files": batch.total_files,
+                    "files": [
+                        {
+                            "key": key,
+                            "key_type": "int" if isinstance(key, int) else "str",
+                            "file_path": info.file_path,
+                            "file_name": info.file_name,
+                            "file_names": info.file_names,
+                            "is_duplicate": info.is_duplicate,
+                        }
+                        for key, info in batch.files.items()
+                    ],
+                    "received_keys": [
+                        {
+                            "key": key,
+                            "key_type": "int" if isinstance(key, int) else "str",
+                        }
+                        for key in batch.received_keys
+                    ],
+                }
+                for batch_id, batch in self.batches.items()
+            },
+            "last_update": self.last_update,
+        }
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> "ProjectState":
+        """Restore state from persisted data."""
+        state = ProjectState()
+        state.status = data.get("status", "idle")
+        state.queue = deque(
+            FileInfo(
+                file_path=item.get("file_path", ""),
+                file_name=item.get("file_name", ""),
+                file_names=item.get("file_names"),
+                is_duplicate=bool(item.get("is_duplicate", False)),
+            )
+            for item in data.get("queue", [])
+        )
+        current_file = data.get("current_file")
+        if current_file:
+            state.current_file = FileInfo(
+                file_path=current_file.get("file_path", ""),
+                file_name=current_file.get("file_name", ""),
+                file_names=current_file.get("file_names"),
+                is_duplicate=bool(current_file.get("is_duplicate", False)),
+            )
+        state.processed_count = data.get("processed_count", 0)
+        state.skipped_count = data.get("skipped_count", 0)
+        state.duplicate_count = data.get("duplicate_count", 0)
+        state.total_rows = data.get("total_rows", 0)
+        state.progress = data.get("progress", 0.0)
+        state.message = data.get("message", "")
+        state.stage = data.get("stage")
+        state.stage_detail = data.get("stage_detail")
+        state.keywords = data.get("keywords", [])
+        state.complete = data.get("complete", False)
+        state.uploaded_files = data.get("uploaded_files", [])
+        state.processed_files = data.get("processed_files", [])
+        batches: Dict[str, BatchInfo] = {}
+        for batch_id, batch_data in data.get("batches", {}).items():
+            batch = BatchInfo(total_files=batch_data.get("total_files", 0))
+            files_data = batch_data.get("files", [])
+            if isinstance(files_data, dict):
+                iterable_files = []
+                for key, info in files_data.items():
+                    parsed_key: Any = int(key) if isinstance(key, str) and key.isdigit() else key
+                    iterable_files.append(
+                        {
+                            "key": parsed_key,
+                            "key_type": "int" if isinstance(parsed_key, int) else "str",
+                            "file_path": info.get("file_path", ""),
+                            "file_name": info.get("file_name", ""),
+                            "file_names": info.get("file_names"),
+                            "is_duplicate": info.get("is_duplicate", False),
+                        }
+                    )
+                files_data = iterable_files
+
+            for item in files_data:
+                key_type = item.get("key_type", "str")
+                key_value = item.get("key")
+                if key_type == "int" and isinstance(key_value, str) and key_value.isdigit():
+                    key_value = int(key_value)
+                batch.files[key_value] = FileInfo(
+                    file_path=item.get("file_path", ""),
+                    file_name=item.get("file_name", ""),
+                    file_names=item.get("file_names"),
+                    is_duplicate=bool(item.get("is_duplicate", False)),
+                )
+
+            received_keys_data = batch_data.get("received_keys", [])
+            received_keys: set = set()
+            if isinstance(received_keys_data, list):
+                for entry in received_keys_data:
+                    if isinstance(entry, dict):
+                        entry_type = entry.get("key_type", "str")
+                        entry_key = entry.get("key")
+                        if entry_type == "int" and isinstance(entry_key, str) and entry_key.isdigit():
+                            entry_key = int(entry_key)
+                        received_keys.add(entry_key)
+                    else:
+                        parsed_key = int(entry) if isinstance(entry, str) and entry.isdigit() else entry
+                        received_keys.add(parsed_key)
+            batch.received_keys = received_keys
+            batches[batch_id] = batch
+        state.batches = batches
+        state.last_update = data.get("last_update", time.time())
+        return state
+
 
 class ProcessingQueueService:
     """
@@ -134,10 +284,40 @@ class ProcessingQueueService:
     
     def __init__(self) -> None:
         self._projects: Dict[int, ProjectState] = {}
+
+    def _state_dir(self) -> Path:
+        state_dir = Path(settings.UPLOAD_DIR) / "processing_state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        return state_dir
+
+    def _state_path(self, project_id: int) -> Path:
+        return self._state_dir() / f"{project_id}.json"
+
+    def _load_state_from_disk(self, project_id: int) -> Optional[ProjectState]:
+        path = self._state_path(project_id)
+        if not path.exists():
+            return self._projects.get(project_id)
+        try:
+            data = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            return self._projects.get(project_id)
+        state = ProjectState.from_dict(data)
+        self._projects[project_id] = state
+        return state
+
+    def _save_state_to_disk(self, project_id: int) -> None:
+        state = self._projects.get(project_id)
+        if not state:
+            return
+        path = self._state_path(project_id)
+        tmp_path = path.with_suffix(".tmp")
+        tmp_path.write_text(json.dumps(state.to_dict(), default=str))
+        os.replace(tmp_path, path)
     
     def _get_or_create(self, project_id: int) -> ProjectState:
         """Get project state, creating if needed."""
-        if project_id not in self._projects:
+        state = self._load_state_from_disk(project_id)
+        if not state:
             self._projects[project_id] = ProjectState()
         return self._projects[project_id]
     
@@ -162,6 +342,7 @@ class ProcessingQueueService:
         if state.status == "idle":
             state.current_file = None
             # Don't clear queue here - might be intentionally queued
+        self._save_state_to_disk(project_id)
     
     # =========================================================================
     # PUBLIC API - Upload Phase
@@ -185,6 +366,7 @@ class ProcessingQueueService:
         if state.status not in ("processing", "queued"):
             state.status = "uploading"
         state.touch()
+        self._save_state_to_disk(project_id)
     
     def register_upload(self, project_id: int, file_name: str) -> None:
         """Register that a file has been uploaded (for validation tracking)."""
@@ -192,6 +374,7 @@ class ProcessingQueueService:
         if file_name and file_name not in state.uploaded_files:
             state.uploaded_files.append(file_name)
         state.touch()
+        self._save_state_to_disk(project_id)
     
     def enqueue(
         self,
@@ -217,6 +400,7 @@ class ProcessingQueueService:
         
         state.touch()
         self._ensure_invariants(project_id)
+        self._save_state_to_disk(project_id)
     
     # =========================================================================
     # PUBLIC API - Batch Upload Support
@@ -232,6 +416,7 @@ class ProcessingQueueService:
         else:
             state.batches[batch_id].total_files = total_files
         state.touch()
+        self._save_state_to_disk(project_id)
     
     def add_batch_file(
         self,
@@ -261,7 +446,7 @@ class ProcessingQueueService:
             batch.received_keys.add(key)
         
         state.touch()
-        
+        self._save_state_to_disk(project_id)
         # Return dict format for compatibility
         return {
             "total_files": batch.total_files,
@@ -276,11 +461,12 @@ class ProcessingQueueService:
         self, project_id: int, batch_id: str
     ) -> Optional[Dict[str, Any]]:
         """Remove and return a batch. Returns None if not found."""
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         if not state or batch_id not in state.batches:
             return None
         
         batch = state.batches.pop(batch_id)
+        self._save_state_to_disk(project_id)
         
         return {
             "total_files": batch.total_files,
@@ -328,6 +514,7 @@ class ProcessingQueueService:
         state.touch()
         
         self._ensure_invariants(project_id)
+        self._save_state_to_disk(project_id)
         
         return {
             "file_path": file_info.file_path,
@@ -347,6 +534,7 @@ class ProcessingQueueService:
             state.message = message
         state.stage = "start"
         state.touch()
+        self._save_state_to_disk(project_id)
     
     def update_progress(
         self,
@@ -379,6 +567,7 @@ class ProcessingQueueService:
         if stage_detail is not None:
             state.stage_detail = stage_detail
         state.touch()
+        self._save_state_to_disk(project_id)
     
     def mark_file_processed(
         self,
@@ -398,6 +587,7 @@ class ProcessingQueueService:
         for name in names_to_add:
             if name and name not in state.processed_files:
                 state.processed_files.append(name)
+        self._save_state_to_disk(project_id)
     
     def mark_complete(
         self,
@@ -417,6 +607,7 @@ class ProcessingQueueService:
         
         # Mark file(s) as processed
         self.mark_file_processed(project_id, file_name, file_names)
+        state = self._get_or_create(project_id)
         
         # Update results
         state.message = message
@@ -438,6 +629,7 @@ class ProcessingQueueService:
         state.touch()
         
         self._ensure_invariants(project_id)
+        self._save_state_to_disk(project_id)
     
     def mark_error(
         self,
@@ -455,6 +647,7 @@ class ProcessingQueueService:
         
         # Mark file as processed (even though it failed) for count matching
         self.mark_file_processed(project_id, file_name, file_names)
+        state = self._get_or_create(project_id)
         
         state.status = "error"
         state.message = message
@@ -467,6 +660,7 @@ class ProcessingQueueService:
         state.touch()
         
         self._ensure_invariants(project_id)
+        self._save_state_to_disk(project_id)
     
     # =========================================================================
     # PUBLIC API - Status & Results
@@ -476,7 +670,7 @@ class ProcessingQueueService:
         """
         Get current status, with automatic stuck detection.
         """
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         if not state:
             return "not_started"
         
@@ -493,14 +687,14 @@ class ProcessingQueueService:
     
     def get_result(self, project_id: int) -> Dict[str, Any]:
         """Get processing results as a dictionary."""
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         if not state:
             return self._default_result()
         return state.to_result_dict()
     
     def get_queue(self, project_id: int) -> List[Dict[str, Any]]:
         """Get list of queued files."""
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         if not state:
             return []
         return [
@@ -511,7 +705,7 @@ class ProcessingQueueService:
     
     def get_current_file(self, project_id: int) -> Optional[Dict[str, Any]]:
         """Get the currently processing file."""
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         if not state or not state.current_file:
             return None
         f = state.current_file
@@ -523,12 +717,12 @@ class ProcessingQueueService:
     
     def get_last_update_time(self, project_id: int) -> float:
         """Get last update timestamp."""
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         return state.last_update if state else 0
     
     def is_stale(self, project_id: int) -> bool:
         """Check if processing appears stuck."""
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         return state.is_stale() if state else False
     
     # =========================================================================
@@ -540,12 +734,14 @@ class ProcessingQueueService:
         state = self._get_or_create(project_id)
         state.status = status
         state.touch()
+        self._save_state_to_disk(project_id)
     
     def reset_results(self, project_id: int) -> None:
         """Reset just the results (keep queue and file tracking)."""
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         if state:
             state.reset_results()
+            self._save_state_to_disk(project_id)
     
     def reset_for_new_batch(self, project_id: int) -> None:
         """
@@ -558,13 +754,14 @@ class ProcessingQueueService:
         """Internal full reset implementation."""
         # Simply create a new fresh state
         self._projects[project_id] = ProjectState()
+        self._save_state_to_disk(project_id)
     
     def reset_processing(self, project_id: int) -> Dict[str, Any]:
         """
         Reset stuck processing state.
         Returns info about what was cleared.
         """
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         
         cleared_info = {
             "had_status": state.status if state else None,
@@ -579,6 +776,9 @@ class ProcessingQueueService:
     def cleanup(self, project_id: int) -> None:
         """Remove all state for a project."""
         self._projects.pop(project_id, None)
+        path = self._state_path(project_id)
+        if path.exists():
+            path.unlink()
     
     # =========================================================================
     # Compatibility Methods (for existing code)
@@ -602,9 +802,10 @@ class ProcessingQueueService:
     
     def _touch(self, project_id: int) -> None:
         """Update timestamp - compatibility wrapper."""
-        state = self._projects.get(project_id)
+        state = self._load_state_from_disk(project_id)
         if state:
             state.touch()
+            self._save_state_to_disk(project_id)
 
 
 # Singleton instance

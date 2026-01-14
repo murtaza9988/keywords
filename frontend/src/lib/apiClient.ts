@@ -594,7 +594,7 @@ class ApiClient {
         return {
           message: `Uploaded chunk ${Number(chunkIndex) + 1} of ${totalChunks}`,
           status: 'uploading',
-          file_name: formData.get('file_name') as string
+          file_name: formData.get('originalFilename') as string
         };
       }
       
