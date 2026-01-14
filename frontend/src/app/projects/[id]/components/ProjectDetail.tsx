@@ -2592,7 +2592,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     maxDifficulty, 
     selectedSerpFeatures
   ]);
-     const handleTokenDataChange = useCallback(async () => {
+
+  const handleTokenDataChange = useCallback(async () => {
     apiCache.invalidate(projectIdStr + '-stats');
     await Promise.all([
       fetchKeywords(
