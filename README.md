@@ -18,6 +18,9 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
+# Download required NLTK datasets (punkt, stopwords, wordnet)
+python -m app.scripts.setup_nltk
+
 # Create a .env file (see backend/README.md for details)
 # Run migrations (if applicable) or start the server
 uvicorn app.main:app --reload
