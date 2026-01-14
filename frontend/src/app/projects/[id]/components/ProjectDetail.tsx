@@ -1893,6 +1893,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           data.keywords && data.keywords.length > 0) {
         const keywords = data.keywords.map(kw => {
           let parsedTokens = [];
+          const serpFeatures = Array.isArray(kw.serpFeatures) ? kw.serpFeatures : [];
           try {
             if (typeof kw.tokens === 'string') {
               parsedTokens = JSON.parse(kw.tokens);
@@ -1918,7 +1919,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             status: kw.status || 'ungrouped',
             childCount: kw.child_count || 0,
             original_volume: kw.original_volume || kw.volume || 0,
-            serpFeatures: kw.serpFeatures || {},
+            serpFeatures,
             length: (kw.keyword || '').length
           };
         });
@@ -1932,7 +1933,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             project_id: projectIdNum,
             status: 'ungrouped',
             groupName: kw.keyword || '',
-            serpFeatures: kw.serpFeatures || {},
+            serpFeatures: Array.isArray(kw.serpFeatures) ? kw.serpFeatures : [],
             length: (kw.keyword || '').length
           })),
         }));
