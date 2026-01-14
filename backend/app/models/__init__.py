@@ -1,18 +1,20 @@
 # Import all models here to ensure they're registered with SQLAlchemy
-from .project import Project
-from .keyword import Keyword, KeywordStatus, BlockedBy
-from .merge_operation import MergeOperation, KeywordMergeOperation
-from .notes import Note
+from .activity_log import ActivityLog
 from .csv_upload import CSVUpload
+from .keyword import BlockedBy, Keyword, KeywordStatus
+from .merge_operation import KeywordMergeOperation, MergeOperation
+from .notes import Note
+from .project import Project
 
 # Export for easy importing
 __all__ = [
     "Project",
-    "Keyword", 
-    "KeywordStatus", 
+    "Keyword",
+    "KeywordStatus",
     "BlockedBy",
     "MergeOperation",
     "KeywordMergeOperation",
     "Note",
-    "CSVUpload"
+    "CSVUpload",
+    "ActivityLog",
 ]

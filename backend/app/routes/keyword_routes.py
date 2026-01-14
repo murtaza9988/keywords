@@ -16,6 +16,7 @@ from app.schemas.csv_upload import CSVUploadResponse
 from app.services.merge_token import TokenMergeService
 from app.services.project import ProjectService
 from app.services.keyword import KeywordService
+from app.services.activity_log import ActivityLogService
 from app.schemas.keyword import (
     KeywordListResponse, GroupRequest, ProcessingStatus,
     BlockTokenRequest,  UnblockRequest, KeywordResponse,
@@ -167,6 +168,19 @@ async def upload_keywords(
             csv_upload = CSVUpload(project_id=project_id, file_name=originalFilename)
             db.add(csv_upload)
             await db.commit()
+
+            await ActivityLogService.log_activity(
+                db,
+                project_id=project_id,
+                action="csv_upload",
+                details={
+                    "file_name": originalFilename,
+                    "chunked": True,
+                    "total_chunks": int(totalChunks),
+                    "file_size": fileSize,
+                },
+                user=current_user.get("username", "admin"),
+            )
             
             processing_tasks[project_id] = "queued"
             processing_results[project_id] = {
@@ -216,6 +230,18 @@ async def upload_keywords(
         csv_upload = CSVUpload(project_id=project_id, file_name=file.filename)
         db.add(csv_upload)
         await db.commit()
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="csv_upload",
+            details={
+                "file_name": file.filename,
+                "chunked": False,
+                "file_size": fileSize,
+            },
+            user=current_user.get("username", "admin"),
+        )
         
         processing_tasks[project_id] = "queued"
         processing_results[project_id] = {
@@ -245,6 +271,7 @@ async def get_csv_uploads(
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
     result = await db.execute(
         select(CSVUpload).filter_by(project_id=project_id).order_by(CSVUpload.uploaded_at.desc())
     )
@@ -281,6 +308,46 @@ async def get_keywords(
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    if any(
+        [
+            tokens,
+            include,
+            exclude,
+            serpFeatures,
+            minVolume is not None,
+            maxVolume is not None,
+            minLength is not None,
+            maxLength is not None,
+            minDifficulty is not None,
+            maxDifficulty is not None,
+            minRating is not None,
+            maxRating is not None,
+        ]
+    ):
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="search",
+            details={
+                "status": status.value,
+                "tokens": tokens,
+                "include": include,
+                "exclude": exclude,
+                "include_match_type": includeMatchType,
+                "exclude_match_type": excludeMatchType,
+                "serp_features": serpFeatures,
+                "min_volume": minVolume,
+                "max_volume": maxVolume,
+                "min_length": minLength,
+                "max_length": maxLength,
+                "min_difficulty": minDifficulty,
+                "max_difficulty": maxDifficulty,
+                "min_rating": minRating,
+                "max_rating": maxRating,
+            },
+            user=current_user.get("username", "admin"),
+        )
 
     include_terms = []
     if include:
@@ -794,6 +861,20 @@ async def group_keywords(
                 raise Exception(f"Verification failed for keyword {kw.keyword}")
         
         await db.commit()
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="group",
+            details={
+                "group_name": group_request.group_name,
+                "group_id": group_id,
+                "keyword_ids": group_request.keyword_ids,
+                "keyword_count": updated_count,
+                "added_to_existing": existing_group is not None,
+            },
+            user=current_user.get("username", "admin"),
+        )
         
         return {
             "message": f"Successfully {'added to existing' if existing_group else 'created new'} group with {updated_count} keywords",
@@ -1005,7 +1086,18 @@ async def block_keywords_by_token(
                 current_statuses=[KeywordStatus.ungrouped, KeywordStatus.grouped],
                 blocked_by="user"
             )
-            
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="block",
+            details={
+                "token": token_to_block,
+                "count": updated_count,
+            },
+            user=current_user.get("username", "admin"),
+        )
+
         await db.commit()
         return {"message": f"Blocked {updated_count} keywords containing token '{token_to_block}'", "count": updated_count}
     except Exception as e:
@@ -1060,7 +1152,18 @@ async def unblock_keywords(
                 db, project_id, unblock_request.keyword_ids,
                 update_data, required_current_status=KeywordStatus.blocked
             )
-            
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="unblock",
+            details={
+                "keyword_ids": unblock_request.keyword_ids,
+                "count": updated_count,
+            },
+            user=current_user.get("username", "admin"),
+        )
+
         await db.commit()
         return {"message": f"Unblocked {updated_count} keywords", "count": updated_count}
     except Exception as e:
@@ -1387,6 +1490,18 @@ async def ungroup_keywords(
                     
         
         await db.commit()
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="ungroup",
+            details={
+                "keyword_ids": unblock_request.keyword_ids,
+                "updated_count": updated_count,
+                "children_restored": children_restored,
+            },
+            user=current_user.get("username", "admin"),
+        )
 
         # Final verification
         final_keywords = await KeywordService.get_all_by_project(db, project_id)
