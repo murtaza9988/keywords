@@ -5,9 +5,10 @@ import { CSVUpload } from '@/lib/types';
 
 interface CSVUploadDropdownProps {
   projectId: string;
+  refreshKey?: number;
 }
 
-const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId }) => {
+const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refreshKey }) => {
   const [csvUploads, setCsvUploads] = useState<CSVUpload[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +29,7 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId }) => {
     if (projectId) {
       fetchCSVUploads();
     }
-  }, [projectId]);
+  }, [projectId, refreshKey]);
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);

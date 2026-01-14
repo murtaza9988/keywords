@@ -22,6 +22,7 @@ interface ProjectDetailOverviewProps {
   displayProgress: number;
   processingCurrentFile: string | null;
   processingQueue: string[];
+  csvUploadsRefreshKey?: number;
   onUploadStart: () => void;
   onUploadBatchStart: (files: File[]) => void;
   onUploadSuccess: (status: ProcessingStatus, message?: string) => void;
@@ -38,6 +39,7 @@ export function ProjectDetailOverview({
   displayProgress,
   processingCurrentFile,
   processingQueue,
+  csvUploadsRefreshKey,
   onUploadStart,
   onUploadBatchStart,
   onUploadSuccess,
@@ -53,6 +55,7 @@ export function ProjectDetailOverview({
         displayProgress={displayProgress}
         processingCurrentFile={processingCurrentFile}
         processingQueue={processingQueue}
+        csvUploadsRefreshKey={csvUploadsRefreshKey}
         onUploadStart={onUploadStart}
         onUploadBatchStart={onUploadBatchStart}
         onUploadSuccess={onUploadSuccess}
