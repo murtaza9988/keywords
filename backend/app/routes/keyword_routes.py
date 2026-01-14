@@ -71,6 +71,59 @@ async def reset_processing_status(
     }
 
 
+@router.post("/projects/{project_id}/run-grouping", status_code=status.HTTP_200_OK)
+async def run_manual_grouping(
+    project_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Manually trigger keyword grouping for a project.
+    Use this if processing got stuck before grouping completed.
+    """
+    from app.routes.keyword_processing import group_remaining_ungrouped_keywords
+    
+    project = await ProjectService.get_by_id(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Count ungrouped keywords before
+    count_query = sql_text("""
+        SELECT COUNT(*) FROM keywords 
+        WHERE project_id = :project_id AND status = 'ungrouped'
+    """)
+    result = await db.execute(count_query, {"project_id": project_id})
+    before_count = result.scalar() or 0
+    
+    # Run grouping
+    await group_remaining_ungrouped_keywords(db, project_id)
+    
+    # Count ungrouped keywords after
+    result = await db.execute(count_query, {"project_id": project_id})
+    after_count = result.scalar() or 0
+    
+    grouped_count = before_count - after_count
+    
+    await ActivityLogService.log_activity(
+        db,
+        project_id=project_id,
+        action="manual_grouping",
+        details={
+            "ungrouped_before": before_count,
+            "ungrouped_after": after_count,
+            "keywords_grouped": grouped_count,
+        },
+        user=current_user.get("username", "admin"),
+    )
+    
+    return {
+        "message": f"Grouping complete. {grouped_count} keywords were grouped.",
+        "ungrouped_before": before_count,
+        "ungrouped_after": after_count,
+        "keywords_grouped": grouped_count,
+    }
+
+
 @router.get("/projects/{project_id}/processing-status", response_model=ProcessingStatus)
 async def get_processing_status(
     project_id: int,

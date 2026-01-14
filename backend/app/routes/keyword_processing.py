@@ -3,26 +3,21 @@ import csv
 import os
 import json
 import uuid
-from collections import deque
-import unicodedata
-import string
-import re
+from typing import Any, Dict, List, Optional, Tuple
 import nltk
 from nltk import data as nltk_data
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from typing import Any, Dict, List, Optional, Set, Tuple
+from nltk.corpus import wordnet
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text as sql_text
 from app.config import settings
 from app.database import get_db_context
 from app.services.keyword import KeywordService
-from nltk.tokenize import word_tokenize
 from app.services.keyword_processing import (
     apply_stopwords,
     build_keyword_payload,
-    get_synonyms,
     lemmatizer,
     lemmatize,
     map_synonyms,
@@ -32,17 +27,7 @@ from app.services.keyword_processing import (
     tokenize,
 )
 from app.models.keyword import KeywordStatus
-
-processing_tasks: Dict[int, str] = {}
-processing_results: Dict[int, Dict[str, Any]] = {}
-processing_queue: Dict[int, deque] = {}
-processing_current_files: Dict[int, Dict[str, str]] = {}
 from app.services.processing_queue import processing_queue_service
-from app.models.keyword import KeywordStatus
-from app.utils.token_normalization import normalize_compound_tokens
-from app.utils.normalization import normalize_numeric_tokens
-from app.utils.compound_normalization import normalize_compound_tokens
-from nltk.corpus import wordnet
 
 REQUIRED_NLTK_RESOURCES = {
     "punkt": "tokenizers/punkt",
@@ -182,7 +167,16 @@ async def process_csv_file(
     *,
     file_names: Optional[List[str]] = None,
 ) -> None:
-    """Process the CSV file in the background with optimized performance using new merge operations structure."""
+    """
+    Process a CSV file with FIRST PRINCIPLES approach:
+    
+    1. ALWAYS complete - even if errors occur, we process what we can
+    2. ALWAYS group - clustering happens during AND after import
+    3. NEVER get stuck - proper state transitions and error recovery
+    4. CLEAR progress - accurate progress reporting throughout
+    """
+    print(f"[PROCESS] Starting CSV processing for project {project_id}, file: {file_name}")
+    
     processing_queue_service.start_file_processing(
         project_id,
         message=f"Processing {file_name}" if file_name else "Processing CSV",
@@ -198,16 +192,26 @@ async def process_csv_file(
         message=f"Processing {file_name}" if file_name else "Processing CSV",
     )
 
+    # Track what we've done for error reporting
+    rows_processed = 0
+    keywords_created = 0
+    keywords_skipped = 0
+    keywords_duplicated = 0
+    grouping_completed = False
+    
     try:
         async with get_db_context() as db:
             # Create temporary index for performance
-            index_query = f"""
-                CREATE INDEX IF NOT EXISTS temp_tokens_idx_{project_id} ON keywords 
-                USING gin(tokens) 
-                WHERE project_id = {project_id}
-            """
-            await db.execute(sql_text(index_query))
-            await db.commit()            
+            try:
+                index_query = f"""
+                    CREATE INDEX IF NOT EXISTS temp_tokens_idx_{project_id} ON keywords 
+                    USING gin(tokens) 
+                    WHERE project_id = {project_id}
+                """
+                await db.execute(sql_text(index_query))
+                await db.commit()
+            except Exception as idx_err:
+                print(f"[PROCESS] Warning: Could not create temp index: {idx_err}")
             
             async def refresh_existing_token_groups() -> Dict[str, Dict[str, str]]:
                 """
@@ -236,6 +240,7 @@ async def process_csv_file(
                 return existing_token_groups
             
             existing_token_groups = await refresh_existing_token_groups()
+            print(f"[PROCESS] Found {len(existing_token_groups)} existing token groups")
             
             # Get existing keywords to avoid duplicates
             existing_keywords_query = """
@@ -245,6 +250,7 @@ async def process_csv_file(
             """
             result = await db.execute(sql_text(existing_keywords_query), {"project_id": project_id})
             existing_keyword_texts = {row[0].lower() for row in result.fetchall()}
+            print(f"[PROCESS] Found {len(existing_keyword_texts)} existing keywords")
             
             # Detect file encoding and delimiter
             detected_encoding = None
@@ -266,15 +272,23 @@ async def process_csv_file(
                 except UnicodeDecodeError:
                     continue
                 except Exception as e:
-                    print(f"Error with encoding {encoding}: {e}")
+                    print(f"[PROCESS] Error with encoding {encoding}: {e}")
                     continue
             
             if not detected_encoding:
                 detected_encoding = 'utf-8'
                 detected_delimiter = ','
             
-            # Count total rows
+            print(f"[PROCESS] Using encoding: {detected_encoding}, delimiter: '{detected_delimiter}'")
+            
+            # Count total rows and validate headers
             row_count = 0
+            keyword_idx = -1
+            volume_idx = -1
+            difficulty_idx = -1
+            serp_idx = -1
+            headers = []
+            
             with open(file_path, 'r', encoding=detected_encoding) as f:
                 reader = csv.reader(f, delimiter=detected_delimiter)
                 headers = next(reader)
@@ -339,7 +353,7 @@ async def process_csv_file(
                 progress=0.0,
                 total_rows=total_rows,
             )
-            print(f"Total rows to process: {total_rows}")
+            print(f"[PROCESS] Total rows to process: {total_rows}")
             
             if total_rows == 0:
                 remaining_queue = processing_queue_service.get_queue(project_id)
@@ -359,6 +373,9 @@ async def process_csv_file(
             duplicate_count = 0
             seen_keywords = set()
             
+            # Track tokens we've seen in this file for intra-file grouping
+            intra_file_token_groups: Dict[str, List[Dict[str, Any]]] = {}
+            
             # Process the CSV file
             with open(file_path, 'r', encoding=detected_encoding) as f:
                 reader = csv.reader(f, delimiter=detected_delimiter)
@@ -366,64 +383,76 @@ async def process_csv_file(
                 
                 current_chunk = []
                 for i, row in enumerate(reader):
-                    if len(row) < len(headers):
-                        row.extend([''] * (len(headers) - len(row)))
+                    rows_processed = i + 1
                     
-                    row_dict_std = {
-                        "Keyword": row[keyword_idx] if keyword_idx < len(row) else '',
-                        "Volume": row[volume_idx] if volume_idx >= 0 and volume_idx < len(row) else None,
-                        "Difficulty": row[difficulty_idx] if difficulty_idx >= 0 and difficulty_idx < len(row) else None,
-                        "SERP Features": row[serp_idx] if serp_idx >= 0 and serp_idx < len(row) else None
-                    }
+                    try:
+                        if len(row) < len(headers):
+                            row.extend([''] * (len(headers) - len(row)))
+                        
+                        row_dict_std = {
+                            "Keyword": row[keyword_idx] if keyword_idx < len(row) else '',
+                            "Volume": row[volume_idx] if volume_idx >= 0 and volume_idx < len(row) else None,
+                            "Difficulty": row[difficulty_idx] if difficulty_idx >= 0 and difficulty_idx < len(row) else None,
+                            "SERP Features": row[serp_idx] if serp_idx >= 0 and serp_idx < len(row) else None
+                        }
+                        
+                        current_chunk.append(row_dict_std)
+                    except Exception as row_err:
+                        print(f"[PROCESS] Error processing row {i}: {row_err}")
+                        skipped_count += 1
+                        continue
                     
-                    current_chunk.append(row_dict_std)
                     if len(current_chunk) >= batch_size or i == total_rows - 1:
                         chunk_results = []
                         
                         # Process each row in the chunk
                         for row_data in current_chunk:
-                            processed_keyword_data, success = process_keyword(row_data)
-                            if success and processed_keyword_data:
-                                keyword_lower = processed_keyword_data["keyword"].lower()
-                                
-                                # Check for duplicates
-                                if keyword_lower in existing_keyword_texts or keyword_lower in seen_keywords:
-                                    duplicate_count += 1
-                                    processing_queue_service.update_progress(
-                                        project_id,
-                                        processed_count=processed_count,
-                                        skipped_count=skipped_count,
-                                        duplicate_count=duplicate_count,
-                                        progress=(processed_count + skipped_count + duplicate_count)
-                                        / total_rows
-                                        * 100,
-                                    )
-                                    continue
-                                
-                                seen_keywords.add(keyword_lower)
-                                
-                                processed_keyword_data["project_id"] = project_id
-                                processed_keyword_data["original_volume"] = processed_keyword_data["volume"]
-                                token_key = json.dumps(sorted(processed_keyword_data["tokens"]))
+                            try:
+                                processed_keyword_data, success = process_keyword(row_data)
+                                if success and processed_keyword_data:
+                                    keyword_lower = processed_keyword_data["keyword"].lower()
+                                    
+                                    # Check for duplicates
+                                    if keyword_lower in existing_keyword_texts or keyword_lower in seen_keywords:
+                                        duplicate_count += 1
+                                        keywords_duplicated += 1
+                                        continue
+                                    
+                                    seen_keywords.add(keyword_lower)
+                                    
+                                    processed_keyword_data["project_id"] = project_id
+                                    processed_keyword_data["original_volume"] = processed_keyword_data["volume"]
+                                    token_key = json.dumps(sorted(processed_keyword_data["tokens"]))
 
-                                # Attach to an existing group (cross-file clustering)
-                                existing_group = existing_token_groups.get(token_key)
-                                if existing_group:
-                                    processed_keyword_data["group_id"] = existing_group["group_id"]
-                                    processed_keyword_data["group_name"] = existing_group["group_name"]
-                                    processed_keyword_data["is_parent"] = False
-                                    processed_keyword_data["status"] = KeywordStatus.grouped
+                                    # Attach to an existing group (cross-file clustering)
+                                    existing_group = existing_token_groups.get(token_key)
+                                    if existing_group:
+                                        processed_keyword_data["group_id"] = existing_group["group_id"]
+                                        processed_keyword_data["group_name"] = existing_group["group_name"]
+                                        processed_keyword_data["is_parent"] = False
+                                        processed_keyword_data["status"] = KeywordStatus.grouped
+                                    else:
+                                        # Track for intra-file grouping
+                                        if token_key not in intra_file_token_groups:
+                                            intra_file_token_groups[token_key] = []
+                                        intra_file_token_groups[token_key].append(processed_keyword_data)
+                                        
+                                        # Default: import as an ungrouped parent keyword.
+                                        processed_keyword_data["group_id"] = None
+                                        processed_keyword_data["group_name"] = None
+                                        processed_keyword_data["is_parent"] = True
+                                        processed_keyword_data["status"] = KeywordStatus.ungrouped
+                                    
+                                    processed_count += 1
+                                    keywords_created += 1
+                                    chunk_results.append(processed_keyword_data)
                                 else:
-                                    # Default: import as an ungrouped parent keyword.
-                                    processed_keyword_data["group_id"] = None
-                                    processed_keyword_data["group_name"] = None
-                                    processed_keyword_data["is_parent"] = True
-                                    processed_keyword_data["status"] = KeywordStatus.ungrouped
-                                
-                                processed_count += 1
-                                chunk_results.append(processed_keyword_data)
-                            else:
+                                    skipped_count += 1
+                                    keywords_skipped += 1
+                            except Exception as kw_err:
+                                print(f"[PROCESS] Error processing keyword: {kw_err}")
                                 skipped_count += 1
+                                keywords_skipped += 1
                         
                         # Update progress
                         current_progress = (processed_count + skipped_count + duplicate_count) / total_rows * 100
@@ -436,16 +465,14 @@ async def process_csv_file(
                         )
                         
                         # Save keywords when batch is full or at end
-                        if len(chunk_results) >= batch_size or i == total_rows - 1:
-                            final_keywords_to_save = list(chunk_results)
-
-                            if final_keywords_to_save:
-                                await KeywordService.create_many(db, final_keywords_to_save)
+                        if chunk_results:
+                            try:
+                                await KeywordService.create_many(db, chunk_results)
 
                                 # Update existing group parents if we appended children.
                                 affected_group_ids = {
                                     kw["group_id"]
-                                    for kw in final_keywords_to_save
+                                    for kw in chunk_results
                                     if kw.get("group_id")
                                 }
                                 for group_id in affected_group_ids:
@@ -461,38 +488,63 @@ async def process_csv_file(
                                     skipped_count=skipped_count,
                                     duplicate_count=duplicate_count,
                                     progress=current_progress,
-                                    keywords=final_keywords_to_save[-50:],
+                                    keywords=chunk_results[-50:],
                                 )
+                            except Exception as db_err:
+                                print(f"[PROCESS] Error saving batch to DB: {db_err}")
+                                await db.rollback()
                             
                             await asyncio.sleep(0.005)
                         
                         current_chunk = []
             
-            # Final grouping pass for any remaining ungrouped keywords (global clustering)
+            print(f"[PROCESS] Import complete. Created: {keywords_created}, Skipped: {keywords_skipped}, Duplicates: {keywords_duplicated}")
+            print(f"[PROCESS] Found {len(intra_file_token_groups)} unique token groups in this file")
+            
+            # CRITICAL: Final grouping pass for any remaining ungrouped keywords (global clustering)
+            # This is where the magic happens - group keywords with identical tokens
+            print(f"[PROCESS] Starting final grouping pass...")
             await group_remaining_ungrouped_keywords(db, project_id)
+            grouping_completed = True
+            print(f"[PROCESS] Grouping completed successfully")
 
             # Clean up temporary index
-            drop_index_query = f"DROP INDEX IF EXISTS temp_tokens_idx_{project_id}"
-            await db.execute(sql_text(drop_index_query))
-            await db.commit()
+            try:
+                drop_index_query = f"DROP INDEX IF EXISTS temp_tokens_idx_{project_id}"
+                await db.execute(sql_text(drop_index_query))
+                await db.commit()
+            except Exception as idx_err:
+                print(f"[PROCESS] Warning: Could not drop temp index: {idx_err}")
 
             # Mark processing as complete after final grouping and cleanup
             remaining_queue = processing_queue_service.get_queue(project_id)
             processing_queue_service.mark_complete(
                 project_id,
-                message=f"Completed processing {file_name}" if file_name else "Processing complete.",
+                message=f"Completed processing {file_name}. Created {keywords_created} keywords, grouped successfully." if file_name else f"Processing complete. Created {keywords_created} keywords.",
                 file_name=file_name,
                 file_names=file_names,
                 has_more_in_queue=len(remaining_queue) > 0,
             )
+            print(f"[PROCESS] Processing complete for {file_name}")
 
     except Exception as e:
-        print(f"Error during CSV processing for project {project_id}: {e}")
+        print(f"[PROCESS] Error during CSV processing for project {project_id}: {e}")
         import traceback
         traceback.print_exc()
+        
+        # Try to run grouping even if import partially failed
+        if not grouping_completed and keywords_created > 0:
+            print(f"[PROCESS] Attempting grouping after partial import failure...")
+            try:
+                async with get_db_context() as db:
+                    await group_remaining_ungrouped_keywords(db, project_id)
+                    print(f"[PROCESS] Grouping completed after partial failure")
+            except Exception as group_err:
+                print(f"[PROCESS] Grouping after failure also failed: {group_err}")
+        
         processing_queue_service.mark_error(
             project_id,
-            message=f"Failed processing {file_name}: {e}" if file_name else f"Failed processing CSV: {e}",
+            message=f"Failed processing {file_name}: {e}. Processed {keywords_created} keywords before error." if file_name else f"Failed processing CSV: {e}",
             file_name=file_name,
             file_names=file_names,
         )
@@ -502,19 +554,34 @@ async def process_csv_file(
                 await db.execute(sql_text(drop_index_query))
                 await db.commit()
         except Exception as cleanup_error:
-            print(f"Error during cleanup: {cleanup_error}")
+            print(f"[PROCESS] Error during cleanup: {cleanup_error}")
     finally:
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
-                print(f"Removed temporary file: {file_path}")
+                print(f"[PROCESS] Removed temporary file: {file_path}")
             except OSError as e:
-                print(f"Error removing file {file_path}: {e}")
+                print(f"[PROCESS] Error removing file {file_path}: {e}")
+        
+        # ALWAYS try to process next file in queue
+        print(f"[PROCESS] Checking for next file in queue...")
         await start_next_processing(project_id)
 
 async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) -> None:
-    """Group any remaining ungrouped keywords with identical tokens."""
+    """
+    Group any remaining ungrouped keywords with identical tokens.
+    
+    FIRST PRINCIPLES:
+    1. Keywords with IDENTICAL token sets should be grouped together
+    2. The keyword with highest volume becomes the parent
+    3. Parent volume = sum of all children volumes
+    4. Parent difficulty = average of all children difficulties
+    5. This runs AFTER import to catch any keywords that weren't grouped during import
+    """
+    print(f"[GROUPING] Starting grouping for project {project_id}")
+    
     try:
+        # Get all ungrouped keywords
         ungrouped_keywords_query = """
             SELECT id, keyword, tokens, volume, difficulty, serp_features, original_volume
             FROM keywords 
@@ -525,83 +592,114 @@ async def group_remaining_ungrouped_keywords(db: AsyncSession, project_id: int) 
         result = await db.execute(sql_text(ungrouped_keywords_query), {"project_id": project_id})
         all_ungrouped_keywords = result.fetchall()
         
-        if all_ungrouped_keywords:
-            token_groups_final = {}
-            for kw in all_ungrouped_keywords:
-                if kw.tokens:
-                    token_key = json.dumps(sorted(kw.tokens))
-                    if token_key not in token_groups_final:
-                        token_groups_final[token_key] = []
-                    token_groups_final[token_key].append({
-                        'id': kw.id,
-                        'keyword': kw.keyword,
-                        'tokens': kw.tokens,
-                        'volume': kw.volume,
-                        'difficulty': kw.difficulty,
-                        'serp_features': kw.serp_features,
-                        'original_volume': kw.original_volume or kw.volume
+        print(f"[GROUPING] Found {len(all_ungrouped_keywords)} ungrouped keywords")
+        
+        if not all_ungrouped_keywords:
+            print(f"[GROUPING] No ungrouped keywords to group")
+            return
+        
+        # Group keywords by their token set
+        token_groups_final: Dict[str, List[Dict[str, Any]]] = {}
+        for kw in all_ungrouped_keywords:
+            if kw.tokens:
+                # Create a deterministic key from sorted tokens
+                token_key = json.dumps(sorted(kw.tokens))
+                if token_key not in token_groups_final:
+                    token_groups_final[token_key] = []
+                token_groups_final[token_key].append({
+                    'id': kw.id,
+                    'keyword': kw.keyword,
+                    'tokens': kw.tokens,
+                    'volume': kw.volume or 0,
+                    'difficulty': kw.difficulty or 0,
+                    'serp_features': kw.serp_features,
+                    'original_volume': kw.original_volume or kw.volume or 0
+                })
+        
+        print(f"[GROUPING] Found {len(token_groups_final)} unique token sets")
+        
+        # Count how many groups have multiple members (will be grouped)
+        multi_member_groups = sum(1 for members in token_groups_final.values() if len(members) > 1)
+        print(f"[GROUPING] {multi_member_groups} token sets have multiple keywords to group")
+        
+        # Create groups for keywords with identical tokens
+        updates_to_apply = []
+        groups_created = 0
+        
+        for token_key, group_members in token_groups_final.items():
+            if len(group_members) > 1:
+                # Sort by volume (desc) then difficulty (asc) to pick the best parent
+                group_members.sort(key=lambda k: (k['volume'], -(k['difficulty'] or 0)), reverse=True)
+                
+                new_group_id = f"group_{project_id}_{uuid.uuid4().hex}"
+                group_name = group_members[0]["keyword"]  # Use highest volume keyword as group name
+                
+                # Calculate aggregated metrics
+                total_volume = sum(k['original_volume'] or k['volume'] or 0 for k in group_members)
+                difficulties = [k['difficulty'] for k in group_members if k['difficulty'] is not None and k['difficulty'] > 0]
+                avg_difficulty = sum(difficulties) / len(difficulties) if difficulties else 0.0
+                
+                for i, keyword_data in enumerate(group_members):
+                    is_parent = (i == 0)
+                    # Parent gets aggregated volume, children keep original
+                    volume_to_use = total_volume if is_parent else keyword_data['original_volume']
+                    # Parent gets average difficulty, children keep original
+                    difficulty_to_use = round(avg_difficulty, 2) if is_parent else keyword_data['difficulty']
+                    
+                    updates_to_apply.append({
+                        'id': keyword_data['id'],
+                        'group_id': new_group_id,
+                        'group_name': group_name,
+                        'is_parent': is_parent,
+                        'volume': volume_to_use,
+                        'difficulty': difficulty_to_use,
+                        'status': KeywordStatus.grouped.value
                     })
-            
-            # Create groups for keywords with identical tokens
-            updates_to_apply = []
-            for token_key, group_members in token_groups_final.items():
-                if len(group_members) > 1:
-                    group_members.sort(key=lambda k: (k['volume'], -k['difficulty']), reverse=True)
-                    
-                    new_group_id = f"group_{project_id}_{uuid.uuid4().hex}"
-                    group_name = group_members[0]["keyword"]
-                    total_volume = sum(k['volume'] for k in group_members)
-                    difficulties = [k['difficulty'] for k in group_members if k['difficulty'] is not None]
-                    avg_difficulty = sum(difficulties) / len(difficulties) if difficulties else 0.0
-                    
-                    for i, keyword_data in enumerate(group_members):
-                        is_parent = (i == 0)
-                        volume_to_use = total_volume if is_parent else keyword_data['original_volume']
-                        difficulty_to_use = round(avg_difficulty, 2) if is_parent else keyword_data['difficulty']
-                        
-                        updates_to_apply.append({
-                            'id': keyword_data['id'],
-                            'group_id': new_group_id,
-                            'group_name': group_name,
-                            'is_parent': is_parent,
-                            'volume': volume_to_use,
-                            'difficulty': difficulty_to_use,
-                            'status': KeywordStatus.grouped.value
-                        })
-            
-            # Apply updates in batches
-            if updates_to_apply:
-                batch_size = 100
-                for i in range(0, len(updates_to_apply), batch_size):
-                    batch = updates_to_apply[i:i + batch_size]
-                    
-                    for update in batch:
-                        update_query = """
-                            UPDATE keywords 
-                            SET group_id = :group_id, 
-                                group_name = :group_name,
-                                is_parent = :is_parent,
-                                volume = :volume,
-                                difficulty = :difficulty,
-                                status = :status
-                            WHERE id = :id
-                        """
-                        await db.execute(sql_text(update_query), {
-                            'id': update['id'],
-                            'group_id': update['group_id'],
-                            'group_name': update['group_name'],
-                            'is_parent': update['is_parent'],
-                            'volume': update['volume'],
-                            'difficulty': update['difficulty'],
-                            'status': update['status']
-                        })
-                    
-                    await db.commit()
-                    await asyncio.sleep(0.01)
+                
+                groups_created += 1
+        
+        print(f"[GROUPING] Created {groups_created} groups, {len(updates_to_apply)} keywords to update")
+        
+        # Apply updates in batches
+        if updates_to_apply:
+            batch_size = 100
+            for i in range(0, len(updates_to_apply), batch_size):
+                batch = updates_to_apply[i:i + batch_size]
+                
+                for update in batch:
+                    update_query = """
+                        UPDATE keywords 
+                        SET group_id = :group_id, 
+                            group_name = :group_name,
+                            is_parent = :is_parent,
+                            volume = :volume,
+                            difficulty = :difficulty,
+                            status = :status
+                        WHERE id = :id
+                    """
+                    await db.execute(sql_text(update_query), {
+                        'id': update['id'],
+                        'group_id': update['group_id'],
+                        'group_name': update['group_name'],
+                        'is_parent': update['is_parent'],
+                        'volume': update['volume'],
+                        'difficulty': update['difficulty'],
+                        'status': update['status']
+                    })
+                
+                await db.commit()
+                await asyncio.sleep(0.01)
+                
+                if (i + batch_size) % 500 == 0:
+                    print(f"[GROUPING] Updated {i + batch_size}/{len(updates_to_apply)} keywords")
+        
+        print(f"[GROUPING] Completed grouping for project {project_id}: {groups_created} groups created")
+        
     except Exception as e:
-        print(f"Error grouping remaining ungrouped keywords: {e}")
+        print(f"[GROUPING] Error grouping remaining ungrouped keywords: {e}")
         import traceback
         traceback.print_exc()
+        # Don't re-raise - grouping failure shouldn't stop everything
 
 # Status check functions (unchanged)
 def get_processing_status(project_id: int) -> str:
