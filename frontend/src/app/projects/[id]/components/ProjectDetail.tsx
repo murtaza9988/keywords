@@ -2070,8 +2070,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }
         
         if (initialData.currentView?.keywords) {
-          const transformedKeywords = initialData.currentView.keywords.map((kw) => ({
-            id: kw.id,
           const transformedKeywords = (initialData.currentView.keywords as Keyword[]).map((kw) => ({
             ...kw,
             original_volume: kw.original_volume || kw.volume || 0,
