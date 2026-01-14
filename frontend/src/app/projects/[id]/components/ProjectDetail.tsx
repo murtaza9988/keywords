@@ -15,6 +15,7 @@ import { LogsTable } from './LogsTable';
 import {TextAreaInputs} from './TextAreaInputs'; 
 import FileUploader from './FileUploader';
 import CSVUploadDropdown from './CSVUploadDropdown';
+import ProcessingProgressBar from './ProcessingProgressBar';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { Loader2 } from 'lucide-react';
@@ -165,7 +166,6 @@ export default function ProjectDetail() {
   // Component state
   const [activeView, setActiveView] = useState<ActiveKeywordView>('ungrouped');
   const [activeTab, setActiveTab] = useState<'overview' | 'group' | 'logs' | 'process'>('group');
-  const [activeTab, setActiveTab] = useState<'overview' | 'group' | 'logs'>('group');
   const [logsRefreshKey, setLogsRefreshKey] = useState(0);
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
   const [includeFilter, setIncludeFilter] = useState('');
@@ -204,6 +204,9 @@ export default function ProjectDetail() {
   const [isProcessingAction, setIsProcessingAction] = useState<boolean>(false);
   const [snackbarMessages, setSnackbarMessages] = useState<SnackbarMessage[]>([]);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
+  const [processingMessage, setProcessingMessage] = useState<string>('');
+  const [processingCurrentFile, setProcessingCurrentFile] = useState<string | null>(null);
+  const [processingQueue, setProcessingQueue] = useState<string[]>([]);
   const prevActiveViewRef = useRef(activeView);
   const [displayProgress, setDisplayProgress] = useState<number>(0);
   const targetProgressRef = useRef<number>(0);
@@ -985,7 +988,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         newSelected.clear();
         setGroupName('');
       } else {
-        const selectedKeyword = filteredAndSortedKeywords.find(k => k.id === keywordId) || 
+        const selectedKeyword = filteredAndSortedKeywords.find(k => k.id === keywordId) ||
           Object.values(childrenCache).flat().find(k => k.id === keywordId);
 
         if (newSelected.has(keywordId)) {
@@ -1275,7 +1278,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     } else {
       setExpandedGroups(prev => new Set(prev).add(groupId));
       const groupData = childrenCache[groupId];
-      
+
       setLoadingChildren(prevLoading => new Set(prevLoading).add(groupId));
       try {
         const children = await fetchChildren(groupId);
@@ -1882,6 +1885,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         const normalizedProgress = Math.max(0, Math.min(100, data.progress));
         setProcessingProgress(normalizedProgress);
       }
+      setProcessingMessage(data.message ?? '');
+      setProcessingCurrentFile(data.currentFileName ?? null);
+      setProcessingQueue(data.queuedFiles ?? []);
 
       if (data.status === 'complete') {
         setProcessingStatus('complete');
@@ -1917,16 +1923,16 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         if (data.status === 'error') {
           setIsUploading(false);
           setProcessingProgress(0);
-          addSnackbarMessage(data.message || 'File processing failed', 'error');
-          stopProcessingCheck();
-        } else if (data.status === 'idle') {
-          setIsUploading(false);
-          stopProcessingCheck();
-        } else if (data.status === 'uploading' || data.status === 'combining') {
-          setIsUploading(true);
-        } else if (data.status === 'queued' || data.status === 'processing') {
-          setIsUploading(false);
-        }
+        addSnackbarMessage(data.message || 'File processing failed', 'error');
+        stopProcessingCheck();
+      } else if (data.status === 'idle') {
+        setIsUploading(false);
+        stopProcessingCheck();
+      } else if (data.status === 'uploading' || data.status === 'combining') {
+        setIsUploading(true);
+      } else if (data.status === 'queued' || data.status === 'processing') {
+        setIsUploading(false);
+      }
       }
 
       if ((data.status === 'queued' || data.status === 'processing') && 
@@ -1994,11 +2000,13 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       }
     } catch (error) {
       console.error('Error checking processing status:', error);
-      addSnackbarMessage(`Error checking status: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
+      const message = `Error checking status: ${isError(error) ? error.message : 'Unknown error'}`;
+      addSnackbarMessage(message, 'error');
       setIsUploading(false);
       stopProcessingCheck();
       setProcessingStatus('error');
       setProcessingProgress(0);
+      setProcessingMessage(message);
     }
   }, [
     projectIdStr, processingStatus, stopProcessingCheck, 
@@ -2096,6 +2104,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         if (initialData.processingStatus?.status) {
           setProcessingStatus(initialData.processingStatus.status);
           setProcessingProgress(initialData.processingStatus.progress || 0);
+          setProcessingMessage(initialData.processingStatus.message || '');
+          setProcessingCurrentFile(initialData.processingStatus.currentFileName ?? null);
+          setProcessingQueue(initialData.processingStatus.queuedFiles ?? []);
           if (
             initialData.processingStatus.status === 'uploading' ||
             initialData.processingStatus.status === 'combining' ||
@@ -2133,12 +2144,14 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     setIsUploading(true);
     setProcessingStatus('uploading');
     setProcessingProgress(0);
+    setProcessingMessage('Uploading CSV...');
     startProcessingCheck();
     bumpLogsRefresh();
   }, [startProcessingCheck, bumpLogsRefresh]);  
   const handleUploadSuccess = useCallback(
     (status: ProcessingStatus, message?: string) => {
       setProcessingStatus(status);
+      setProcessingMessage(message || '');
       if (status === 'complete') {
         setIsUploading(false);
         setUploadSuccess(true);
@@ -2191,6 +2204,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setProcessingStatus('error');
       setProcessingProgress(0);
       setDisplayProgress(0);
+      setProcessingMessage(message);
       addSnackbarMessage(message, 'error');
       stopProcessingCheck();
     },
@@ -2685,12 +2699,19 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                         </div>
                       ) : processingStatus === 'error' && !isUploading && !isProcessing ? (
                         <div className="text-red-600 text-xs">
-                          Processing failed. Try uploading again.
+                          {processingMessage || 'Processing failed. Try uploading again.'}
                         </div>
                       ) : (
                         <span className="text-xs text-transparent">Status</span>
                       )}
                     </div>
+                    <ProcessingProgressBar
+                      status={processingStatus}
+                      progress={displayProgress}
+                      currentFileName={processingCurrentFile}
+                      queuedFiles={processingQueue}
+                      message={processingMessage}
+                    />
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
                         <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total keywords uploaded</p>
@@ -2731,6 +2752,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       isProcessingAction={isProcessingAction}
                       isUploading={isUploading}
                       processingStatus={processingStatus}
+                      processingMessage={processingMessage}
                       selectedTokens={selectedTokens}
                       handleIncludeFilterChange={handleIncludeFilterChange}
                       handleExcludeFilterChange={handleExcludeFilterChange}

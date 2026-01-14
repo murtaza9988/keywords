@@ -90,6 +90,9 @@ export interface ProcessingStatusResponse {
   complete?: boolean;
   totalRows?: number; 
   progress?: number; 
+  currentFileName?: string | null;
+  queuedFiles?: string[];
+  queueLength?: number;
 }
 export interface ProcessingKeyword {
   id?: number;

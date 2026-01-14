@@ -103,14 +103,14 @@ export function TokenTable({
 
   return (
    <div className="relative h-full">
-        <table className="w-full table-fixed divide-y divide-gray-200 text-xs">
+        <table className="w-full min-w-[600px] table-fixed divide-y divide-gray-200 text-xs">
           <colgroup>
             <col className="w-[40px]" />
-            <col className="w-[42%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-            <col className="w-[10%]" />
-            <col className="w-[12%]" />
+            <col className="w-auto" />
+            <col className="w-[60px]" />
+            <col className="w-[70px]" />
+            <col className="w-[60px]" />
+            <col className="w-[60px]" />
           </colgroup>
           <thead className="bg-surface-muted sticky top-0 z-5">
             <tr>

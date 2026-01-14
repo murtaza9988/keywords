@@ -96,6 +96,7 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [serpFeaturesList, setSerpFeaturesList] = useState<string[]>([]);
   const [isLoadingSerpFeatures, setIsLoadingSerpFeatures] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const serpFilterButtonRef = useRef<HTMLButtonElement>(null);
   const serpFilterDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -249,6 +250,10 @@ const toggleSerpFeature = useCallback((feature: string) => {
     applyFilters(filterState);
   }, [groupedKeywords, applyFilters, filterState]);
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const keywordColumnKey = currentView === 'grouped' ? 'groupName' : 'keyword';
   const keywordColumnHeader = currentView === 'grouped' ? 'Page Name' : 'Keyword';
   const displayData = filterState.serpFeatures.length > 0 ? filteredData : groupedKeywords;
@@ -307,7 +312,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                     </button>
                   </div>
                 </div>
-                {showSerpFilter && createPortal(
+                {showSerpFilter && isMounted && createPortal(
                   <div
                     className="bg-surface shadow-xl rounded-lg border border-border w-64 z-[9999]"
                     style={{
