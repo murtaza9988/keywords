@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "npm run dev -w frontend",
     "build": "npm run build -w frontend",
-    "vercel-build": "npm run build -w frontend",
+    "vercel-build": "npm run lint -w frontend && npm run typecheck -w frontend && npm run build -w frontend",
     "start": "npm run start -w frontend",
     "lint": "npm run lint -w frontend",
     "typecheck": "npm run typecheck -w frontend"

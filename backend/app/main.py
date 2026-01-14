@@ -12,7 +12,7 @@ from app.routes import (
     notes,
     projects,
 )
-from app.routes import auth, keyword_tokens, notes, projects, keyword_routes
+from app.scripts.setup_nltk import ensure_nltk_resources
 from app.utils.compound_normalization import load_compound_variants
 
 app = FastAPI(
@@ -31,6 +31,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_db_client():
+    ensure_nltk_resources()
     await init_db()
     load_compound_variants()
 
