@@ -63,6 +63,8 @@ class ProjectState:
     total_rows: int = 0
     progress: float = 0.0
     message: str = ""
+    stage: Optional[str] = None
+    stage_detail: Optional[str] = None
     keywords: List[Dict[str, Any]] = field(default_factory=list)
     complete: bool = False
     
@@ -92,6 +94,8 @@ class ProjectState:
         self.total_rows = 0
         self.progress = 0.0
         self.message = ""
+        self.stage = None
+        self.stage_detail = None
         self.keywords = []
         self.complete = False
     
@@ -106,6 +110,8 @@ class ProjectState:
             "total_rows": self.total_rows,
             "progress": self.progress,
             "message": self.message,
+            "stage": self.stage,
+            "stage_detail": self.stage_detail,
             "uploaded_files": list(self.uploaded_files),
             "processed_files": list(self.processed_files),
             "validation_error": None,
@@ -328,6 +334,7 @@ class ProcessingQueueService:
         # Preserve file tracking
         if message:
             state.message = message
+        state.stage = "start"
         state.touch()
     
     def update_progress(
@@ -341,6 +348,8 @@ class ProcessingQueueService:
         total_rows: Optional[int] = None,
         keywords: Optional[List[Dict[str, Any]]] = None,
         message: Optional[str] = None,
+        stage: Optional[str] = None,
+        stage_detail: Optional[str] = None,
     ) -> None:
         """Update processing progress."""
         state = self._get_or_create(project_id)
@@ -354,6 +363,10 @@ class ProcessingQueueService:
             state.keywords = keywords
         if message is not None:
             state.message = message
+        if stage is not None:
+            state.stage = stage
+        if stage_detail is not None:
+            state.stage_detail = stage_detail
         state.touch()
     
     def mark_file_processed(
@@ -396,6 +409,8 @@ class ProcessingQueueService:
         
         # Update results
         state.message = message
+        state.stage = "complete"
+        state.stage_detail = None
         if keywords is not None:
             state.keywords = keywords
         
@@ -432,6 +447,7 @@ class ProcessingQueueService:
         
         state.status = "error"
         state.message = message
+        state.stage = "error"
         state.complete = True
         state.progress = 0.0
         

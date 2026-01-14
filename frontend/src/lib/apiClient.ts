@@ -20,7 +20,10 @@ import {
 } from './types';
 import authService from './authService';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+// BASE_URL should be the backend origin (WITHOUT trailing `/api`).
+// All client methods already prefix paths with `/api/...`.
+const RAW_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const BASE_URL = RAW_BASE_URL.replace(/\/api\/?$/, '');
 
 function isError(error: unknown): error is Error {
   return error instanceof Error;
@@ -539,6 +542,25 @@ class ApiClient {
     // Do not cache CSV uploads list: users expect it to reflect recent uploads immediately.
     const data = await this.request<CSVUpload[]>('get', url, undefined, undefined, false);
     return data;
+  }
+
+  async downloadCSVUpload(projectId: string, uploadId: number): Promise<Blob> {
+    try {
+      const authToken = authService.getAccessToken();
+      const response = await this.axiosInstance.get(
+        `/api/projects/${projectId}/csv-uploads/${uploadId}/download`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+          responseType: 'blob',
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Download CSV upload API Error:', error);
+      throw new Error(isError(error) ? error.message : 'Failed to download uploaded CSV');
+    }
   }
 
   async uploadCSV(

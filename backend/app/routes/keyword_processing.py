@@ -177,6 +177,7 @@ async def process_csv_file(
     4. CLEAR progress - accurate progress reporting throughout
     """
     print(f"[PROCESS] Starting CSV processing for project {project_id}, file: {file_name}")
+    current_stage = "start"
     
     processing_queue_service.start_file_processing(
         project_id,
@@ -191,6 +192,7 @@ async def process_csv_file(
         total_rows=0,
         keywords=[],
         message=f"Processing {file_name}" if file_name else "Processing CSV",
+        stage="start",
     )
 
     # Track what we've done for error reporting
@@ -202,6 +204,17 @@ async def process_csv_file(
     
     try:
         async with get_db_context() as db:
+            current_stage = "db_prepare"
+            processing_queue_service.update_progress(
+                project_id,
+                processed_count=0,
+                skipped_count=0,
+                duplicate_count=0,
+                progress=0.0,
+                total_rows=0,
+                message="Preparing database for import...",
+                stage=current_stage,
+            )
             # Create temporary index for performance
             try:
                 index_query = f"""
@@ -253,6 +266,18 @@ async def process_csv_file(
             existing_keyword_texts = {row[0].lower() for row in result.fetchall()}
             print(f"[PROCESS] Found {len(existing_keyword_texts)} existing keywords")
             
+            current_stage = "read_csv"
+            processing_queue_service.update_progress(
+                project_id,
+                processed_count=0,
+                skipped_count=0,
+                duplicate_count=0,
+                progress=0.0,
+                total_rows=0,
+                message="Reading CSV and detecting encoding...",
+                stage=current_stage,
+            )
+
             # Detect file encoding and delimiter
             detected_encoding = None
             detected_delimiter = None
@@ -346,6 +371,7 @@ async def process_csv_file(
                     row_count += 1
             
             total_rows = row_count
+            current_stage = "count_rows"
             processing_queue_service.update_progress(
                 project_id,
                 processed_count=0,
@@ -353,6 +379,8 @@ async def process_csv_file(
                 duplicate_count=0,
                 progress=0.0,
                 total_rows=total_rows,
+                message="Counting rows and validating headers...",
+                stage=current_stage,
             )
             print(f"[PROCESS] Total rows to process: {total_rows}")
             
@@ -378,6 +406,17 @@ async def process_csv_file(
             intra_file_token_groups: Dict[str, List[Dict[str, Any]]] = {}
             
             # Process the CSV file
+            current_stage = "import_rows"
+            processing_queue_service.update_progress(
+                project_id,
+                processed_count=0,
+                skipped_count=0,
+                duplicate_count=0,
+                progress=0.0,
+                total_rows=total_rows,
+                message="Importing rows (normalize → tokenize → dedupe)...",
+                stage=current_stage,
+            )
             with open(file_path, 'r', encoding=detected_encoding) as f:
                 reader = csv.reader(f, delimiter=detected_delimiter)
                 next(reader)  # Skip headers
@@ -467,7 +506,17 @@ async def process_csv_file(
                         
                         # Save keywords when batch is full or at end
                         if chunk_results:
+                            current_stage = "persist"
                             try:
+                                processing_queue_service.update_progress(
+                                    project_id,
+                                    processed_count=processed_count,
+                                    skipped_count=skipped_count,
+                                    duplicate_count=duplicate_count,
+                                    progress=current_progress,
+                                    stage=current_stage,
+                                    stage_detail="Saving batch to database...",
+                                )
                                 await KeywordService.create_many(db, chunk_results)
 
                                 # Update existing group parents if we appended children.
@@ -490,10 +539,32 @@ async def process_csv_file(
                                     duplicate_count=duplicate_count,
                                     progress=current_progress,
                                     keywords=chunk_results[-50:],
+                                    stage=current_stage,
+                                    stage_detail="Saved a batch to the database",
+                                )
+                                # Return to import stage for next chunk.
+                                current_stage = "import_rows"
+                                processing_queue_service.update_progress(
+                                    project_id,
+                                    processed_count=processed_count,
+                                    skipped_count=skipped_count,
+                                    duplicate_count=duplicate_count,
+                                    progress=current_progress,
+                                    stage=current_stage,
+                                    stage_detail=None,
                                 )
                             except Exception as db_err:
                                 print(f"[PROCESS] Error saving batch to DB: {db_err}")
                                 await db.rollback()
+                                processing_queue_service.update_progress(
+                                    project_id,
+                                    processed_count=processed_count,
+                                    skipped_count=skipped_count,
+                                    duplicate_count=duplicate_count,
+                                    progress=current_progress,
+                                    stage=current_stage,
+                                    stage_detail=f"Database write failed: {db_err}",
+                                )
                             
                             await asyncio.sleep(0.005)
                         
@@ -505,6 +576,17 @@ async def process_csv_file(
             # CRITICAL: Final grouping pass for any remaining ungrouped keywords (global clustering)
             # This is where the magic happens - group keywords with identical tokens
             print(f"[PROCESS] Starting final grouping pass...")
+            current_stage = "group"
+            processing_queue_service.update_progress(
+                project_id,
+                processed_count=processed_count,
+                skipped_count=skipped_count,
+                duplicate_count=duplicate_count,
+                progress=max(0.0, min(99.0, (processed_count + skipped_count + duplicate_count) / max(total_rows, 1) * 100)),
+                total_rows=total_rows,
+                message="Final grouping pass (cluster identical token sets)...",
+                stage=current_stage,
+            )
             await group_remaining_ungrouped_keywords(db, project_id)
             grouping_completed = True
             print(f"[PROCESS] Grouping completed successfully")
@@ -545,7 +627,12 @@ async def process_csv_file(
         
         processing_queue_service.mark_error(
             project_id,
-            message=f"Failed processing {file_name}: {e}. Processed {keywords_created} keywords before error." if file_name else f"Failed processing CSV: {e}",
+            message=(
+                f"Failed during stage '{current_stage}' while processing {file_name}: {e}. "
+                f"Processed {keywords_created} keywords before error."
+                if file_name
+                else f"Failed during stage '{current_stage}' while processing CSV: {e}"
+            ),
             file_name=file_name,
             file_names=file_names,
         )
@@ -557,12 +644,9 @@ async def process_csv_file(
         except Exception as cleanup_error:
             print(f"[PROCESS] Error during cleanup: {cleanup_error}")
     finally:
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-                print(f"[PROCESS] Removed temporary file: {file_path}")
-            except OSError as e:
-                print(f"[PROCESS] Error removing file {file_path}: {e}")
+        # IMPORTANT: Do NOT delete uploaded files.
+        # Users must be able to re-download any uploaded CSV, and batch-combined
+        # CSVs should remain available for audit/debugging.
         
         # ALWAYS try to process next file in queue
         print(f"[PROCESS] Checking for next file in queue...")

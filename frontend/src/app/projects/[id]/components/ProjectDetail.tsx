@@ -216,6 +216,8 @@ export default function ProjectDetail(): React.ReactElement {
   const snackbarMessages = processing.snackbarMessages;
   const processingProgress = processing.processingProgress;
   const processingMessage = processing.processingMessage;
+  const processingStage = processing.processingStage ?? null;
+  const processingStageDetail = processing.processingStageDetail ?? null;
   const processingCurrentFile = processing.processingCurrentFile;
   const processingQueue = processing.processingQueue;
   const displayProgress = processing.displayProgress;
@@ -2124,6 +2126,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         type: 'updateProcessing',
         payload: {
           processingMessage: data.message ?? '',
+          processingStage: data.stage ?? null,
+          processingStageDetail: data.stageDetail ?? null,
           processingCurrentFile: data.currentFileName ?? null,
           processingQueue: data.queuedFiles ?? [],
         },
@@ -2862,6 +2866,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     isUploading={isUploading}
                     processingStatus={processingStatus}
                     processingMessage={processingMessage}
+                    processingStage={processingStage}
+                    processingStageDetail={processingStageDetail}
                     displayProgress={displayProgress}
                     processingCurrentFile={processingCurrentFile}
                     processingQueue={processingQueue}

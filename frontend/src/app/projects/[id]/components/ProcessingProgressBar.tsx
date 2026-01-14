@@ -10,6 +10,8 @@ interface ProcessingProgressBarProps {
   currentFileName?: string | null;
   queuedFiles?: string[];
   message?: string;
+  stage?: string | null;
+  stageDetail?: string | null;
   projectId?: string;
   onReset?: () => void;
 }
@@ -20,6 +22,8 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   currentFileName,
   queuedFiles,
   message,
+  stage,
+  stageDetail,
   projectId,
   onReset
 }) => {
@@ -55,24 +59,42 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   };
 
   const steps = [
-    { key: 'uploading', label: 'Upload CSV' },
-    { key: 'combining', label: 'Combine chunks' },
-    { key: 'queued', label: 'Queue processing' },
-    { key: 'processing', label: 'Process keywords' },
-    { key: 'complete', label: 'Complete' }
+    { key: 'upload', label: 'Upload CSV(s)' },
+    { key: 'combine', label: 'Combine (chunks/batch)' },
+    { key: 'queue', label: 'Queue processing' },
+    { key: 'import', label: 'Import rows (validate → tokenize → dedupe)' },
+    { key: 'persist', label: 'Save keywords to database' },
+    { key: 'group', label: 'Final grouping pass' },
+    { key: 'complete', label: 'Complete' },
   ];
 
-  const stepOrder: Record<ProcessingStatus, number> = {
-    idle: 0,
-    uploading: 1,
-    combining: 2,
-    queued: 3,
-    processing: 4,
-    complete: 5,
-    error: 4
+  const processingStageToStepIndex = (s?: string | null): number => {
+    switch (s) {
+      case 'db_prepare':
+      case 'read_csv':
+      case 'count_rows':
+      case 'import_rows':
+        return 4;
+      case 'persist':
+        return 5;
+      case 'group':
+        return 6;
+      case 'complete':
+        return 7;
+      default:
+        return 4;
+    }
   };
 
-  const activeStep = stepOrder[status] ?? 0;
+  const activeStep = (() => {
+    if (status === 'uploading') return 1;
+    if (status === 'combining') return 2;
+    if (status === 'queued') return 3;
+    if (status === 'processing') return processingStageToStepIndex(stage);
+    if (status === 'complete') return 7;
+    if (status === 'error') return stage ? processingStageToStepIndex(stage) : 4;
+    return 0;
+  })();
   const queuedCount = queuedFiles?.length ?? 0;
 
   return (
@@ -110,6 +132,12 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         </div>
         {message && (
           <span className="text-xs text-muted">{message}</span>
+        )}
+        {stageDetail && (
+          <span className="text-xs text-muted">{stageDetail}</span>
+        )}
+        {stage && status === 'processing' && (
+          <span className="text-xs text-muted">Stage: {stage}</span>
         )}
         {currentFileName && (
           <span className="text-xs text-muted">Current file: {currentFileName}</span>
