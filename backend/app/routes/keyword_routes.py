@@ -1658,6 +1658,20 @@ async def regroup_keywords(
             if remaining_keywords:
                 await KeywordService.update_group_parent(db, project_id, affected_group_id)
         
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="regroup",
+            details={
+                "group_name": group_request.group_name,
+                "group_id": group_id,
+                "keyword_ids": group_request.keyword_ids,
+                "keyword_count": updated_count,
+                "affected_group_ids": sorted(affected_group_ids),
+                "added_to_existing": existing_group is not None,
+            },
+            user=current_user.get("username", "admin"),
+        )
         await db.commit()
         
         if keyword_cache is not None:
@@ -2401,6 +2415,20 @@ async def export_keywords_csv(
     timestamp = datetime.now().strftime("%Y-%m-%d")
     filename = f"{view}_keywords_{project_id}_{timestamp}.csv"
     
+    await ActivityLogService.log_activity(
+        db,
+        project_id=project_id,
+        action="export_csv",
+        details={
+            "view": view,
+            "group_count": len(keywords_by_group_name),
+            "keyword_count": len(all_keywords),
+            "filename": filename,
+        },
+        user=current_user.get("username", "admin"),
+    )
+    await db.commit()
+
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
@@ -2446,6 +2474,17 @@ async def confirm_keywords(
                     await KeywordService.update(db, child.id, {"status": "confirmed"})
                     updated_count += 1
         
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="confirm",
+            details={
+                "keyword_ids": confirm_request.keyword_ids,
+                "group_ids": sorted(groups_to_update),
+                "count": updated_count,
+            },
+            user=current_user.get("username", "admin"),
+        )
         await db.commit()
         
         if updated_count == 0:
@@ -2494,6 +2533,17 @@ async def unconfirm_keywords(
                 await KeywordService.update(db, child.id, {"status": "grouped"})
                 updated_count += 1
         
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="unconfirm",
+            details={
+                "keyword_ids": unconfirm_request.keyword_ids,
+                "group_ids": sorted(groups_to_update),
+                "count": updated_count,
+            },
+            user=current_user.get("username", "admin"),
+        )
         await db.commit()
         
         if updated_count == 0:
@@ -2551,6 +2601,18 @@ async def export_parent_keywords_csv(
     timestamp = datetime.now().strftime("%Y-%m-%d")
     filename = f"parent_keywords_{project_id}_{timestamp}.csv"
     
+    await ActivityLogService.log_activity(
+        db,
+        project_id=project_id,
+        action="export_parent_keywords",
+        details={
+            "keyword_count": len(parent_keywords),
+            "filename": filename,
+        },
+        user=current_user.get("username", "admin"),
+    )
+    await db.commit()
+
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
@@ -2612,6 +2674,16 @@ async def import_parent_keywords_csv(
                 if result.rowcount > 0:
                     updates_count += 1
         
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="import_parent_keywords",
+            details={
+                "file_name": file.filename,
+                "updated_count": updates_count,
+            },
+            user=current_user.get("username", "admin"),
+        )
         await db.commit()
         
         return {

@@ -48,10 +48,29 @@ export function LogsTable({
       setErrorMessage('');
       try {
         if (scope === 'project' && projectId) {
-          const data = await apiClient.fetchProjectLogs(projectId);
+          const projectIdNumber = Number(projectId);
+          const collectedLogs: ActivityLog[] = [];
+          let page = 1;
+          let totalPages = 1;
+          let total = 0;
+          while (page <= totalPages) {
+            const data = await apiClient.fetchAllActivityLogs({
+              projectId: projectIdNumber,
+              page,
+              limit: pageSize,
+            });
+            if (!isMounted) return;
+            collectedLogs.push(...data.logs);
+            total = data.pagination.total;
+            totalPages = data.pagination.pages || 1;
+            page += 1;
+            if (data.logs.length === 0) {
+              break;
+            }
+          }
           if (isMounted) {
-            setLogs(data);
-            setTotalCount(data.length);
+            setLogs(collectedLogs);
+            setTotalCount(total);
           }
         } else {
           const data = await apiClient.fetchAllActivityLogs({ page: 1, limit: pageSize });
