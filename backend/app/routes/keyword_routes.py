@@ -1224,16 +1224,16 @@ async def regroup_keywords(
             verify_query = text("SELECT volume FROM keywords WHERE id = :id")
             result = await db.execute(verify_query, {"id": new_parent_id})
             updated_volume = result.scalar_one_or_none()
-        for group_id in affected_group_ids:
-            remaining_keywords = await KeywordService.find_by_group_id(db, project_id, group_id)
+        for affected_group_id in affected_group_ids:
+            remaining_keywords = await KeywordService.find_by_group_id(db, project_id, affected_group_id)
             if remaining_keywords:
-                await KeywordService.update_group_parent(db, project_id, group_id)
+                await KeywordService.update_group_parent(db, project_id, affected_group_id)
         
         await db.commit()
         
         if keyword_cache is not None:
-            for group_id in affected_group_ids:
-                cache_key = f"group_children_{project_id}_{group_id}"
+            for affected_group_id in affected_group_ids:
+                cache_key = f"group_children_{project_id}_{affected_group_id}"
                 if cache_key in keyword_cache:
                     del keyword_cache[cache_key]
             new_cache_key = f"group_children_{project_id}_{group_id}"
