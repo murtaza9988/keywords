@@ -35,6 +35,9 @@ class FileInfo:
     file_path: str
     file_name: str
     file_names: Optional[List[str]] = None
+    # For batch uploads, we may accept a file as "received" but skip processing
+    # (e.g. user re-uploads an identical CSV that was already imported).
+    is_duplicate: bool = False
 
 
 @dataclass
@@ -171,12 +174,16 @@ class ProcessingQueueService:
         """
         state = self._get_or_create(project_id)
         
-        # If we're in an error state or idle, reset for the new upload
+        # If we're in a terminal/error state, reset for the new upload.
+        # IMPORTANT: Do NOT clobber an active processing/queued state, otherwise
+        # we can accidentally start multiple processing tasks concurrently.
         if state.status in ("error", "idle", "complete", "not_started"):
             self._full_reset(project_id)
             state = self._get_or_create(project_id)
-        
-        state.status = "uploading"
+
+        # Only transition to uploading if we are not already in an active state.
+        if state.status not in ("processing", "queued"):
+            state.status = "uploading"
         state.touch()
     
     def register_upload(self, project_id: int, file_name: str) -> None:
@@ -234,6 +241,7 @@ class ProcessingQueueService:
         file_name: str,
         file_path: str,
         file_index: Optional[int] = None,
+        is_duplicate: bool = False,
     ) -> Dict[str, Any]:
         """Add a file to a batch. Returns batch info."""
         state = self._get_or_create(project_id)
@@ -248,6 +256,7 @@ class ProcessingQueueService:
             batch.files[key] = FileInfo(
                 file_path=file_path,
                 file_name=file_name,
+                is_duplicate=is_duplicate,
             )
             batch.received_keys.add(key)
         
@@ -257,7 +266,8 @@ class ProcessingQueueService:
         return {
             "total_files": batch.total_files,
             "files": {k: {"file_name": v.file_name, "file_path": v.file_path, 
-                         "file_index": k if isinstance(k, int) else None}
+                         "file_index": k if isinstance(k, int) else None,
+                         "is_duplicate": bool(v.is_duplicate)}
                      for k, v in batch.files.items()},
             "received": batch.received_keys,
         }
@@ -275,7 +285,8 @@ class ProcessingQueueService:
         return {
             "total_files": batch.total_files,
             "files": {k: {"file_name": v.file_name, "file_path": v.file_path,
-                         "file_index": k if isinstance(k, int) else None}
+                         "file_index": k if isinstance(k, int) else None,
+                         "is_duplicate": bool(v.is_duplicate)}
                      for k, v in batch.files.items()},
             "received": batch.received_keys,
         }

@@ -4,6 +4,7 @@ import json
 import re
 import os
 import uuid
+import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile, File, BackgroundTasks, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,6 +89,70 @@ def _resolve_csv_upload_path(project_id: int, upload: CSVUpload) -> Optional[str
         return None
     glob_candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return glob_candidates[0]
+
+
+def _sha256_file(path: str) -> str:
+    """Compute sha256 for a file without loading into memory."""
+    hasher = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+async def _find_duplicate_csv_upload(
+    db: AsyncSession,
+    *,
+    project_id: int,
+    file_name: str,
+    candidate_path: str,
+) -> Optional[Tuple[int, str]]:
+    """
+    Detect if the uploaded CSV is identical to a previously uploaded CSV for this project.
+
+    Returns (existing_upload_id, existing_path) if a match is found; otherwise None.
+    """
+    try:
+        candidate_size = os.path.getsize(candidate_path)
+    except Exception:
+        return None
+
+    # Only compare against recent uploads with same display filename.
+    result = await db.execute(
+        select(CSVUpload)
+        .where(CSVUpload.project_id == project_id, CSVUpload.file_name == file_name)
+        .order_by(CSVUpload.uploaded_at.desc())
+        .limit(25)
+    )
+    # SQLAlchemy returns a synchronous ScalarResult for .scalars(), but in tests
+    # we often use AsyncMock objects where .scalars() may itself be awaitable.
+    scalars_result = result.scalars()
+    if asyncio.iscoroutine(scalars_result):
+        scalars_result = await scalars_result
+    existing_uploads = scalars_result.all()
+    if asyncio.iscoroutine(existing_uploads):
+        existing_uploads = await existing_uploads
+    if not existing_uploads:
+        return None
+
+    try:
+        candidate_hash = _sha256_file(candidate_path)
+    except Exception:
+        return None
+
+    for upload in existing_uploads:
+        resolved = _resolve_csv_upload_path(project_id, upload)
+        if not resolved:
+            continue
+        try:
+            if os.path.getsize(resolved) != candidate_size:
+                continue
+            if _sha256_file(resolved) == candidate_hash:
+                return upload.id, resolved
+        except Exception:
+            continue
+
+    return None
 @router.post("/projects/{project_id}/reset-processing", status_code=status.HTTP_200_OK)
 async def reset_processing_status(
     project_id: int,
@@ -402,29 +467,66 @@ async def upload_keywords(
             parent_chunks_dir = os.path.dirname(chunks_dir)
             if parent_chunks_dir and os.path.exists(parent_chunks_dir) and not os.listdir(parent_chunks_dir):
                 os.rmdir(parent_chunks_dir)
-                
-            csv_upload = CSVUpload(
-                project_id=project_id,
-                file_name=originalFilename,
-                storage_path=_rel_upload_path(final_path),
-            )
-            db.add(csv_upload)
-            await db.commit()
 
-            await ActivityLogService.log_activity(
-                db,
-                project_id=project_id,
-                action="csv_upload",
-                details={
-                    "file_name": originalFilename,
-                    "chunked": True,
-                    "total_chunks": int(totalChunks),
-                    "file_size": fileSize,
-                },
-                user=current_user.get("username", "admin"),
-            )
-            
+            # Detect duplicate uploads (same filename + identical content).
+            # If duplicate, do NOT create a new CSVUpload row and do NOT enqueue processing.
+            duplicate_info: Optional[Tuple[int, str]] = None
             if originalFilename:
+                duplicate_info = await _find_duplicate_csv_upload(
+                    db,
+                    project_id=project_id,
+                    file_name=originalFilename,
+                    candidate_path=final_path,
+                )
+
+            if duplicate_info:
+                existing_upload_id, _existing_path = duplicate_info
+                try:
+                    if os.path.exists(final_path):
+                        os.remove(final_path)
+                except Exception:
+                    pass
+
+                await ActivityLogService.log_activity(
+                    db,
+                    project_id=project_id,
+                    action="csv_upload_duplicate",
+                    details={
+                        "file_name": originalFilename,
+                        "existing_upload_id": existing_upload_id,
+                        "chunked": True,
+                        "total_chunks": int(totalChunks),
+                        "file_size": fileSize,
+                    },
+                    user=current_user.get("username", "admin"),
+                )
+                await db.commit()
+
+            else:
+                csv_upload = CSVUpload(
+                    project_id=project_id,
+                    file_name=originalFilename,
+                    storage_path=_rel_upload_path(final_path),
+                )
+                db.add(csv_upload)
+                await db.commit()
+
+            if not duplicate_info:
+                await ActivityLogService.log_activity(
+                    db,
+                    project_id=project_id,
+                    action="csv_upload",
+                    details={
+                        "file_name": originalFilename,
+                        "chunked": True,
+                        "total_chunks": int(totalChunks),
+                        "file_size": fileSize,
+                    },
+                    user=current_user.get("username", "admin"),
+                )
+                await db.commit()
+
+            if originalFilename and not duplicate_info:
                 processing_queue_service.register_upload(project_id, originalFilename)
 
             if batchId and resolved_total_files:
@@ -439,10 +541,15 @@ async def upload_keywords(
                     file_name=originalFilename,
                     file_path=final_path,
                     file_index=resolved_file_index,
+                    is_duplicate=bool(duplicate_info),
                 )
                 if len(batch_info["received"]) < batch_info["total_files"]:
                     return {
-                        "message": "Batch upload in progress. Waiting for remaining files.",
+                        "message": (
+                            f"Duplicate '{originalFilename}' skipped. Waiting for remaining files."
+                            if duplicate_info
+                            else "Batch upload in progress. Waiting for remaining files."
+                        ),
                         "status": "uploading",
                         "file_name": originalFilename,
                     }
@@ -453,6 +560,17 @@ async def upload_keywords(
                     if entry.get("file_index") is not None
                     else entry.get("file_name", "")
                 )
+
+                # Only process non-duplicate files from this batch.
+                processable_entries = [e for e in file_entries if not e.get("is_duplicate")]
+                if not processable_entries:
+                    processing_queue_service.set_status(project_id, "complete")
+                    return {
+                        "message": "All uploaded CSVs were duplicates and were skipped.",
+                        "status": "complete",
+                        "file_name": None,
+                    }
+
                 # Combine files into a single CSV to ensure robust clustering
                 try:
                     combined_filename = f"combined_batch_{batchId}.csv"
@@ -474,7 +592,7 @@ async def upload_keywords(
                     for attempt in range(max_retries):
                         try:
                             # Run in executor to avoid blocking event loop
-                            await asyncio.to_thread(combine_csv_files, file_entries, combined_path)
+                            await asyncio.to_thread(combine_csv_files, processable_entries, combined_path)
                             break
                         except Exception as e:
                             print(f"Attempt {attempt+1}/{max_retries} failed to combine CSVs: {e}")
@@ -506,7 +624,7 @@ async def upload_keywords(
                     # Collect original filenames to mark as processed later
                     original_filenames = [
                         entry.get("file_name") 
-                        for entry in file_entries 
+                        for entry in processable_entries
                         if entry.get("file_name")
                     ]
                     
@@ -546,7 +664,7 @@ async def upload_keywords(
                     )
                     
                     # Fallback to individual processing if combination fails
-                    for entry in file_entries:
+                    for entry in processable_entries:
                         enqueue_processing_file(
                             project_id,
                             entry["file_path"],
@@ -560,7 +678,17 @@ async def upload_keywords(
                         "file_name": originalFilename,
                     }
 
-            if originalFilename:
+            if duplicate_info and originalFilename and not batchId:
+                # Avoid leaving the project stuck in "uploading" when we skipped processing.
+                if processing_queue_service.get_status(project_id) == "uploading":
+                    processing_queue_service.set_status(project_id, "complete")
+                return {
+                    "message": f"'{originalFilename}' already uploaded (upload #{duplicate_info[0]}). Skipping duplicate.",
+                    "status": processing_queue_service.get_status(project_id),
+                    "file_name": originalFilename,
+                }
+
+            if originalFilename and not duplicate_info:
                 enqueue_processing_file(project_id, final_path, originalFilename)
                 await start_next_processing(project_id)
             
@@ -600,25 +728,57 @@ async def upload_keywords(
             raise HTTPException(status_code=500, detail=f"Error saving uploaded file: {str(e)}")
         finally:
             await file.close()
-            
-        csv_upload = CSVUpload(project_id=project_id, file_name=file.filename)
-        csv_upload.storage_path = _rel_upload_path(file_path)
-        db.add(csv_upload)
-        await db.commit()
 
-        await ActivityLogService.log_activity(
-            db,
-            project_id=project_id,
-            action="csv_upload",
-            details={
-                "file_name": file.filename,
-                "chunked": False,
-                "file_size": fileSize,
-            },
-            user=current_user.get("username", "admin"),
-        )
-        
-        processing_queue_service.register_upload(project_id, file.filename)
+        # Best-effort duplicate detection for non-chunked uploads.
+        duplicate_info: Optional[Tuple[int, str]] = None
+        if file.filename:
+            duplicate_info = await _find_duplicate_csv_upload(
+                db,
+                project_id=project_id,
+                file_name=file.filename,
+                candidate_path=file_path,
+            )
+
+        if duplicate_info:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception:
+                pass
+
+            await ActivityLogService.log_activity(
+                db,
+                project_id=project_id,
+                action="csv_upload_duplicate",
+                details={
+                    "file_name": file.filename,
+                    "existing_upload_id": duplicate_info[0],
+                    "chunked": False,
+                    "file_size": fileSize,
+                },
+                user=current_user.get("username", "admin"),
+            )
+            await db.commit()
+        else:
+            csv_upload = CSVUpload(project_id=project_id, file_name=file.filename)
+            csv_upload.storage_path = _rel_upload_path(file_path)
+            db.add(csv_upload)
+            await db.commit()
+
+            await ActivityLogService.log_activity(
+                db,
+                project_id=project_id,
+                action="csv_upload",
+                details={
+                    "file_name": file.filename,
+                    "chunked": False,
+                    "file_size": fileSize,
+                },
+                user=current_user.get("username", "admin"),
+            )
+            await db.commit()
+
+            processing_queue_service.register_upload(project_id, file.filename)
 
         if batchId and resolved_total_files:
             processing_queue_service.register_batch_upload(
@@ -632,10 +792,15 @@ async def upload_keywords(
                 file_name=file.filename,
                 file_path=file_path,
                 file_index=resolved_file_index,
+                is_duplicate=bool(duplicate_info),
             )
             if len(batch_info["received"]) < batch_info["total_files"]:
                 return {
-                    "message": "Batch upload in progress. Waiting for remaining files.",
+                    "message": (
+                        f"Duplicate '{file.filename}' skipped. Waiting for remaining files."
+                        if duplicate_info
+                        else "Batch upload in progress. Waiting for remaining files."
+                    ),
                     "status": "uploading",
                     "file_name": file.filename,
                 }
@@ -648,8 +813,16 @@ async def upload_keywords(
                 if entry.get("file_index") is not None
                 else entry.get("file_name", "")
             )
+            processable_entries = [e for e in file_entries if not e.get("is_duplicate")]
+            if not processable_entries:
+                processing_queue_service.set_status(project_id, "complete")
+                return {
+                    "message": "All uploaded CSVs were duplicates and were skipped.",
+                    "status": "complete",
+                    "file_name": None,
+                }
             # Enqueue each file separately to avoid brittle header-combine failures.
-            for entry in file_entries:
+            for entry in processable_entries:
                 enqueue_processing_file(
                     project_id,
                     entry["file_path"],
@@ -661,7 +834,16 @@ async def upload_keywords(
                 "status": processing_queue_service.get_status(project_id),
                 "file_name": file.filename,
             }
-        
+
+        if duplicate_info:
+            if processing_queue_service.get_status(project_id) == "uploading":
+                processing_queue_service.set_status(project_id, "complete")
+            return {
+                "message": f"'{file.filename}' already uploaded (upload #{duplicate_info[0]}). Skipping duplicate.",
+                "status": processing_queue_service.get_status(project_id),
+                "file_name": file.filename,
+            }
+
         enqueue_processing_file(project_id, file_path, file.filename)
         await start_next_processing(project_id)
         
@@ -2032,6 +2214,11 @@ async def get_project_stats(
                 COUNT(*) FILTER (WHERE is_parent = TRUE AND status = 'confirmed') as confirmed_pages,
                 COUNT(*) FILTER (WHERE is_parent = TRUE AND status = 'blocked') as blocked_count,
                 COUNT(*) FILTER (WHERE is_parent = TRUE) as total_parent_keywords,
+                COUNT(*) FILTER (
+                    WHERE is_parent = FALSE
+                      AND (blocked_by IS NULL OR blocked_by != 'merge_hidden')
+                ) as total_child_keywords,
+                COUNT(DISTINCT group_id) FILTER (WHERE group_id IS NOT NULL) as group_count,
                 -- Count children for grouped keywords
                 (
                     SELECT COUNT(*) 
@@ -2049,7 +2236,24 @@ async def get_project_stats(
                     AND k3.status = 'confirmed' 
                     AND k3.is_parent = FALSE
                     AND (k3.blocked_by IS NULL OR k3.blocked_by != 'merge_hidden')
-                ) as confirmed_children_count
+                ) as confirmed_children_count,
+                -- Token stats (distinct tokens)
+                (
+                    SELECT COUNT(DISTINCT tok)
+                    FROM keywords kp,
+                         jsonb_array_elements_text(kp.tokens) AS tok
+                    WHERE kp.project_id = keywords.project_id
+                      AND kp.is_parent = TRUE
+                      AND (kp.blocked_by IS NULL OR kp.blocked_by != 'merge_hidden')
+                ) as parent_token_count,
+                (
+                    SELECT COUNT(DISTINCT tok)
+                    FROM keywords kc,
+                         jsonb_array_elements_text(kc.tokens) AS tok
+                    WHERE kc.project_id = keywords.project_id
+                      AND kc.is_parent = FALSE
+                      AND (kc.blocked_by IS NULL OR kc.blocked_by != 'merge_hidden')
+                ) as child_token_count
             FROM keywords 
             WHERE project_id = :project_id
             GROUP BY project_id
@@ -2063,6 +2267,10 @@ async def get_project_stats(
             (confirmed_pages + confirmed_children_count) as confirmed_keywords_count,
             blocked_count,
             total_parent_keywords,
+            total_child_keywords,
+            group_count,
+            parent_token_count,
+            child_token_count,
             (ungrouped_count + grouped_pages + grouped_children_count + confirmed_pages + confirmed_children_count + blocked_count) as total_keywords
         FROM project_stats
     """)
@@ -2080,6 +2288,10 @@ async def get_project_stats(
             "blockedCount": 0,
             "totalKeywords": 0,
             "totalParentKeywords": 0,
+            "totalChildKeywords": 0,
+            "groupCount": 0,
+            "parentTokenCount": 0,
+            "childTokenCount": 0,
             "ungroupedPercent": 0,
             "groupedPercent": 0,
             "confirmedPercent": 0,
@@ -2096,6 +2308,10 @@ async def get_project_stats(
         "blockedCount": row.blocked_count or 0,
         "totalKeywords": total_keywords,
         "totalParentKeywords": row.total_parent_keywords or 0,
+        "totalChildKeywords": row.total_child_keywords or 0,
+        "groupCount": row.group_count or 0,
+        "parentTokenCount": row.parent_token_count or 0,
+        "childTokenCount": row.child_token_count or 0,
         "ungroupedPercent": round(((row.ungrouped_count or 0) / total_keywords * 100) if total_keywords > 0 else 0, 2),
         "groupedPercent": round(((row.grouped_keywords_count or 0) / total_keywords * 100) if total_keywords > 0 else 0, 2),
         "confirmedPercent": round(((row.confirmed_keywords_count or 0) / total_keywords * 100) if total_keywords > 0 else 0, 2),

@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/Button';
 interface ProjectStatsSummary {
   totalKeywords: number;
   totalParentKeywords: number;
+  parentTokenCount: number;
+  childTokenCount: number;
+  groupCount: number;
   groupedPages: number;
   confirmedPages: number;
   blockedCount: number;
@@ -114,6 +117,18 @@ export function ProjectDetailOverview({
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total child keywords</p>
           <p className="text-lg font-semibold text-foreground">{totalChildKeywords.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Parent tokens</p>
+          <p className="text-lg font-semibold text-foreground">{stats.parentTokenCount.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Child tokens</p>
+          <p className="text-lg font-semibold text-foreground">{stats.childTokenCount.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total groups</p>
+          <p className="text-lg font-semibold text-foreground">{stats.groupCount.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Grouped pages</p>

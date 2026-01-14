@@ -406,6 +406,10 @@ export default function ProjectDetail(): React.ReactElement {
           confirmedPages: statsData.confirmedPages || 0,
           blockedCount: statsData.blockedCount || 0,
           totalParentKeywords: statsData.totalParentKeywords || 0,
+          totalChildKeywords: statsData.totalChildKeywords || 0,
+          groupCount: statsData.groupCount || 0,
+          parentTokenCount: statsData.parentTokenCount || 0,
+          childTokenCount: statsData.childTokenCount || 0,
           totalKeywords: statsData.totalKeywords ||
             (statsData.ungroupedCount + statsData.groupedKeywordsCount +
               (statsData.confirmedKeywordsCount ?? 0) + statsData.blockedCount),
@@ -1721,15 +1725,23 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             detailDispatch({
               type: 'setStats',
               payload: {
-              ungroupedCount: statsData.ungroupedCount || 0,
-              groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
-              confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
-              confirmedPages: statsData.confirmedPages || 0,
-              groupedPages: statsData.groupedPages || 0,
-              blockedCount: statsData.blockedCount || 0,
-              totalParentKeywords: statsData.totalParentKeywords || 0,
-              totalKeywords: statsData.totalKeywords ||
-                (statsData.ungroupedCount + statsData.groupedKeywordsCount + (statsData.confirmedKeywordsCount || 0) + statsData.blockedCount),
+                ungroupedCount: statsData.ungroupedCount || 0,
+                groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
+                confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
+                confirmedPages: statsData.confirmedPages || 0,
+                groupedPages: statsData.groupedPages || 0,
+                blockedCount: statsData.blockedCount || 0,
+                totalParentKeywords: statsData.totalParentKeywords || 0,
+                totalChildKeywords: statsData.totalChildKeywords || 0,
+                groupCount: statsData.groupCount || 0,
+                parentTokenCount: statsData.parentTokenCount || 0,
+                childTokenCount: statsData.childTokenCount || 0,
+                totalKeywords:
+                  statsData.totalKeywords ||
+                  (statsData.ungroupedCount +
+                    statsData.groupedKeywordsCount +
+                    (statsData.confirmedKeywordsCount || 0) +
+                    statsData.blockedCount),
               },
             });
             
@@ -2841,7 +2853,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     );
   }
 
-  const totalChildKeywords = Math.max(0, stats.totalKeywords - stats.totalParentKeywords);
+  const totalChildKeywords =
+    stats.totalChildKeywords > 0
+      ? stats.totalChildKeywords
+      : Math.max(0, stats.totalKeywords - stats.totalParentKeywords);
 
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden">

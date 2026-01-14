@@ -196,12 +196,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         const pluralSuffix = uploadCount === 1 ? '' : 's';
         let summaryMessage = lastMessage;
 
-        if (uploadCount > 0) {
+        // Prefer backend-provided message (e.g. duplicate uploads skipped).
+        if (uploadCount > 0 && !lastMessage) {
           if (lastStatus === 'complete') {
             summaryMessage = `All ${uploadCount} CSV${pluralSuffix} uploaded and processed.`;
           } else if (lastStatus === 'processing') {
             summaryMessage = `All ${uploadCount} CSV${pluralSuffix} uploaded. Processing started.`;
-          } else if (!lastMessage) {
+          } else {
             summaryMessage = `CSV upload finished for ${uploadCount} file${pluralSuffix}.`;
           }
         }
