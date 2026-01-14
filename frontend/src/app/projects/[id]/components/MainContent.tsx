@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import React, { memo } from 'react';
 import { KeywordTable } from './KeywordTable';
 import Pagination from './Pagination';
@@ -87,19 +86,22 @@ const VolumeInputs = memo(
       setLocalMaxVolume(maxVolume);
     }, [maxVolume]);
 
-    const debouncedMinChange = React.useCallback(
-      debounce((value: string) => {
+    const debouncedMinChange = React.useMemo(
+      () => debounce((value: string) => {
         onMinVolumeChange(value);
       }, 500),
       [onMinVolumeChange]
     );
 
-    const debouncedMaxChange = React.useCallback(
-      debounce((value: string) => {
+    const debouncedMaxChange = React.useMemo(
+      () => debounce((value: string) => {
         onMaxVolumeChange(value);
       }, 500),
       [onMaxVolumeChange]
     );
+
+    React.useEffect(() => () => debouncedMinChange.cancel(), [debouncedMinChange]);
+    React.useEffect(() => () => debouncedMaxChange.cancel(), [debouncedMaxChange]);
 
     const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
@@ -168,19 +170,22 @@ const LengthInputs = memo(
       setLocalMaxLength(maxLength);
     }, [maxLength]);
 
-    const debouncedMinChange = React.useCallback(
-      debounce((value: string) => {
+    const debouncedMinChange = React.useMemo(
+      () => debounce((value: string) => {
         onMinLengthChange(value);
       }, 500),
       [onMinLengthChange]
     );
 
-    const debouncedMaxChange = React.useCallback(
-      debounce((value: string) => {
+    const debouncedMaxChange = React.useMemo(
+      () => debounce((value: string) => {
         onMaxLengthChange(value);
       }, 500),
       [onMaxLengthChange]
     );
+
+    React.useEffect(() => () => debouncedMinChange.cancel(), [debouncedMinChange]);
+    React.useEffect(() => () => debouncedMaxChange.cancel(), [debouncedMaxChange]);
 
     const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
@@ -250,19 +255,22 @@ const DifficultyInputs = memo(
       setLocalMaxDifficulty(maxDifficulty);
     }, [maxDifficulty]);
 
-    const debouncedMinChange = React.useCallback(
-      debounce((value: string) => {
+    const debouncedMinChange = React.useMemo(
+      () => debounce((value: string) => {
         onMinDifficultyChange(value);
       }, 500),
       [onMinDifficultyChange]
     );
 
-    const debouncedMaxChange = React.useCallback(
-      debounce((value: string) => {
+    const debouncedMaxChange = React.useMemo(
+      () => debounce((value: string) => {
         onMaxDifficultyChange(value);
       }, 500),
       [onMaxDifficultyChange]
     );
+
+    React.useEffect(() => () => debouncedMinChange.cancel(), [debouncedMinChange]);
+    React.useEffect(() => () => debouncedMaxChange.cancel(), [debouncedMaxChange]);
 
     const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
@@ -333,19 +341,22 @@ const RatingInputs = memo(
       setLocalMaxRating(maxRating);
     }, [maxRating]);
 
-    const debouncedMinChange = React.useCallback(
-      debounce((value: string) => {
+    const debouncedMinChange = React.useMemo(
+      () => debounce((value: string) => {
         onMinRatingChange(value);
       }, 500),
       [onMinRatingChange]
     );
 
-    const debouncedMaxChange = React.useCallback(
-      debounce((value: string) => {
+    const debouncedMaxChange = React.useMemo(
+      () => debounce((value: string) => {
         onMaxRatingChange(value);
       }, 500),
       [onMaxRatingChange]
     );
+
+    React.useEffect(() => () => debouncedMinChange.cancel(), [debouncedMinChange]);
+    React.useEffect(() => () => debouncedMaxChange.cancel(), [debouncedMaxChange]);
 
     const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
