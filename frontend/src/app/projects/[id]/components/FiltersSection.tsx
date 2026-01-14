@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import FileUploader from './FileUploader';
-import CSVUploadDropdown from './CSVUploadDropdown';
 import { Loader2 } from 'lucide-react';
-import { ActiveKeywordView, ProcessingStatus } from './types';
+import { ActiveKeywordView } from './types';
 import apiClient from '@/lib/apiClient';
 import { debounce } from 'lodash';
 
 interface FiltersSectionProps {
   projectIdStr: string;
-  isUploading: boolean;
-  processingStatus: ProcessingStatus;
   includeFilter: string;
   excludeFilter: string;
   groupName: string;
@@ -17,9 +13,6 @@ interface FiltersSectionProps {
   selectedKeywordIds: Set<number>;
   isProcessingAction: boolean;
   selectedTokens: string[];
-  handleUploadStart: () => void;
-  handleUploadSuccess: (status: ProcessingStatus, message?: string) => void;
-  handleUploadError: (message: string) => void;
   handleIncludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleExcludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   setGroupName: (value: string) => void;
@@ -28,7 +21,6 @@ interface FiltersSectionProps {
   handleUnblockKeywords: () => void;
   removeToken: (token: string) => void;
   handleClearAllFilters: () => void;
-  processingProgress?: number;
   setIncludeMatchType: (value: 'any' | 'all') => void;
   setExcludeMatchType: (value: 'any' | 'all') => void;
   includeMatchType: 'any' | 'all';
@@ -39,8 +31,6 @@ interface FiltersSectionProps {
 
 export const FiltersSection: React.FC<FiltersSectionProps> = ({
   projectIdStr,
-  isUploading,
-  processingStatus,
   includeFilter,
   excludeFilter,
   groupName,
@@ -48,9 +38,6 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
   selectedKeywordIds,
   isProcessingAction,
   selectedTokens,
-  handleUploadStart,
-  handleUploadSuccess,
-  handleUploadError,
   handleIncludeFilterChange,
   handleExcludeFilterChange,
   setGroupName,
@@ -246,20 +233,6 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
       <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-3">
         <div className="flex flex-wrap items-end gap-4">
           <div className="min-w-[220px] flex flex-col gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted">Upload CSVs</span>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="min-w-[180px] max-w-[220px]">
-                <FileUploader
-                  projectId={projectIdStr}
-                  onUploadStart={handleUploadStart}
-                  onUploadSuccess={handleUploadSuccess}
-                  onUploadError={handleUploadError}
-                />
-              </div>
-              <CSVUploadDropdown projectId={projectIdStr} />
-            </div>
-          </div>
-          <div className="min-w-[220px] flex flex-col gap-2">
             <label htmlFor="includeFilter" className="text-xs font-semibold text-foreground uppercase tracking-wide">Include</label>
             <div className="flex items-center gap-2">
               <select
@@ -436,6 +409,30 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
             Clear All
           </button>
         </div>
+      <div className="flex items-center gap-x-3 min-h-[32px] flex-wrap">
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wide mr-2 shrink-0">Filters</span>
+        {selectedTokens.map(token => (
+          <span key={`f-${token}`} className="inline-flex items-center px-2 rounded-full text-[13px] bg-gray-600 text-white m-1 shadow-sm">
+            T: {token} <button onClick={() => removeToken(token)} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
+          </span>
+        ))}
+        {includeFilter && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[13px] bg-green-100 text-green-800 m-1 shadow-sm">
+            Inc ({includeMatchType}): {includeFilter} <button onClick={clearIncludeFilter} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
+          </span>
+        )}
+        {excludeFilter && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[13px] bg-red-100 text-red-800 m-1 shadow-sm">
+            Exc ({excludeMatchType}): {excludeFilter} <button onClick={clearExcludeFilter} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
+          </span>
+        )}
+        <button
+          onClick={handleClearAllFilters}
+          className={`cursor-pointer text-[13px] text-blue-600 hover:underline ml-auto px-2 py-1 shrink-0 transition-all duration-200 hover:text-blue-800 ${selectedTokens.length > 0 || includeFilter || excludeFilter ? '' : 'invisible'}`}
+          disabled={selectedTokens.length === 0 && !includeFilter && !excludeFilter}
+        >
+          Clear All
+        </button>
       </div>
     </div>
   );

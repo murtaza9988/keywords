@@ -10,6 +10,7 @@ from app.database import get_db
 from app.services.keyword import KeywordService
 from app.services.merge_token import TokenMergeService
 from app.services.project import ProjectService
+from app.services.activity_log import ActivityLogService
 from app.utils.security import get_current_user
 from app.models.keyword import KeywordStatus
 from app.schemas.keyword import (
@@ -111,6 +112,20 @@ async def get_tokens(
     Supports multiple token searches (comma-separated) with exact token matching.
     Includes caching for improved performance.
     """
+    if search:
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="search",
+            details={
+                "query": search,
+                "view": view,
+                "show_merged": show_merged,
+                "blocked_by": blocked_by,
+            },
+            user=current_user.get("username", "admin"),
+        )
+
     # Check cache first
     cache_key = _get_cache_key(project_id, view, page, limit, sort, direction, 
                               search, show_merged, blocked_by)
@@ -443,7 +458,18 @@ async def block_tokens(
             
             updated_count = len(result.fetchall())
             total_updated += updated_count
-        
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="block",
+            details={
+                "tokens": tokens_to_block,
+                "count": total_updated,
+            },
+            user=current_user.get("username", "admin"),
+        )
+
         await db.commit()
         
         # Invalidate cache for this project
@@ -512,7 +538,18 @@ async def unblock_tokens(
                     current_statuses=[KeywordStatus.blocked]
                 )
                 total_updated += updated_count
-        
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="unblock",
+            details={
+                "tokens": tokens_to_unblock,
+                "count": total_updated,
+            },
+            user=current_user.get("username", "admin"),
+        )
+
         await db.commit()
         
         # Invalidate cache for this project
@@ -570,6 +607,19 @@ async def merge_tokens_endpoint(
             task_id,
             merge_tokens_background(project_id, parent_token, child_tokens, user_id)
         )
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="merge",
+            details={
+                "parent_token": parent_token,
+                "child_tokens": child_tokens,
+                "background": True,
+                "token_counts": token_counts,
+            },
+            user=current_user.get("username", "admin"),
+        )
         
         return {
             "message": f"Merging {len(child_tokens)} tokens into '{parent_token}' in background",
@@ -586,6 +636,21 @@ async def merge_tokens_endpoint(
         
         # Invalidate cache for this project
         _invalidate_token_cache(project_id)
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="merge",
+            details={
+                "parent_token": parent_token,
+                "child_tokens": child_tokens,
+                "affected_keywords": affected_count,
+                "grouped_keywords": grouped_count,
+                "background": False,
+                "token_counts": token_counts,
+            },
+            user=current_user.get("username", "admin"),
+        )
 
         # Check if any keywords were actually affected
         if affected_count == 0:
@@ -666,6 +731,18 @@ async def unmerge_token_endpoint(
             task_id,
             unmerge_token_background(project_id, parent_token)
         )
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="unmerge",
+            details={
+                "parent_token": parent_token,
+                "background": True,
+                "affected_count": affected_count,
+            },
+            user=current_user.get("username", "admin"),
+        )
         
         return {
             "message": f"Unmerging token '{parent_token}' in background",
@@ -683,6 +760,19 @@ async def unmerge_token_endpoint(
         
         # Invalidate cache for this project
         _invalidate_token_cache(project_id)
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="unmerge",
+            details={
+                "parent_token": parent_token,
+                "background": False,
+                "affected_keywords": affected_count,
+                "unmerged_groups": unmerged_groups,
+            },
+            user=current_user.get("username", "admin"),
+        )
 
         return {
             "message": f"Successfully unmerged token '{parent_token}'",
@@ -764,6 +854,21 @@ async def unmerge_individual_token_endpoint(
             
             # Invalidate cache for this project
             _invalidate_token_cache(project_id)
+
+            await ActivityLogService.log_activity(
+                db,
+                project_id=project_id,
+                action="unmerge",
+                details={
+                    "parent_token": parent_token,
+                    "child_token": child_token,
+                    "affected_keywords": affected_count + unhidden_count,
+                    "unmerged_groups": grouped_count,
+                    "remaining_child_tokens": [],
+                    "operation_destroyed": True,
+                },
+                user=current_user.get("username", "admin"),
+            )
             
             return {
                 "message": f"Successfully unmerged last token '{child_token}' from '{parent_token}' - fully restored merge operation",
@@ -860,6 +965,21 @@ async def unmerge_individual_token_endpoint(
 
             # Invalidate cache for this project
             _invalidate_token_cache(project_id)
+
+            await ActivityLogService.log_activity(
+                db,
+                project_id=project_id,
+                action="unmerge",
+                details={
+                    "parent_token": parent_token,
+                    "child_token": child_token,
+                    "affected_keywords": affected_count + unhidden_count,
+                    "unmerged_groups": grouped_count,
+                    "remaining_child_tokens": remaining_child_tokens,
+                    "operation_destroyed": False,
+                },
+                user=current_user.get("username", "admin"),
+            )
 
             return {
                 "message": f"Successfully unmerged token '{child_token}' from '{parent_token}'",

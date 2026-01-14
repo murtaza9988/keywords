@@ -13,8 +13,11 @@ import { MainContent } from './MainContent';
 import { Snackbar } from './Snackbar';
 import { TokenManagement } from './token/TokenManagement';
 import {TextAreaInputs} from './TextAreaInputs'; 
+import FileUploader from './FileUploader';
+import CSVUploadDropdown from './CSVUploadDropdown';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
+import { Loader2 } from 'lucide-react';
 import {
   ProcessingStatus, ActiveKeywordView, SnackbarMessage, SortParams,
   Keyword, PaginationInfo
@@ -148,6 +151,7 @@ export default function ProjectDetail() {
 
   // Component state
   const [activeView, setActiveView] = useState<ActiveKeywordView>('ungrouped');
+  const [activeTab, setActiveTab] = useState<'overview' | 'group' | 'logs'>('group');
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
   const [includeFilter, setIncludeFilter] = useState('');
   const [excludeFilter, setExcludeFilter] = useState('');
@@ -2155,6 +2159,13 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     const anySelected = allFilteredIds.some(id => selectedKeywordIds.has(id));
     return { isAllSelected: allSelected, isAnySelected: anySelected };
   }, [filteredAndSortedKeywords, selectedKeywordIds]);
+  const selectedParentKeywordCount = useMemo(() => {
+    if (activeView !== 'grouped' || selectedKeywordIds.size === 0) return 0;
+    const parentIds = new Set(
+      filteredAndSortedKeywords.filter(keyword => keyword.isParent).map(keyword => keyword.id)
+    );
+    return Array.from(selectedKeywordIds).filter(id => parentIds.has(id)).length;
+  }, [activeView, filteredAndSortedKeywords, selectedKeywordIds]);
 
   const getTokensFromKeywords = useCallback(() => {
     const keywords = getCurrentViewData();
@@ -2472,6 +2483,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     );
   }
 
+  const isProcessing = processingStatus === 'queued' || processingStatus === 'processing';
+  const showUploadLoader = isUploading || isProcessing;
+
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden">
       <Header projectName={project?.name} />
@@ -2543,80 +2557,137 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             </aside>
             <main className="flex-1 min-w-0 flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 sm:p-6 flex flex-col flex-grow h-full">
-                <FiltersSection
-                  projectIdStr={projectIdStr}
-                  isUploading={isUploading}
-                  processingStatus={processingStatus}
-                  processingProgress={displayProgress}
-                  includeFilter={includeFilter}
-                  excludeFilter={excludeFilter}
-                  groupName={groupName}
-                  activeView={activeView}
-                  selectedKeywordIds={selectedKeywordIds}
-                  isProcessingAction={isProcessingAction}
-                  selectedTokens={selectedTokens}
-                  handleUploadStart={handleUploadStart}
-                  handleUploadSuccess={handleUploadSuccess}
-                  handleUploadError={handleUploadError}
-                  handleIncludeFilterChange={handleIncludeFilterChange}
-                  handleExcludeFilterChange={handleExcludeFilterChange}
-                  setGroupName={setGroupName}
-                  handleGroupKeywords={handleGroupKeywords}
-                  handleUngroupKeywords={handleUngroupKeywords}
-                  handleUnblockKeywords={handleUnblockKeywords}
-                  removeToken={removeToken}
-                  handleClearAllFilters={clearAllFilters}
-                  setIncludeMatchType={setIncludeMatchType}
-                  setExcludeMatchType={setExcludeMatchType}
-                  includeMatchType={includeMatchType}
-                  excludeMatchType={excludeMatchType}
-                  handleConfirmKeywords={handleConfirmKeywords}
-                  handleUnconfirmKeywords={handleUnconfirmKeywords}
-                />
-                <MainContent
-                  activeView={activeView}
-                  isTableLoading={isTableLoading}
-                  keywordsToDisplay={formatDataForDisplay}
-                  pagination={pagination}
-                  isLoadingData={isLoadingData}
-                  loadingChildren={loadingChildren}
-                  expandedGroups={expandedGroups}
-                  selectedKeywordIds={selectedKeywordIds}
-                  selectedTokens={selectedTokens}
-                  sortParams={sortParams}
-                  isAllSelected={isAllSelected}
-                  isAnySelected={isAnySelected}
-                  projectIdStr={projectIdStr}
-                  minVolume={minVolume}
-                  maxVolume={maxVolume}
-                  minLength={minLength}
-                  maxLength={maxLength}
-                  minRating={minRating}
-                  maxRating={maxRating}
-                  minDifficulty={minDifficulty}
-                  maxDifficulty={maxDifficulty}
-                  handleViewChange={handleViewChange}
-                  handlePageChange={handlePageChange}
-                  handleLimitChange={handleLimitChange}
-                  handleMinVolumeChange={handleMinVolumeChange}
-                  handleMaxVolumeChange={handleMaxVolumeChange}
-                  handleMinLengthChange={handleMinLengthChange}
-                  handleMaxLengthChange={handleMaxLengthChange}
-                  handleMinDifficultyChange={handleMinDifficultyChange}
-                  handleMaxDifficultyChange={handleMaxDifficultyChange}
-                  handleMinRatingChange={handleMinRatingChange}
-                  handleMaxRatingChange={handleMaxRatingChange}
-                  toggleGroupExpansion={toggleGroupExpansion}
-                  toggleKeywordSelection={toggleKeywordSelection}
-                  toggleTokenSelection={handleAdvancedTokenSelection}
-                  removeToken={removeToken}
-                  handleSort={handleSort}
-                  handleSelectAllClick={handleSelectAllClick}
-                  handleMiddleClickGroup={handleMiddleClickGroup}
-                  stats={stats}
-                  selectedSerpFeatures={selectedSerpFeatures}
-                  handleSerpFilterChange={handleSerpFilterChange}
-                />
+                <div className="flex flex-wrap gap-2 border border-border rounded-lg bg-surface-muted/40 p-1 mb-4">
+                  {(['overview', 'group', 'logs'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors ${
+                        activeTab === tab
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-muted hover:text-foreground hover:bg-surface-muted'
+                      }`}
+                    >
+                      {tab === 'overview' ? 'Overview' : tab === 'group' ? 'Group' : 'Logs'}
+                    </button>
+                  ))}
+                </div>
+                {activeTab === 'overview' && (
+                  <div className="flex flex-col gap-4">
+                    <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="min-w-[220px] flex flex-col gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted">Upload CSVs</span>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="min-w-[180px] max-w-[220px]">
+                              <FileUploader
+                                projectId={projectIdStr}
+                                onUploadStart={handleUploadStart}
+                                onUploadSuccess={handleUploadSuccess}
+                                onUploadError={handleUploadError}
+                              />
+                            </div>
+                            <CSVUploadDropdown projectId={projectIdStr} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center h-6">
+                      {showUploadLoader ? (
+                        <div className="flex items-center text-blue-600">
+                          <Loader2 size={16} className="animate-spin mr-2" />
+                          <span className="text-xs">
+                            {isUploading ? "Uploading..." : "Processing..."}
+                          </span>
+                        </div>
+                      ) : processingStatus === 'error' && !isUploading && !isProcessing ? (
+                        <div className="text-red-600 text-xs">
+                          Processing failed. Try uploading again.
+                        </div>
+                      ) : (
+                        <span className="text-xs text-transparent">Status</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {activeTab === 'group' && (
+                  <>
+                    <FiltersSection
+                      projectIdStr={projectIdStr}
+                      includeFilter={includeFilter}
+                      excludeFilter={excludeFilter}
+                      groupName={groupName}
+                      activeView={activeView}
+                      selectedKeywordIds={selectedKeywordIds}
+                      isProcessingAction={isProcessingAction}
+                      selectedTokens={selectedTokens}
+                      handleIncludeFilterChange={handleIncludeFilterChange}
+                      handleExcludeFilterChange={handleExcludeFilterChange}
+                      setGroupName={setGroupName}
+                      handleGroupKeywords={handleGroupKeywords}
+                      handleUngroupKeywords={handleUngroupKeywords}
+                      handleUnblockKeywords={handleUnblockKeywords}
+                      removeToken={removeToken}
+                      handleClearAllFilters={clearAllFilters}
+                      setIncludeMatchType={setIncludeMatchType}
+                      setExcludeMatchType={setExcludeMatchType}
+                      includeMatchType={includeMatchType}
+                      excludeMatchType={excludeMatchType}
+                      handleConfirmKeywords={handleConfirmKeywords}
+                      handleUnconfirmKeywords={handleUnconfirmKeywords}
+                    />
+                    <MainContent
+                      activeView={activeView}
+                      isTableLoading={isTableLoading}
+                      keywordsToDisplay={formatDataForDisplay}
+                      pagination={pagination}
+                      isLoadingData={isLoadingData}
+                      loadingChildren={loadingChildren}
+                      expandedGroups={expandedGroups}
+                      selectedKeywordIds={selectedKeywordIds}
+                      selectedTokens={selectedTokens}
+                      sortParams={sortParams}
+                      isAllSelected={isAllSelected}
+                      isAnySelected={isAnySelected}
+                      projectIdStr={projectIdStr}
+                      selectedParentKeywordCount={selectedParentKeywordCount}
+                      minVolume={minVolume}
+                      maxVolume={maxVolume}
+                      minLength={minLength}
+                      maxLength={maxLength}
+                      minRating={minRating}
+                      maxRating={maxRating}
+                      minDifficulty={minDifficulty}
+                      maxDifficulty={maxDifficulty}
+                      handleViewChange={handleViewChange}
+                      handlePageChange={handlePageChange}
+                      handleLimitChange={handleLimitChange}
+                      handleMinVolumeChange={handleMinVolumeChange}
+                      handleMaxVolumeChange={handleMaxVolumeChange}
+                      handleMinLengthChange={handleMinLengthChange}
+                      handleMaxLengthChange={handleMaxLengthChange}
+                      handleMinDifficultyChange={handleMinDifficultyChange}
+                      handleMaxDifficultyChange={handleMaxDifficultyChange}
+                      handleMinRatingChange={handleMinRatingChange}
+                      handleMaxRatingChange={handleMaxRatingChange}
+                      toggleGroupExpansion={toggleGroupExpansion}
+                      toggleKeywordSelection={toggleKeywordSelection}
+                      toggleTokenSelection={handleAdvancedTokenSelection}
+                      removeToken={removeToken}
+                      handleSort={handleSort}
+                      handleSelectAllClick={handleSelectAllClick}
+                      handleMiddleClickGroup={handleMiddleClickGroup}
+                      stats={stats}
+                      selectedSerpFeatures={selectedSerpFeatures}
+                      handleSerpFilterChange={handleSerpFilterChange}
+                    />
+                  </>
+                )}
+                {activeTab === 'logs' && (
+                  <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-6 text-sm text-muted">
+                    Logs will appear here as processing and action history becomes available.
+                  </div>
+                )}
               </div>
             </main>
             <aside className="w-full xl:w-[300px] xl:flex-shrink-0 flex flex-col">

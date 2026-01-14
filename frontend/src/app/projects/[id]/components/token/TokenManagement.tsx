@@ -70,6 +70,7 @@ export function TokenManagement({
   const [showCreateToken, setShowCreateToken] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
   const [isCreatingToken, setIsCreatingToken] = useState(false);
+  const tokenCacheRef = useRef<Map<string, { tokens: TokenData[]; pagination: PaginationInfo }>>(new Map());
   
   const ungroupedKeywords = useSelector((state: RootState) => selectUngroupedKeywordsForProject(state, projectId));
   const groupedKeywords = useSelector((state: RootState) => selectGroupedKeywordsForProject(state, projectId));
@@ -132,9 +133,28 @@ export function TokenManagement({
   const fetchTokens = useCallback(
     async (view: TokenActiveView, page: number, limit: number, search: string) => {
       if (!projectId) return;
-      
+
+      const cacheKey = [
+        view,
+        page,
+        limit,
+        search,
+        sortParams.column,
+        sortParams.direction,
+        activeView,
+      ].join('|');
+      const cached = tokenCacheRef.current.get(cacheKey);
+      if (cached) {
+        setTokens(cached.tokens);
+        setPagination(cached.pagination);
+      }
+
+      const shouldShowLoading = !cached;
+
       if (view === 'current') {
-        setIsLoading(true);
+        if (shouldShowLoading) {
+          setIsLoading(true);
+        }
         try {
           let currentTokens = activeViewKeywords.map(kw => ({
             tokenName: kw.tokenName,
@@ -189,13 +209,16 @@ export function TokenManagement({
             paginatedTokens = currentTokens.slice(start, Math.min(start + limit, currentTokens.length));
           }
 
-          setTokens(paginatedTokens);
-          setPagination({
+          const nextPagination = {
             total,
             page: currentPage,
             limit,
             pages,
-          });
+          };
+
+          setTokens(paginatedTokens);
+          setPagination(nextPagination);
+          tokenCacheRef.current.set(cacheKey, { tokens: paginatedTokens, pagination: nextPagination });
           
           return;
         } catch (err) {
@@ -204,8 +227,10 @@ export function TokenManagement({
           setIsLoading(false);
         }
       }
-      
-      setIsLoading(true);
+
+      if (shouldShowLoading) {
+        setIsLoading(true);
+      }
 
       try {
         const searchTerms = search.split(',').map(term => term.trim()).filter(term => term.length > 0);
@@ -243,12 +268,14 @@ export function TokenManagement({
           const adjustedPage = Math.min(page, pages || 1);
 
           setTokens(mergedTokens);
-          setPagination({
+          const nextPagination = {
             total,
             page: adjustedPage,
             limit,
             pages,
-          });
+          };
+          setPagination(nextPagination);
+          tokenCacheRef.current.set(cacheKey, { tokens: mergedTokens, pagination: nextPagination });
         } else {
           const queryParams = new URLSearchParams({
             view,
@@ -301,27 +328,26 @@ export function TokenManagement({
           const adjustedPage = Math.min(page, pages || 1);
 
           setTokens(tokensWithCount);
-          setPagination({
+          const nextPagination = {
             total,
             page: adjustedPage,
             limit,
             pages,
-          });
+          };
+          setPagination(nextPagination);
+          tokenCacheRef.current.set(cacheKey, { tokens: tokensWithCount, pagination: nextPagination });
         }
-        setSelectedTokenNames(new Set());
       } catch (error) {
         console.error('Error fetching tokens:', error);
         addSnackbarMessage(
           `Error loading tokens: ${isError(error) ? error.message : 'Unknown error'}`,
           'error'
         );
-        setTokens([]);
-        setPagination({ total: 0, page, limit, pages: 0 });
       } finally {
         setIsLoading(false);
       }
     },
-    [projectId, sortParams, addSnackbarMessage, activeViewKeywords]
+    [projectId, sortParams, addSnackbarMessage, activeViewKeywords, activeView]
   );
 
   useEffect(() => {
@@ -388,6 +414,7 @@ export function TokenManagement({
     if (activeTokenView !== newView) {
       setActiveTokenView(newView);
       setPagination(prev => ({ ...prev, page: 1 }));
+      setSelectedTokenNames(new Set());
       setFetchTrigger(prev => prev + 1);
     }
   };
