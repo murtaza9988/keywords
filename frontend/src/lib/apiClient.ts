@@ -126,6 +126,10 @@ interface ApiInitialProjectStats {
   confirmedPages?: number;
   confirmedPercent?: number;
   totalParentKeywords?: number;
+  totalChildKeywords?: number;
+  groupCount?: number;
+  parentTokenCount?: number;
+  childTokenCount?: number;
 }
 
 interface ApiConfirmationResponse {

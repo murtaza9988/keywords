@@ -142,6 +142,10 @@ export interface InitialProjectStats {
   confirmedPages?: number;
   confirmedPercent?: number;
   totalParentKeywords?: number;
+  totalChildKeywords?: number;
+  groupCount?: number;
+  parentTokenCount?: number;
+  childTokenCount?: number;
 }
 
 export interface InitialDataResponse {

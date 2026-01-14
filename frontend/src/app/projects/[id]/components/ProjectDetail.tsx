@@ -2329,6 +2329,28 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       
       if (initialData) {
         if (initialData.stats) {
+          detailDispatch({
+            type: 'setStats',
+            payload: {
+              ungroupedCount: initialData.stats.ungroupedCount || 0,
+              groupedKeywordsCount: initialData.stats.groupedKeywordsCount || 0,
+              confirmedKeywordsCount: initialData.stats.confirmedKeywordsCount || 0,
+              confirmedPages: initialData.stats.confirmedPages || 0,
+              groupedPages: initialData.stats.groupedPages || 0,
+              blockedCount: initialData.stats.blockedCount || 0,
+              totalParentKeywords: initialData.stats.totalParentKeywords || 0,
+              totalChildKeywords: initialData.stats.totalChildKeywords || 0,
+              groupCount: initialData.stats.groupCount || 0,
+              parentTokenCount: initialData.stats.parentTokenCount || 0,
+              childTokenCount: initialData.stats.childTokenCount || 0,
+              totalKeywords:
+                initialData.stats.totalKeywords ||
+                (initialData.stats.ungroupedCount +
+                  initialData.stats.groupedKeywordsCount +
+                  (initialData.stats.confirmedKeywordsCount || 0) +
+                  initialData.stats.blockedCount),
+            },
+          });
           dispatch(setProjectStats({
             projectId: projectIdStr,
             stats: initialData.stats
