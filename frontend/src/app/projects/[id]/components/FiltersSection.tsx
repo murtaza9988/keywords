@@ -303,75 +303,76 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                   disabled={selectedKeywordIds.size === 0 || isProcessingAction}
                   className="w-full p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
                 />
-              {showSuggestions && (
-                <div 
-                  ref={suggestionRef}
-                  className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-52 overflow-y-auto"
-                >
-                  {isLoadingSuggestions ? (
-                    <div className="flex items-center justify-center p-2">
-                      <Loader2 size={16} className="animate-spin mr-2" />
-                      <span>Loading...</span>
-                    </div>
-                  ) : suggestions.length > 0 ? (
-                    suggestions.map((suggestion, index) => (
-                      <div
-                        key={index}
-                        className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-[13px]"
-                        onClick={() => handleSuggestionClick(suggestion)}
-                      >
-                        {suggestion}
+                {showSuggestions && (
+                  <div
+                    ref={suggestionRef}
+                    className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-52 overflow-y-auto"
+                  >
+                    {isLoadingSuggestions ? (
+                      <div className="flex items-center justify-center p-2">
+                        <Loader2 size={16} className="animate-spin mr-2" />
+                        <span>Loading...</span>
                       </div>
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-muted text-[13px]">No matching groups found</div>
-                  )}
-                </div>
+                    ) : suggestions.length > 0 ? (
+                      suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-[13px]"
+                          onClick={() => handleSuggestionClick(suggestion)}
+                        >
+                          {suggestion}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-muted text-[13px]">No matching groups found</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {isGroupButtonVisible && (
+                <button
+                  onClick={handleGroupKeywords}
+                  disabled={selectedKeywordIds.size === 0 || !groupName.trim() || isProcessingAction}
+                  className="bg-blue-600 cursor-pointer text-white px-3 py-1.5 border border-transparent rounded-md text-[13px] shadow-sm hover:bg-blue-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                >
+                  Group
+                </button>
               )}
+              {isConfirmButtonVisible && (
+                <button
+                  onClick={handleConfirmKeywords}
+                  disabled={selectedKeywordIds.size === 0 || isProcessingAction}
+                  className="bg-green-600 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-green-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                >
+                  Confirm
+                </button>
+              )}
+              <button
+                onClick={
+                  isUngroupButtonVisible
+                    ? handleUngroupKeywords
+                    : isUnconfirmButtonVisible
+                      ? handleUnconfirmKeywords
+                      : isUnblockButtonVisible
+                        ? handleUnblockKeywords
+                        : undefined
+                }
+                disabled={(!isUngroupButtonVisible && !isUnconfirmButtonVisible && !isUnblockButtonVisible) || selectedKeywordIds.size === 0 || isProcessingAction}
+                className="bg-yellow-500 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-yellow-600 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+              >
+                {isProcessingAction && (isUngroupButtonVisible || isUnconfirmButtonVisible || isUnblockButtonVisible) ? (
+                  "Processing..."
+                ) : isUngroupButtonVisible ? (
+                  "Ungroup"
+                ) : isUnconfirmButtonVisible ? (
+                  "Unconfirm"
+                ) : isUnblockButtonVisible ? (
+                  "Unblock"
+                ) : (
+                  "Action"
+                )}
+              </button>
             </div>
-            {isGroupButtonVisible && (
-              <button
-                onClick={handleGroupKeywords}
-                disabled={selectedKeywordIds.size === 0 || !groupName.trim() || isProcessingAction}
-                className="bg-blue-600 cursor-pointer text-white px-3 py-1.5 border border-transparent rounded-md text-[13px] shadow-sm hover:bg-blue-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
-              >
-                Group
-              </button>
-            )}
-            {isConfirmButtonVisible && (
-              <button
-                onClick={handleConfirmKeywords}
-                disabled={selectedKeywordIds.size === 0 || isProcessingAction}
-                className="bg-green-600 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-green-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
-              >
-                Confirm
-              </button>
-            )}
-            <button
-              onClick={
-                isUngroupButtonVisible
-                  ? handleUngroupKeywords
-                  : isUnconfirmButtonVisible
-                    ? handleUnconfirmKeywords
-                    : isUnblockButtonVisible
-                      ? handleUnblockKeywords
-                      : undefined
-              }
-              disabled={(!isUngroupButtonVisible && !isUnconfirmButtonVisible && !isUnblockButtonVisible) || selectedKeywordIds.size === 0 || isProcessingAction}
-              className="bg-yellow-500 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-yellow-600 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
-            >
-              {isProcessingAction && (isUngroupButtonVisible || isUnconfirmButtonVisible || isUnblockButtonVisible) ? (
-                "Processing..."
-              ) : isUngroupButtonVisible ? (
-                "Ungroup"
-              ) : isUnconfirmButtonVisible ? (
-                "Unconfirm"
-              ) : isUnblockButtonVisible ? (
-                "Unblock"
-              ) : (
-                "Action"
-              )}
-            </button>
           </div>
         </div>
       </div>
