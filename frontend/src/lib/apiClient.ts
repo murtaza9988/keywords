@@ -935,6 +935,28 @@ class ApiClient {
     
     return data;
   }
+
+  async runGrouping(projectId: string): Promise<{
+    message: string;
+    ungrouped_before: number;
+    ungrouped_after: number;
+    keywords_grouped: number;
+  }> {
+    const data = await this.request<{
+      message: string;
+      ungrouped_before: number;
+      ungrouped_after: number;
+      keywords_grouped: number;
+    }>(
+      'post',
+      `/api/projects/${projectId}/run-grouping`
+    );
+    
+    this.cache.invalidate(`/api/projects/${projectId}/keywords`);
+    this.cache.invalidate(`/api/projects/${projectId}/stats`);
+    
+    return data;
+  }
 }
 
 const apiClient = new ApiClient(BASE_URL);
