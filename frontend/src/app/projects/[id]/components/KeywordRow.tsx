@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { memo, useRef } from 'react';
-import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight, Layers } from 'lucide-react';
 import { Keyword,  ActiveKeywordView } from './types';
 
 const isExpandable = (keyword: Keyword): boolean => !!keyword.isParent && (keyword.childCount ?? 0) > 0 && !!keyword.groupId;
@@ -145,7 +145,7 @@ export const KeywordRow: React.FC<{
           )}
           {!showCheckbox && <span className="w-6 inline-block"></span>}
         </td>
-        <td className="w-[44%] py-1 text-[13px] font-light text-foreground">
+        <td className="w-[55%] py-1 text-[13px] font-light text-foreground">
           <div className={`flex items-start gap-x-0.5 ${keywordPaddingClass}`}>
             <span className="break-words leading-tight" title={displayText}>{displayText}</span>
             <span className="w-5 h-5 inline-flex items-center justify-center flex-shrink-0 flex-shrink-0" onClick={handleRowClick}>
@@ -163,7 +163,7 @@ export const KeywordRow: React.FC<{
             </span>
           </div>
         </td>
-        <td className="w-[28%] py-1 text-[13px] text-foreground whitespace-nowrap">
+        <td className="w-[30%] py-1 text-[13px] text-foreground whitespace-nowrap">
           <div className="flex flex-wrap gap-1 items-center">
             {orderedTokens.length > 0 ? (
               orderedTokens.map((token, index) => (
@@ -184,13 +184,13 @@ export const KeywordRow: React.FC<{
             )}
           </div>
         </td>
-        <td className="w-[50px] px-2 py-1 text-[12px] text-foreground overflow-hidden group relative">
+        <td className="w-[40px] px-0.5 py-1 text-[12px] text-foreground overflow-hidden group relative">
           {keyword.serpFeatures && keyword.serpFeatures.length > 0 ? (
             <div
-              className="truncate max-w-full cursor-default relative"
+              className="flex justify-center cursor-default relative"
               title={keyword.serpFeatures.join(', ')}
             >
-              {keyword.serpFeatures.join(', ')}
+              <Layers className="w-3 h-3 text-muted" />
               <div className="fixed z-[9999] bg-surface text-foreground shadow-lg rounded p-2 max-w-xs hidden group-hover:block border border-border"
                   style={{
                     left: 'auto',
@@ -209,24 +209,24 @@ export const KeywordRow: React.FC<{
             <span className="text-xs text-muted italic"></span>
           )}
         </td>
-        <td className="w-[48px] px-2 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
+        <td className="w-[40px] px-0.5 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
           {!isChild && (keyword.childCount ?? 0) > 0 ? (
-            <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full">
+            <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-1 py-0.5 rounded-full">
               {(keyword.childCount ?? 0).toLocaleString()}
             </span>
           ) : null}
         </td>
-        <td className="w-[40px] px-1 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
+        <td className="w-[35px] px-0.5 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
           {keyword.keyword.length}
         </td>
-        <td className="w-[48px] px-1 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
+        <td className="w-[40px] px-0.5 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
           {(keyword.volume ?? 0).toLocaleString()}
         </td>
-        <td className="w-[48px] px-2 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
+        <td className="w-[40px] px-0.5 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
           {(keyword.difficulty ?? 0).toFixed(1)}
         </td>
         {showRatingColumn && (
-          <td className="w-[40px] px-2 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
+          <td className="w-[35px] px-0.5 py-1 text-[13px] text-foreground text-center whitespace-nowrap">
             {keyword.rating !== null && keyword.rating !== undefined ? keyword.rating : '-'}
           </td>
         )}
