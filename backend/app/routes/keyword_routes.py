@@ -13,6 +13,7 @@ from app.config import settings
 from app.database import get_db, get_db_context
 from app.models.csv_upload import CSVUpload
 from app.schemas.csv_upload import CSVUploadResponse
+from app.services.csv_batch import combine_csv_files
 from app.services.merge_token import TokenMergeService
 from app.services.project import ProjectService
 from app.services.keyword import KeywordService
@@ -393,20 +394,48 @@ async def upload_keywords(
                     if entry.get("file_index") is not None
                     else entry.get("file_name", "")
                 )
-                # Enqueue each file separately to avoid brittle header-combine failures.
-                # The processor already auto-detects keyword/volume/difficulty columns per file.
-                for entry in file_entries:
+                # Combine files into a single CSV to ensure robust clustering
+                try:
+                    combined_filename = f"combined_batch_{batchId}.csv"
+                    combined_path = os.path.join(settings.UPLOAD_DIR, f"{project_id}_{combined_filename}")
+                    
+                    combine_csv_files(file_entries, combined_path)
+                    
+                    # Log the combined file upload for tracking
+                    csv_upload = CSVUpload(project_id=project_id, file_name=combined_filename)
+                    db.add(csv_upload)
+                    await db.commit()
+                    
+                    # Enqueue the single combined file
                     enqueue_processing_file(
                         project_id,
-                        entry["file_path"],
-                        entry.get("file_name") or "CSV file",
+                        combined_path,
+                        combined_filename
                     )
-                await start_next_processing(project_id)
-                return {
-                    "message": "Batch upload complete. Processing queued.",
-                    "status": processing_queue_service.get_status(project_id),
-                    "file_name": originalFilename,
-                }
+                    
+                    await start_next_processing(project_id)
+                    
+                    return {
+                        "message": "Batch upload complete. Files combined and processing queued.",
+                        "status": processing_queue_service.get_status(project_id),
+                        "file_name": combined_filename,
+                    }
+                except Exception as e:
+                    print(f"Error combining batch files: {e}")
+                    # Fallback to individual processing if combination fails
+                    for entry in file_entries:
+                        enqueue_processing_file(
+                            project_id,
+                            entry["file_path"],
+                            entry.get("file_name") or "CSV file",
+                        )
+                    await start_next_processing(project_id)
+                    
+                    return {
+                        "message": f"Batch upload complete (individual fallback: {str(e)}). Processing queued.",
+                        "status": processing_queue_service.get_status(project_id),
+                        "file_name": originalFilename,
+                    }
 
             if originalFilename:
                 enqueue_processing_file(project_id, final_path, originalFilename)
