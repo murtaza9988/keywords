@@ -96,6 +96,9 @@ export function TokenManagement({
         currentKeywords = activeViewKeywords
           .flatMap(token =>
             token.tokens?.map((t): Keyword => ({
+          .flatMap(token => {
+            const tokenList = Array.isArray(token.tokens) ? token.tokens : [];
+            return tokenList.map(t => ({
               id: 0,
               keyword: t,
               volume: token.volume || 0,
@@ -113,6 +116,9 @@ export function TokenManagement({
             })) ?? []
           )
           .filter((kw) => Boolean(kw.keyword));
+            }));
+          })
+          .filter(kw => kw.keyword);
       }
 
       return currentKeywords;

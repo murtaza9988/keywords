@@ -17,6 +17,7 @@ from app.config import settings
 from app.database import get_db_context
 from app.services.keyword import KeywordService
 from app.models.keyword import KeywordStatus
+from app.utils.token_normalization import normalize_compound_tokens
 from app.utils.normalization import normalize_numeric_tokens
 from app.utils.compound_normalization import normalize_compound_tokens
 from nltk.corpus import wordnet
@@ -83,6 +84,7 @@ def process_keyword(row_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
         except Exception as e:
             print(f"Tokenization failed for '{keyword}': {e}")
             tokens = [keyword.lower()]
+        tokens = normalize_compound_tokens(tokens)
 
         tokens = normalize_compound_tokens(tokens)
 
@@ -448,11 +450,6 @@ async def process_csv_file(file_path: str, project_id: int) -> None:
                         
                         current_chunk = []
             
-            # Mark processing as complete
-            processing_results[project_id]["complete"] = True
-            processing_results[project_id]["progress"] = 100.0
-            processing_tasks[project_id] = "complete"
-            
             # Final grouping pass for any remaining ungrouped keywords
             await group_remaining_ungrouped_keywords(db, project_id)
 
@@ -460,6 +457,11 @@ async def process_csv_file(file_path: str, project_id: int) -> None:
             drop_index_query = f"DROP INDEX IF EXISTS temp_tokens_idx_{project_id}"
             await db.execute(sql_text(drop_index_query))
             await db.commit()
+
+            # Mark processing as complete after final grouping and cleanup
+            processing_results[project_id]["complete"] = True
+            processing_results[project_id]["progress"] = 100.0
+            processing_tasks[project_id] = "complete"
 
     except Exception as e:
         print(f"Error during CSV processing for project {project_id}: {e}")

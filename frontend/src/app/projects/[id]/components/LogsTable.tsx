@@ -9,6 +9,8 @@ type SortColumn = 'createdAt' | 'user' | 'action' | 'projectId' | 'id';
 
 interface LogsTableProps {
   projectId: string;
+  isActive: boolean;
+  refreshKey: number;
 }
 
 const formatDetails = (details?: Record<string, unknown> | null) => {
@@ -20,7 +22,7 @@ const formatDetails = (details?: Record<string, unknown> | null) => {
   }
 };
 
-export function LogsTable({ projectId }: LogsTableProps) {
+export function LogsTable({ projectId, isActive, refreshKey }: LogsTableProps) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -32,7 +34,7 @@ export function LogsTable({ projectId }: LogsTableProps) {
   useEffect(() => {
     let isMounted = true;
     const fetchLogs = async () => {
-      if (!projectId) return;
+      if (!projectId || !isActive) return;
       setIsLoading(true);
       setErrorMessage('');
       try {
@@ -55,7 +57,7 @@ export function LogsTable({ projectId }: LogsTableProps) {
     return () => {
       isMounted = false;
     };
-  }, [projectId]);
+  }, [projectId, isActive, refreshKey]);
 
   const actionOptions = useMemo(() => {
     const uniqueActions = new Set(logs.map((log) => log.action));

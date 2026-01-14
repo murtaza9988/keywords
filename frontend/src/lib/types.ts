@@ -91,6 +91,19 @@ export interface ProcessingStatusResponse {
   totalRows?: number; 
   progress?: number; 
 }
+export interface ProcessingKeyword {
+  id?: number;
+  keyword?: string;
+  tokens?: string[] | string;
+  volume?: number;
+  difficulty?: number;
+  is_parent?: boolean;
+  group_id?: string | null;
+  status?: string;
+  child_count?: number;
+  original_volume?: number;
+  serpFeatures?: string[];
+}
 export interface GroupKeywordsResponse {
     message: string;
     groupName: string;
@@ -130,6 +143,7 @@ export interface ProjectState {
   sortedKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
   filteredKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
   metaData: Record<string, ProjectMetadata>;
+  metaData: Record<string, Record<string, unknown>>;
   stats: Record<string, {
     ungroupedCount: number;
     groupedKeywordsCount: number;
