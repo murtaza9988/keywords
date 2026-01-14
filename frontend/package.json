@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "NODE_PATH=./node_modules eslint .",
+    "lint": "next lint",
     "test": "jest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
