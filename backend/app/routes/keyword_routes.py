@@ -315,31 +315,6 @@ async def get_processing_status(
             "processedFileCount": processed_count,
             "validationError": validation_error,
         }
-    elif status == "idle":
-        count = await KeywordService.count_total_by_project(db, project_id)
-        if count > 0:
-            return {
-                "status": "complete",
-                "keywordCount": count,
-                "processedCount": result.get("processed_count", 0),
-                "skippedCount": result.get("skipped_count", 0),
-                "keywords": result.get("keywords", []),
-                "complete": True,
-                "totalRows": result.get("total_rows", 0),
-                "progress": 100.0,
-                "message": result.get("message", ""),
-                "stage": result.get("stage"),
-                "stageDetail": result.get("stage_detail"),
-                "currentFileName": current_file.get("file_name") if current_file else None,
-                "queuedFiles": queued_files,
-                "queueLength": len(queued_files),
-                "uploadedFiles": uploaded_files,
-                "processedFiles": processed_files,
-                "uploadedFileCount": uploaded_count,
-                "processedFileCount": processed_count,
-                "validationError": validation_error,
-            }
-
     return {
         "status": status,
         "keywordCount": result.get("processed_count", 0),

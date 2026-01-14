@@ -194,7 +194,7 @@ def test_upload_keywords_batch_combines_files(
     assert queued[0]["file_name"] in {"keywords-one.csv", "keywords-two.csv"}
 
 
-def test_processing_status_idle_returns_complete(
+def test_processing_status_idle_does_not_force_complete(
     test_api_client,
     mock_processing_tasks,
     mock_processing_results,
@@ -222,9 +222,9 @@ def test_processing_status_idle_returns_complete(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["status"] == "complete"
-    assert payload["keywordCount"] == 3
-    assert payload["progress"] == 100.0
+    assert payload["status"] == "idle"
+    assert payload["keywordCount"] == 2
+    assert payload["progress"] == 40.0
 
 
 @pytest.mark.asyncio
