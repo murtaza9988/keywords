@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
   "installCommand": "npm install",
-  "buildCommand": "npm run build -w frontend",
+  "buildCommand": "npm run lint -w frontend && npm run typecheck -w frontend && npm run build -w frontend",
   "outputDirectory": "frontend/.next"
 }
