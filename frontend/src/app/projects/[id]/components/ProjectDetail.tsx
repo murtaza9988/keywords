@@ -11,14 +11,12 @@ import { FiltersSection } from './FiltersSection';
 import { MainContent } from './MainContent';
 import { Snackbar } from './Snackbar';
 import { TokenManagement } from './token/TokenManagement';
-import { LogsTable } from './LogsTable';
-import {TextAreaInputs} from './TextAreaInputs'; 
-import FileUploader from './FileUploader';
-import CSVUploadDropdown from './CSVUploadDropdown';
-import ProcessingProgressBar from './ProcessingProgressBar';
-import { Button } from '@/components/ui/Button';
-import { Spinner } from '@/components/ui/Spinner';
-import { Loader2 } from 'lucide-react';
+import { TextAreaInputs } from './TextAreaInputs';
+import { ProjectDetailTabs, ProjectDetailTab } from './ProjectDetailTabs';
+import { ProjectDetailOverview } from './ProjectDetailOverview';
+import { ProjectDetailProcess } from './ProjectDetailProcess';
+import { ProjectDetailLogs } from './ProjectDetailLogs';
+import { ProjectDetailToolbar } from './ProjectDetailToolbar';
 import {
   ProcessingStatus, ActiveKeywordView, SnackbarMessage, SortParams,
   Keyword, PaginationInfo
@@ -165,7 +163,7 @@ export default function ProjectDetail(): React.ReactElement {
 
   // Component state
   const [activeView, setActiveView] = useState<ActiveKeywordView>('ungrouped');
-  const [activeTab, setActiveTab] = useState<'overview' | 'group' | 'logs' | 'process'>('group');
+  const [activeTab, setActiveTab] = useState<ProjectDetailTab>('group');
   const [logsRefreshKey, setLogsRefreshKey] = useState(0);
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
   const [includeFilter, setIncludeFilter] = useState('');
@@ -2635,66 +2633,15 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden">
       <Header projectName={project?.name} />
-      <div className="bg-surface border-b border-border">
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-end gap-2">
-          <Button
-            onClick={handleExportParentKeywords}
-            disabled={isExportingParent}
-            size="sm"
-            className="px-2 py-1 text-[11px]"
-          >
-            {isExportingParent ? (
-              <>
-                <Spinner size="sm" className="border-muted border-t-foreground" />
-                Exporting...
-              </>
-            ) : (
-              'Export Parent KWs'
-            )}
-          </Button>
-          <label className="inline-flex items-center">
-            <span className="sr-only">Import Parent KWs</span>
-            <Button disabled={isImportingParent} size="sm" className="px-2 py-1 text-[11px]">
-              {isImportingParent ? (
-                <>
-                  <Spinner size="sm" className="border-white/40 border-t-white" />
-                  Importing...
-                </>
-                ) : (
-                  'Import Parent KWs'
-                )}
-            </Button>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handleImportParentKeywords(file);
-                  e.target.value = '';
-                }
-              }}
-              className="hidden"
-              disabled={isImportingParent}
-            />
-          </label>
-
-          <Button
-            onClick={handleExportCSV}
-            disabled={(activeView !== 'grouped' && activeView !== 'confirmed') || isExporting}
-            variant="secondary"
-          >
-            {isExporting ? (
-              <>
-                <Spinner size="sm" className="border-white/40 border-t-white" />
-                Exporting...
-              </>
-            ) : (
-              'Export'
-            )}
-          </Button>
-        </div>
-      </div>
+      <ProjectDetailToolbar
+        activeView={activeView}
+        isExportingParent={isExportingParent}
+        isImportingParent={isImportingParent}
+        isExporting={isExporting}
+        onExportParentKeywords={handleExportParentKeywords}
+        onImportParentKeywords={handleImportParentKeywords}
+        onExportCSV={handleExportCSV}
+      />
       <div className="flex-1 w-full">
         <div className="mx-auto w-full max-w-[1720px] px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col xl:flex-row gap-4">
@@ -2705,98 +2652,23 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             </aside>
             <main className="flex-1 min-w-0 flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 sm:p-6 flex flex-col flex-grow h-full">
-                <div className="flex flex-wrap gap-2 border border-border rounded-lg bg-surface-muted/40 p-1 mb-4 justify-center">
-                  {(['overview', 'process', 'group', 'logs'] as const).map(tab => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={
-                        'px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors ' +
-                        (activeTab === tab
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-muted hover:text-foreground hover:bg-surface-muted')
-                      }
-                    >
-                      {tab === 'overview'
-                        ? 'Overview'
-                        : tab === 'process'
-                        ? 'Process'
-                        : tab === 'group'
-                        ? 'Group'
-                        : 'Logs'}
-                    </button>
-                  ))}
-                </div>
+                <ProjectDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
                 {activeTab === 'overview' && (
-                  <div className="flex flex-col gap-4">
-                    <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-4">
-                        <div className="min-w-[220px] flex flex-col gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted">Upload CSVs</span>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <div className="min-w-[180px] max-w-[220px]">
-                              <FileUploader
-                                projectId={projectIdStr}
-                                onUploadStart={handleUploadStart}
-                                onUploadSuccess={handleUploadSuccess}
-                                onUploadError={handleUploadError}
-                              />
-                            </div>
-                            <CSVUploadDropdown projectId={projectIdStr} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center h-6">
-                      {showUploadLoader ? (
-                        <div className="flex items-center text-blue-600">
-                          <Loader2 size={16} className="animate-spin mr-2" />
-                          <span className="text-xs">
-                            {isUploading ? "Uploading..." : "Processing..."}
-                          </span>
-                        </div>
-                      ) : processingStatus === 'error' && !isUploading && !isProcessing ? (
-                        <div className="text-red-600 text-xs">
-                          {processingMessage || 'Processing failed. Try uploading again.'}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-transparent">Status</span>
-                      )}
-                    </div>
-                    <ProcessingProgressBar
-                      status={processingStatus}
-                      progress={displayProgress}
-                      currentFileName={processingCurrentFile}
-                      queuedFiles={processingQueue}
-                      message={processingMessage}
-                    />
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total keywords uploaded</p>
-                        <p className="text-lg font-semibold text-foreground">{stats.totalKeywords.toLocaleString()}</p>
-                      </div>
-                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total parent keywords</p>
-                        <p className="text-lg font-semibold text-foreground">{stats.totalParentKeywords.toLocaleString()}</p>
-                      </div>
-                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total child keywords</p>
-                        <p className="text-lg font-semibold text-foreground">{totalChildKeywords.toLocaleString()}</p>
-                      </div>
-                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Grouped pages</p>
-                        <p className="text-lg font-semibold text-foreground">{stats.groupedPages.toLocaleString()}</p>
-                      </div>
-                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Confirmed pages</p>
-                        <p className="text-lg font-semibold text-foreground">{stats.confirmedPages.toLocaleString()}</p>
-                      </div>
-                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Blocked parent keywords</p>
-                        <p className="text-lg font-semibold text-foreground">{stats.blockedCount.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  </div>
+                  <ProjectDetailOverview
+                    projectId={projectIdStr}
+                    stats={stats}
+                    totalChildKeywords={totalChildKeywords}
+                    showUploadLoader={showUploadLoader}
+                    isUploading={isUploading}
+                    processingStatus={processingStatus}
+                    processingMessage={processingMessage}
+                    displayProgress={displayProgress}
+                    processingCurrentFile={processingCurrentFile}
+                    processingQueue={processingQueue}
+                    onUploadStart={handleUploadStart}
+                    onUploadSuccess={handleUploadSuccess}
+                    onUploadError={handleUploadError}
+                  />
                 )}
                 {activeTab === 'group' && (
                   <>
@@ -2875,89 +2747,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                   </>
                 )}
                 {activeTab === 'process' && (
-                  <div className="flex flex-col gap-4">
-                    <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
-                      <div className="flex flex-col gap-2">
-                        <h3 className="text-sm font-semibold text-foreground">Keyword + token clustering process</h3>
-                        <p className="text-xs text-muted">
-                          This is the exact path the backend uses to normalize tokens, group keywords, and select
-                          parent keywords during CSV processing.
-                        </p>
-                      </div>
-                      <ol className="mt-3 space-y-3 text-xs text-foreground">
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-muted">1.</span>
-                          <div>
-                            The CSV is saved (chunked uploads are combined first), and processing starts by creating a
-                            temporary GIN index on tokens for the project so grouping queries stay fast during the run.
-                          </div>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-muted">2.</span>
-                          <div>
-                            The processor detects encoding/delimiter, validates headers, identifies the keyword, volume,
-                            difficulty, and SERP feature columns, then counts total rows to drive progress reporting.
-                          </div>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-muted">3.</span>
-                          <div>
-                            Each row is normalized: numeric strings are cleaned, non-English keywords are flagged as
-                            blocked, tokens are generated (NLTK), compound variants are normalized, stop words are
-                            removed, tokens are lemmatized, synonyms are collapsed, and the final unique token list is
-                            sorted for deterministic grouping.
-                          </div>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-muted">4.</span>
-                          <div>
-                            Duplicates are skipped if the keyword text already exists in the project or has already been
-                            seen in the current upload batch.
-                          </div>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-muted">5.</span>
-                          <div>
-                            Tokens are compared against existing grouped keywords. If an identical token set already
-                            exists, the keyword is assigned to that existing group immediately.
-                          </div>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-muted">6.</span>
-                          <div>
-                            Otherwise, keywords are buffered into a token-key map. For each token group, the members are
-                            sorted by volume (desc) and difficulty (asc). Singletons remain ungrouped parents; multi-key
-                            groups get a new group id, with the top member becoming the parent and receiving the summed
-                            volume + averaged difficulty.
-                          </div>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-muted">7.</span>
-                          <div>
-                            Batched keywords are written to the database, parent stats for existing groups are refreshed,
-                            and progress is updated until all rows are processed.
-                          </div>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-muted">8.</span>
-                          <div>
-                            After all rows, a final sweep groups any remaining ungrouped keywords that share identical
-                            tokens, applying the same parent selection and aggregated volume/difficulty logic.
-                          </div>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-muted">9.</span>
-                          <div>
-                            The temporary index is removed and the processing status flips to complete, so the parent
-                            keyword totals reflect the fully clustered state.
-                          </div>
-                        </li>
-                      </ol>
-                    </div>
-                  </div>
+                  <ProjectDetailProcess />
                 )}
                 {activeTab === 'logs' && (
-                  <LogsTable
+                  <ProjectDetailLogs
                     projectId={projectIdStr}
                     isActive={activeTab === 'logs'}
                     refreshKey={logsRefreshKey}
