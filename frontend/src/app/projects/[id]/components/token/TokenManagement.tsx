@@ -9,6 +9,7 @@ import {
   selectBlockedKeywordsForProject 
 } from '@/store/projectSlice';
 import apiClient from '@/lib/apiClient';
+import { createTTLCache } from '@/lib/cache';
 import { TokenData, PaginationInfo, TokenSortParams, TokenActiveView, Keyword } from '../types';
 import { Loader2 } from 'lucide-react';
 import { debounce } from 'lodash';
@@ -22,6 +23,7 @@ import { CreateTokenModal } from './CreateTokenModal';
 
 const TOKEN_LIMIT_OPTIONS = [100, 250, 500];
 const MINIMUM_SEARCH_LENGTH = 2;
+const TOKEN_CACHE_TTL_MS = 30000;
 
 function isError(error: unknown): error is Error {
   return error instanceof Error;
@@ -69,11 +71,19 @@ export function TokenManagement({
   const [showCreateToken, setShowCreateToken] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
   const [isCreatingToken, setIsCreatingToken] = useState(false);
-  const tokenCacheRef = useRef<Map<string, { tokens: TokenData[]; pagination: PaginationInfo }>>(new Map());
+  const tokenCacheRef = useRef(
+    createTTLCache<{ tokens: TokenData[]; pagination: PaginationInfo }>({
+      defaultTtlMs: TOKEN_CACHE_TTL_MS,
+    })
+  );
   
   const ungroupedKeywords = useSelector((state: RootState) => selectUngroupedKeywordsForProject(state, projectId));
   const groupedKeywords = useSelector((state: RootState) => selectGroupedKeywordsForProject(state, projectId));
   const blockedKeywords = useSelector((state: RootState) => selectBlockedKeywordsForProject(state, projectId));
+
+  const invalidateTokenCache = useCallback(() => {
+    tokenCacheRef.current.clear();
+  }, []);
 
   const getCurrentViewKeywords = useCallback(() => {
     if (activeTokenView === 'current') {
@@ -393,10 +403,11 @@ export function TokenManagement({
       tokensArray.sort((a, b) => (b.volume || 0) - (a.volume || 0));
       const parentToken = tokensArray[0].tokenName;
       const childTokens = tokensArray.slice(1).map(t => t.tokenName);
-              const response = await apiClient.mergeTokens(projectId, parentToken, childTokens);
+      const response = await apiClient.mergeTokens(projectId, parentToken, childTokens);
       addSnackbarMessage(`Successfully merged ${childTokens.length + 1} tokens under "${parentToken}".`, 'success');
       setSelectedTokenNames(new Set());
       setIsLoading(true);
+      invalidateTokenCache();
       setFetchTrigger(prev => prev + 1);
       onTokenDataChange();
     } catch (error) {
@@ -464,10 +475,11 @@ export function TokenManagement({
     }
     setIsProcessingAction(true);
     try {
-              const response = await apiClient.blockTokens(projectId, tokensToBlock);
+      const response = await apiClient.blockTokens(projectId, tokensToBlock);
       addSnackbarMessage(`Successfully blocked ${response.count} keywords for ${tokensToBlock.length} token(s).`, 'success');
       setSelectedTokenNames(new Set());
       setIsLoading(true);
+      invalidateTokenCache();
       setFetchTrigger(prev => prev + 1);
       onBlockTokenSuccess();
       onTokenDataChange();
@@ -486,10 +498,11 @@ export function TokenManagement({
     }
     setIsProcessingAction(true);
     try {
-              const response = await apiClient.unblockTokens(projectId, tokensToUnblock);
+      const response = await apiClient.unblockTokens(projectId, tokensToUnblock);
       addSnackbarMessage(`Successfully unblocked ${(await response).count} token(s).`, 'success');
       setSelectedTokenNames(new Set());
       setIsLoading(true);
+      invalidateTokenCache();
       setFetchTrigger(prev => prev + 1);
       onUnblockTokenSuccess();
       onTokenDataChange();
@@ -503,9 +516,10 @@ export function TokenManagement({
   const handleBlockSingleToken = async (tokenName: string) => {
     setIsProcessingAction(true);
     try {
-              const response = await apiClient.blockTokens(projectId, [tokenName]);
+      const response = await apiClient.blockTokens(projectId, [tokenName]);
       addSnackbarMessage(`Successfully blocked ${response.count} keywords for token "${tokenName}".`, 'success');
       setIsLoading(true);
+      invalidateTokenCache();
       setFetchTrigger(prev => prev + 1);
       onBlockTokenSuccess();
     } catch (error) {
@@ -539,11 +553,12 @@ export function TokenManagement({
     setIsCreatingToken(true);
 
     try {
-              const response = await apiClient.createToken(projectId, searchTerm, newTokenName);
+      const response = await apiClient.createToken(projectId, searchTerm, newTokenName);
       addSnackbarMessage(`Successfully created token "${newTokenName}" for "${searchTerm}" in ${response.affected_keywords} keywords`, 'success');
       setShowCreateToken(false);
       setNewTokenName('');
       setIsLoading(true);
+      invalidateTokenCache();
       setFetchTrigger(prev => prev + 1);
       onTokenDataChange();
     } catch (error) {
@@ -551,7 +566,7 @@ export function TokenManagement({
     } finally {
       setIsCreatingToken(false);
     }
-  }, [projectId, searchTerm, newTokenName, addSnackbarMessage, onTokenDataChange]);
+  }, [projectId, searchTerm, newTokenName, addSnackbarMessage, onTokenDataChange, invalidateTokenCache]);
 
   const handleCancelCreateToken = () => {
     setShowCreateToken(false);
@@ -561,9 +576,10 @@ export function TokenManagement({
   const handleUnblockSingleToken = async (tokenName: string) => {
     setIsProcessingAction(true);
     try {
-              const response = await apiClient.unblockTokens(projectId, [tokenName]);
+      const response = await apiClient.unblockTokens(projectId, [tokenName]);
       addSnackbarMessage(`Successfully unblocked token "${tokenName}".`, 'success');
       setIsLoading(true);
+      invalidateTokenCache();
       setFetchTrigger(prev => prev + 1);
       onUnblockTokenSuccess();
       onTokenDataChange();
@@ -578,9 +594,10 @@ export function TokenManagement({
     setIsProcessingAction(true);
 
     try {
-              const response = await apiClient.unmergeToken(projectId, tokenName);
+      const response = await apiClient.unmergeToken(projectId, tokenName);
       addSnackbarMessage(`Successfully unmerged token "${tokenName}".`, 'success');
       setIsLoading(true);
+      invalidateTokenCache();
       setFetchTrigger(prev => prev + 1);
       onTokenDataChange();
       setExpandedTokens(prev => {
@@ -659,9 +676,10 @@ export function TokenManagement({
     setIsProcessingAction(true);
 
     try {
-              const response = await apiClient.unmergeIndividualToken(projectId, parentToken, childToken);
+      const response = await apiClient.unmergeIndividualToken(projectId, parentToken, childToken);
       addSnackbarMessage(`Successfully unmerged "${childToken}" from "${parentToken}".`, 'success');
       setIsLoading(true);
+      invalidateTokenCache();
       setFetchTrigger(prev => prev + 1);
       onTokenDataChange();
     } catch (error) {
