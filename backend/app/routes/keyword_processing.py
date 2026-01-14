@@ -8,6 +8,7 @@ import string
 import re
 from collections import deque
 import nltk
+from nltk import data as nltk_data
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -23,9 +24,30 @@ from app.utils.normalization import normalize_numeric_tokens
 from app.utils.compound_normalization import normalize_compound_tokens
 from nltk.corpus import wordnet
 
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
+REQUIRED_NLTK_RESOURCES = {
+    "punkt": "tokenizers/punkt",
+    "stopwords": "corpora/stopwords",
+    "wordnet": "corpora/wordnet",
+}
+
+
+def _verify_nltk_resources() -> None:
+    missing = []
+    for resource_name, resource_path in REQUIRED_NLTK_RESOURCES.items():
+        try:
+            nltk_data.find(resource_path)
+        except LookupError:
+            missing.append(resource_name)
+    if missing:
+        missing_list = ", ".join(sorted(missing))
+        raise RuntimeError(
+            "NLTK resources missing: "
+            f"{missing_list}. Run `python -m app.scripts.setup_nltk` "
+            "or start the API to download them."
+        )
+
+
+_verify_nltk_resources()
 
 nltk_stop_words = set(stopwords.words('english'))
 custom_stop_words_list = [
