@@ -207,7 +207,7 @@ def test_processing_status_idle_returns_complete(
 
     monkeypatch.setattr(
         KeywordService,
-        "count_parents_by_project",
+        "count_total_by_project",
         AsyncMock(return_value=3),
     )
 

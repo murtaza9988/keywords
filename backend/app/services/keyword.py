@@ -50,6 +50,22 @@ class KeywordService:
         await db.execute(stmt)
         await db.commit()
 
+    @staticmethod
+    async def count_total_by_project(db: AsyncSession, project_id: int) -> int:
+        """
+        Count total keywords for a project (parents + children), excluding merge-hidden rows.
+        """
+        query = text(
+            """
+            SELECT COUNT(*)
+            FROM keywords
+            WHERE project_id = :project_id
+              AND (blocked_by IS NULL OR blocked_by != 'merge_hidden')
+            """
+        )
+        result = await db.execute(query, {"project_id": project_id})
+        return int(result.scalar_one() or 0)
+
 
     @staticmethod
     async def get_parents_by_project(
