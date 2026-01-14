@@ -31,6 +31,18 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const [totalFiles, setTotalFiles] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevProgressRef = useRef<number>(0);
+  const [uploadStage, setUploadStage] = useState<ProcessingStatus>('idle');
+
+  const getStageLabel = (stage: ProcessingStatus) => {
+    switch (stage) {
+      case 'uploading':
+        return 'Uploading';
+      case 'combining':
+        return 'Combining';
+      default:
+        return 'Uploading';
+    }
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -69,7 +81,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           formData.append('fileSize', String(fileToUpload.size));
           const baseProgress = Math.floor((currentChunk / totalChunks) * 100);
           setUploadProgress(Math.max(prevProgressRef.current, baseProgress));
+          setUploadStage('uploading');
           try {
+            if (currentChunk === totalChunks - 1) {
+              setUploadStage('combining');
+            }
             const result = await apiClient.uploadCSV(projectId, formData, (chunkProgress) => {
               const adjustedChunkProgress = chunkProgress / totalChunks;
               const compositeProgress = Math.floor(baseProgress + adjustedChunkProgress);
@@ -78,7 +94,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
               setUploadProgress(newProgress);
             });
             
-            if (currentChunk < totalChunks - 1 && result.status === 'complete') {
+            if (currentChunk < totalChunks - 1 && result.status === 'uploading') {
               currentChunk++;
               continue;
             }
@@ -127,6 +143,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
       setIsUploadingInternal(true);
       onUploadStart();
+      setUploadStage('uploading');
       setTotalFiles(filesToUpload.length);
       let lastStatus: ProcessingStatus = 'complete';
       let lastMessage = '';
@@ -160,6 +177,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         setIsUploadingInternal(false);
         setCurrentFileIndex(0);
         setTotalFiles(0);
+        setUploadStage('idle');
       }
     },
     [onUploadError, onUploadStart, onUploadSuccess, uploadSingleFile]
@@ -219,7 +237,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-muted" />
                 <span className="text-xs text-muted">
-                  Uploading{totalFiles > 0 ? ` ${currentFileIndex}/${totalFiles}` : ''}... {uploadProgress}%
+                  {getStageLabel(uploadStage)}
+                  {totalFiles > 0 ? ` ${currentFileIndex}/${totalFiles}` : ''}...
+                  {uploadStage === 'uploading' ? ` ${uploadProgress}%` : ''}
                 </span>
               </>
             ) : (

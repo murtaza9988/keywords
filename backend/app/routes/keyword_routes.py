@@ -106,6 +106,8 @@ async def upload_keywords(
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     if processing_tasks.get(project_id) == "processing" and (chunkIndex is None or int(chunkIndex) == 0):
         raise HTTPException(status_code=409, detail="A file is already being processed for this project.")
+
+    processing_tasks[project_id] = "uploading"
     
     is_chunked_upload = chunkIndex is not None and totalChunks is not None and originalFilename is not None
     
@@ -135,10 +137,11 @@ async def upload_keywords(
         if int(chunkIndex) < int(totalChunks) - 1:
             return {
                 "message": f"Chunk {int(chunkIndex) + 1} of {totalChunks} received.",
-                "status": "processing"
+                "status": "uploading"
             }
             
         try:
+            processing_tasks[project_id] = "combining"
             safe_filename = f"{project_id}_{re.sub(r'[^a-zA-Z0-9._-]', '_', originalFilename)}"
             final_path = os.path.join(settings.UPLOAD_DIR, safe_filename)
             
@@ -195,8 +198,8 @@ async def upload_keywords(
             background_tasks.add_task(process_csv_file, final_path, project_id)
             
             return {
-                "message": "CSV upload complete and processing started in background.",
-                "status": "processing",
+                "message": "Upload complete. Processing queued.",
+                "status": "queued",
                 "file_name": originalFilename
             }
         except Exception as e:
@@ -256,8 +259,8 @@ async def upload_keywords(
         background_tasks.add_task(process_csv_file, file_path, project_id)
         
         return {
-            "message": "CSV upload received and processing started in background.",
-            "status": "processing",
+            "message": "Upload complete. Processing queued.",
+            "status": "queued",
             "file_name": file.filename
         }
     

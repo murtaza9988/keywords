@@ -99,8 +99,10 @@ export interface SortParams {
 
 export interface SnackbarMessage {
   text: string;
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'info';
   id: number;
+  description?: string;
+  stage?: ProcessingStatus;
 }
 export interface ProjectState {
   projects: Project[];
@@ -127,7 +129,14 @@ export interface ProjectState {
     blockedPercent: number;
   }>;
 }
-export type ProcessingStatus = 'idle' | 'queued' | 'processing' | 'complete' | 'error';
+export type ProcessingStatus =
+  | 'idle'
+  | 'uploading'
+  | 'combining'
+  | 'queued'
+  | 'processing'
+  | 'complete'
+  | 'error';
 export type ActiveKeywordView = 'ungrouped' | 'grouped' | 'confirmed' | 'blocked';
 export interface TokenData {
   tokenName: string;
