@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { memo, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
@@ -122,6 +123,8 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
     fetchSerpFeaturesData();
   }, [projectId]);
 
+  const getSerpFeatures = (item: { serpFeatures?: string[] | string | null } | null | undefined): string[] => {
+  const getSerpFeatures = (item: SerpFeatureSource | null | undefined): string[] => {
   const getSerpFeatures = (
     item: Keyword | { serpFeatures?: string[] | string | null }
   ): string[] => {

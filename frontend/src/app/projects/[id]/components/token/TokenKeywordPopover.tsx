@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { TokenData } from '../types';
+import { TokenData, TokenKeywordSummary } from '../types';
 
 interface TokenKeywordPopoverProps {
   token: TokenData;
-  getTopKeywords: (token: TokenData) => any[];
+  getTopKeywords: (token: TokenData) => TokenKeywordSummary[];
   index: number;
 }
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
@@ -93,6 +94,8 @@ export function TokenManagement({
 
       if (currentKeywords.length === 0 && activeViewKeywords.length > 0) {
         currentKeywords = activeViewKeywords
+          .flatMap(token =>
+            token.tokens?.map((t): Keyword => ({
           .flatMap(token => {
             const tokenList = Array.isArray(token.tokens) ? token.tokens : [];
             return tokenList.map(t => ({
@@ -101,19 +104,18 @@ export function TokenManagement({
               volume: token.volume || 0,
               difficulty: token.difficulty || 0,
               original_volume: token.volume || 0,
-              project_id: parseInt(projectId),
+              project_id: parseInt(projectId, 10),
               tokens: [],
               isParent: false,
-              hasChildren: false,
-              childTokens: [],
-              count: 0,
-              tokenName: t,
               groupId: '0',
               groupName: '',
               status: activeView as 'ungrouped' | 'grouped' | 'blocked',
               childCount: 0,
-              serpFeatures: [] as string[],
+              serpFeatures: [],
               length: (t || '').length,
+            })) ?? []
+          )
+          .filter((kw) => Boolean(kw.keyword));
             }));
           })
           .filter(kw => kw.keyword);

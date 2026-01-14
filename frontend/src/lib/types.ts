@@ -64,6 +64,22 @@ export interface LoginResponse {
 
 export type CreateProjectResponse = Project;
 
+export interface ProcessingKeyword {
+  id?: number;
+  keyword?: string;
+  tokens?: string[] | string;
+  volume?: number;
+  difficulty?: number;
+  status?: string;
+  is_parent?: boolean;
+  group_id?: string | null;
+  group_name?: string | null;
+  child_count?: number;
+  original_volume?: number;
+  blocked_by?: string | null;
+  serp_features?: string[] | string;
+}
+
 export interface ProcessingStatusResponse {
   message?: string;
   status: ProcessingStatus;
@@ -129,6 +145,7 @@ export interface ProjectState {
   keywordsCache: Record<string, Record<ActiveKeywordView, Keyword[]>>;
   sortedKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
   filteredKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
+  metaData: Record<string, ProjectMetadata>;
   metaData: Record<string, Record<string, unknown>>;
   stats: Record<string, {
     ungroupedCount: number;
@@ -143,6 +160,14 @@ export interface ProjectState {
     confirmedPercent?: number;
     blockedPercent: number;
   }>;
+}
+
+export interface ProjectMetadata {
+  ungroupedCount?: number;
+  groupedCount?: number;
+  confirmedCount?: number;
+  blockedCount?: number;
+  [key: string]: number | undefined;
 }
 export type ProcessingStatus =
   | 'idle'
