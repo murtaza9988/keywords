@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
+
 from pydantic import BaseModel, Field
 
 
@@ -15,3 +16,15 @@ class ActivityLogResponse(BaseModel):
         "from_attributes": True,
         "populate_by_name": True,
     }
+
+
+class ActivityLogPagination(BaseModel):
+    total: int
+    page: int
+    limit: int
+    pages: int
+
+
+class ActivityLogListResponse(BaseModel):
+    logs: List[ActivityLogResponse] = Field(default_factory=list)
+    pagination: ActivityLogPagination

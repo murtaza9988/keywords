@@ -217,3 +217,8 @@ export interface ActivityLog {
   details?: Record<string, unknown> | null;
   createdAt: string;
 }
+
+export interface ActivityLogListResponse {
+  logs: ActivityLog[];
+  pagination: PaginationInfo;
+}
