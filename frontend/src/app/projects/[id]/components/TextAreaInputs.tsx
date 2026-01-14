@@ -1,6 +1,7 @@
 import apiClient from "@/lib/apiClient";
 import { debounce } from "lodash";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { NoteEditor } from "./NoteEditor";
 
 export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
   const [note1, setNote1] = useState("");
@@ -36,8 +37,11 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
       );
 
       const availableHeight = viewportHeight - containerRect.top;
-      const reservedSpaceForNote1 = note2Height + gapBetweenNotes + totalToolbarHeight + fixedOffset;
-      const reservedSpaceForNote2 = 240 + gapBetweenNotes + totalToolbarHeight + fixedOffset;
+      // Add a buffer to prevent cutting off the bottom border or scrollbar
+      const buffer = 40;
+      const reservedSpaceForNote1 = note2Height + gapBetweenNotes + totalToolbarHeight + fixedOffset + buffer;
+      const reservedSpaceForNote2 = 240 + gapBetweenNotes + totalToolbarHeight + fixedOffset + buffer;
+
       const maxHeightNote1 = Math.max(300, availableHeight - reservedSpaceForNote1);
       const maxHeightNote2 = Math.max(300, availableHeight - reservedSpaceForNote2);
 
@@ -165,148 +169,28 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
     }
   };
 
-  const formatText = (command: string, value?: string) => {
-    if (command === "fontSize" && value) {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        if (!range.collapsed) {
-          const span = document.createElement("span");
-          span.style.fontSize = value;
-          range.surroundContents(span);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      }
-    } else {
-      document.execCommand(command, false, value);
-    }
-    if (document.activeElement === note1Ref.current) handleNote1Change();
-    else if (document.activeElement === note2Ref.current) handleNote2Change();
-  };
-
   return (
     <div ref={containerRef} className="flex flex-col gap-6 w-full mx-auto p-4">
-      <div className="note-section border border-border rounded-lg overflow-hidden">
-        <div className="header flex items-center gap-1 p-2 bg-surface-muted border-b border-border">
-          <label htmlFor="note1" className="text-[13px] font-light mr-2 text-foreground">
-            Notes 1
-          </label>
-          <div className="toolbar flex gap-2">
-            <button
-              onClick={() => formatText("bold")}
-              className="px-2 py-1 text-[13px] bg-white border border-border rounded hover:bg-surface-muted"
-              title="Bold"
-            >
-              <strong>B</strong>
-            </button>
-            <select
-              onChange={(e) => formatText("fontSize", e.target.value)}
-              className="text-[13px] bg-white border border-border rounded px-2 py-1"
-              title="Font Size"
-            >
-              <option value="">Font Size</option>
-              <option value="12px">12px</option>
-              <option value="16px">16px</option>
-              <option value="24px">24px</option>
-              <option value="32px">32px</option>
-            </select>
-            <input
-              type="color"
-              onChange={(e) => formatText("foreColor", e.target.value)}
-              className="w-6 h-6 p-0 border border-border cursor-pointer bg-white rounded"
-              title="Text Color"
-            />
-          </div>
-          <span className="ml-auto flex items-center gap-1 text-xs text-muted">
-            {isSavingNote1 ? (
-              <span className="inline-block w-3 h-3 border-2 border-green-400 border-t-green-700 rounded-full animate-spin" />
-            ) : (
-              <div className="flex items-center">
-                <span>Saved</span>
-              </div>
-            )}
-          </span>
-        </div>
-        <div
-          id="note1"
-          ref={note1Ref}
-          contentEditable
-          onInput={handleNote1Change}
-          onWheel={handleWheel}
-          className="w-full text-foreground p-3 resize-y"
-          style={{
-            whiteSpace: "pre-wrap",
-            minHeight: "150px",
-            height: "150px",
-            maxHeight: `${dynamicMaxHeightNote1}px`,
-            overflowY: "auto",
-            outline: "none",
-            border: "none",
-            resize: "vertical",
-          }}
-        />
-      </div>
-      <div className="note-section border border-border rounded-lg overflow-hidden">
-        <div className="header flex items-center gap-1 p-2 bg-surface-muted border-b border-border">
-          <label htmlFor="note2" className="text-[13px] font-light mr-2 text-foreground">
-            Notes 2
-          </label>
-          <div className="toolbar flex gap-2">
-            <button
-              onClick={() => formatText("bold")}
-              className="px-2 py-1 text-[13px] bg-white border border-border rounded hover:bg-surface-muted"
-              title="Bold"
-            >
-              <strong>B</strong>
-            </button>
-            <select
-              onChange={(e) => formatText("fontSize", e.target.value)}
-              className="text-[13px] bg-white border border-border rounded px-2 py-1"
-              title="Font Size"
-            >
-              <option value="">Font Size</option>
-              <option value="12px">12px</option>
-              <option value="16px">16px</option>
-              <option value="24px">24px</option>
-              <option value="32px">32px</option>
-            </select>
-            <input
-              type="color"
-              onChange={(e) => formatText("foreColor", e.target.value)}
-              className="w-6 h-6 p-0 border border-border cursor-pointer bg-white rounded"
-              title="Text Color"
-            />
-          </div>
-          <span className="ml-auto flex items-center gap-1 text-xs text-muted">
-            {isSavingNote2 ? (
-              <span className="inline-block w-3 h-3 border-2 border-green-400 border-t-green-700 rounded-full animate-spin" />
-            ) : (
-              <div className="flex items-center">
-                <span>Saved</span>
-              </div>
-            )}
-          </span>
-        </div>
-        <div
-          id="note2"
-          ref={note2Ref}
-          contentEditable
-          onInput={handleNote2Change}
-          onWheel={handleWheel}
-          className="w-full text-base text-foreground p-3 resize-y"
-          style={{
-            whiteSpace: "pre-wrap",
-            minHeight: "150px",
-            height: "150px",
-            maxHeight: `${dynamicMaxHeightNote2}px`,
-            overflowY: "auto",
-            outline: "none",
-            border: "none",
-            resize: "vertical",
-          }}
-        />
-      </div>
+      <NoteEditor
+        id="note1"
+        label="Notes 1"
+        value={note1}
+        onChange={handleNote1Change}
+        onWheel={handleWheel}
+        isSaving={isSavingNote1}
+        maxHeight={dynamicMaxHeightNote1}
+        editorRef={note1Ref}
+      />
+      <NoteEditor
+        id="note2"
+        label="Notes 2"
+        value={note2}
+        onChange={handleNote2Change}
+        onWheel={handleWheel}
+        isSaving={isSavingNote2}
+        maxHeight={dynamicMaxHeightNote2}
+        editorRef={note2Ref}
+      />
     </div>
   );
 });
