@@ -2653,6 +2653,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       activeView={activeView}
                       selectedKeywordIds={selectedKeywordIds}
                       isProcessingAction={isProcessingAction}
+                      isUploading={isUploading}
+                      processingStatus={processingStatus}
                       selectedTokens={selectedTokens}
                       handleIncludeFilterChange={handleIncludeFilterChange}
                       handleExcludeFilterChange={handleExcludeFilterChange}

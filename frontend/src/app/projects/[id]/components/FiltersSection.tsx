@@ -1,6 +1,7 @@
+"use client";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
-import { ActiveKeywordView } from './types';
+import { ActiveKeywordView, ProcessingStatus } from './types';
 import apiClient from '@/lib/apiClient';
 import { debounce } from 'lodash';
 
@@ -12,6 +13,8 @@ interface FiltersSectionProps {
   activeView: ActiveKeywordView;
   selectedKeywordIds: Set<number>;
   isProcessingAction: boolean;
+  isUploading: boolean;
+  processingStatus: ProcessingStatus;
   selectedTokens: string[];
   handleIncludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleExcludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -37,6 +40,8 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
   activeView,
   selectedKeywordIds,
   isProcessingAction,
+  isUploading,
+  processingStatus,
   selectedTokens,
   handleIncludeFilterChange,
   handleExcludeFilterChange,
@@ -412,30 +417,6 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
             Clear All
           </button>
         </div>
-      <div className="flex items-center gap-x-3 min-h-[32px] flex-wrap">
-        <span className="text-xs font-semibold text-foreground uppercase tracking-wide mr-2 shrink-0">Filters</span>
-        {selectedTokens.map(token => (
-          <span key={`f-${token}`} className="inline-flex items-center px-2 rounded-full text-[13px] bg-gray-600 text-white m-1 shadow-sm">
-            T: {token} <button onClick={() => removeToken(token)} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
-          </span>
-        ))}
-        {includeFilter && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[13px] bg-green-100 text-green-800 m-1 shadow-sm">
-            Inc ({includeMatchType}): {includeFilter} <button onClick={clearIncludeFilter} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
-          </span>
-        )}
-        {excludeFilter && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[13px] bg-red-100 text-red-800 m-1 shadow-sm">
-            Exc ({excludeMatchType}): {excludeFilter} <button onClick={clearExcludeFilter} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
-          </span>
-        )}
-        <button
-          onClick={handleClearAllFilters}
-          className={`cursor-pointer text-[13px] text-blue-600 hover:underline ml-auto px-2 py-1 shrink-0 transition-all duration-200 hover:text-blue-800 ${selectedTokens.length > 0 || includeFilter || excludeFilter ? '' : 'invisible'}`}
-          disabled={selectedTokens.length === 0 && !includeFilter && !excludeFilter}
-        >
-          Clear All
-        </button>
       </div>
     </div>
   );
