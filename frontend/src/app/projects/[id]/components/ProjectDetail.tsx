@@ -990,7 +990,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     });
     return newSelected;
   });
-}, [filteredAndSortedKeywords, activeView, childrenCache, fetchChildren, dispatch, projectIdStr, groupName, addSnackbarMessage]);
+}, [filteredAndSortedKeywords, activeView, childrenCache, fetchChildren, dispatch, projectIdStr, addSnackbarMessage]);
 
   const handleSelectAllClick = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const isChecked = event.target.checked;
@@ -1024,7 +1024,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       
       return newTokens;
     });
-  }, [pagination.page, pagination.limit, apiCache, projectIdStr, activeView, fetchKeywords, sortParams, includeFilter, excludeFilter, minVolume, maxVolume, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]);
+  }, [pagination.page, pagination.limit, apiCache, projectIdStr, activeView, fetchKeywords, sortParams, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]);
   
 
   const handleAdvancedTokenSelection = useCallback(async (token: string, event: React.MouseEvent) => {

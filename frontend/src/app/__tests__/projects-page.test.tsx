@@ -9,9 +9,11 @@ import apiClient from '@/lib/apiClient';
 import authService from '@/lib/authService';
 
 const mockPush = jest.fn();
+const mockRouter = { push: mockPush };
 
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => mockRouter,
+  usePathname: () => '/projects',
 }));
 
 jest.mock('@/lib/apiClient');
@@ -94,24 +96,31 @@ describe('Projects page', () => {
 
     expect(await screen.findByText('Alpha Project')).toBeInTheDocument();
 
-    await userEvent.type(screen.getByPlaceholderText(/enter project name/i), 'Beta Project');
-    await userEvent.click(screen.getByRole('button', { name: /create project/i }));
+    const user = userEvent.setup();
+
+    await user.type(screen.getByPlaceholderText(/enter project name/i), 'Beta Project');
+    await user.click(screen.getByRole('button', { name: /create project/i }));
+
+    await waitFor(() => {
+      expect(mockApiClient.createProject).toHaveBeenCalledWith('Beta Project');
+      expect(mockApiClient.fetchProjectsWithStats).toHaveBeenCalledTimes(2);
+    });
 
     expect(await screen.findByText('Beta Project')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText('Edit project Alpha Project'));
-    const editInput = screen.getByRole('textbox');
-    await userEvent.clear(editInput);
-    await userEvent.type(editInput, 'Alpha Renamed');
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await user.click(screen.getByLabelText('Edit project Alpha Project'));
+    const editInput = screen.getByDisplayValue('Alpha Project');
+    await user.clear(editInput);
+    await user.type(editInput, 'Alpha Renamed');
+    await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Alpha Renamed')).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByLabelText('Delete project Alpha Renamed'));
+    await user.click(screen.getByLabelText('Delete project Alpha Renamed'));
     expect(screen.getByText(/confirm deletion/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    await user.click(screen.getByRole('button', { name: /^delete$/i }));
 
     await waitFor(() => {
       expect(screen.queryByText('Alpha Renamed')).not.toBeInTheDocument();
