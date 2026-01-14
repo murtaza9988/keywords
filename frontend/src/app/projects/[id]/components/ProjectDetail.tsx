@@ -202,9 +202,22 @@ export default function ProjectDetail() {
   const [selectedSerpFeatures, setSelectedSerpFeatures] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
-  const addSnackbarMessage = useCallback((text: string, type: 'success' | 'error') => {
+  const addSnackbarMessage = useCallback((
+    text: string,
+    type: 'success' | 'error' | 'info',
+    options?: { description?: string; stage?: ProcessingStatus }
+  ) => {
     const id = Date.now();
-    setSnackbarMessages(prev => [...prev, { id, text, type }]);
+    setSnackbarMessages(prev => [
+      ...prev,
+      {
+        id,
+        text,
+        type,
+        description: options?.description,
+        stage: options?.stage
+      }
+    ]);
     setTimeout(() => {
       setSnackbarMessages(prev => prev.filter(msg => msg.id !== id));
     }, 3000);
@@ -1828,6 +1841,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         setIsUploading(false);
         setUploadSuccess(true);
         stopProcessingCheck();
+        addSnackbarMessage('Processing complete', 'success', {
+          stage: 'complete',
+          description: 'Your keywords are ready to review.'
+        });
         fetchKeywords(1, pagination.limit, activeView, sortParams, {
           tokens: selectedTokens,
           include: includeFilter,
@@ -1844,7 +1861,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }, true);
         
         fetchProjectStats();
-        addSnackbarMessage('File processed successfully', 'success');
         return;
       }
       if (data.status !== processingStatus) {
@@ -1858,6 +1874,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         } else if (data.status === 'idle') {
           setIsUploading(false);
           stopProcessingCheck();
+        } else if (data.status === 'uploading' || data.status === 'combining') {
+          setIsUploading(true);
+        } else if (data.status === 'queued' || data.status === 'processing') {
+          setIsUploading(false);
         }
       }
 
@@ -1925,7 +1945,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   ]);
 
   useEffect(() => {
-    if (processingStatus === 'queued' || processingStatus === 'processing') {
+    if (
+      processingStatus === 'uploading' ||
+      processingStatus === 'combining' ||
+      processingStatus === 'queued' ||
+      processingStatus === 'processing'
+    ) {
       if (!statusCheckIntervalRef.current) {
         checkProcessingStatus();
         statusCheckIntervalRef.current = setInterval(checkProcessingStatus, 1000);
@@ -1992,10 +2017,17 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         if (initialData.pagination) {
           setPagination(initialData.pagination);
         }
-        if (initialData.processingStatus?.status === 'processing') {
+        if (initialData.processingStatus?.status) {
           setProcessingStatus(initialData.processingStatus.status);
           setProcessingProgress(initialData.processingStatus.progress || 0);
-          startProcessingCheck();
+          if (
+            initialData.processingStatus.status === 'uploading' ||
+            initialData.processingStatus.status === 'combining' ||
+            initialData.processingStatus.status === 'queued' ||
+            initialData.processingStatus.status === 'processing'
+          ) {
+            startProcessingCheck();
+          }
         }
       }
     } catch (error) {
@@ -2023,7 +2055,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   
   const handleUploadStart = useCallback(() => {
     setIsUploading(true);
-    setProcessingStatus('queued');
+    setProcessingStatus('uploading');
     setProcessingProgress(0);
     startProcessingCheck();
   }, [startProcessingCheck]);  
@@ -2057,7 +2089,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }, 1500);
       } else if (status === 'queued' || status === 'processing') {
         startProcessingCheck();
-        if (message) addSnackbarMessage(message, 'success');
+        addSnackbarMessage('Upload complete', 'success', {
+          stage: 'queued',
+          description: message || (status === 'processing'
+            ? 'Processing has started.'
+            : 'Processing is queued and will begin shortly.')
+        });
       } else {
         setIsUploading(false);
         if (message) addSnackbarMessage(message, 'success');

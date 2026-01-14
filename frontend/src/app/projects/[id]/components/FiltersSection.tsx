@@ -90,8 +90,27 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
   const isUngroupButtonVisible = activeView === 'grouped';
   const isUnblockButtonVisible = activeView === 'blocked';
 
-  const isProcessing = processingStatus === 'queued' || processingStatus === 'processing';
+  const isProcessing =
+    processingStatus === 'uploading' ||
+    processingStatus === 'combining' ||
+    processingStatus === 'queued' ||
+    processingStatus === 'processing';
   const showLoader = isUploading || isProcessing;
+
+  const getStageLabel = (status: ProcessingStatus) => {
+    switch (status) {
+      case 'uploading':
+        return 'Uploading CSV…';
+      case 'combining':
+        return 'Combining chunks…';
+      case 'queued':
+        return 'Upload complete · queued for processing…';
+      case 'processing':
+        return 'Processing keywords…';
+      default:
+        return 'Working…';
+    }
+  };
   
   const [debouncedFetchSuggestions] = useState(() => 
     debounce((query: string) => {
@@ -381,7 +400,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
             <div className="flex items-center text-blue-600">
               <Loader2 size={16} className="animate-spin mr-2" />
               <span className="text-xs">
-                {isUploading ? "Uploading..." : "Processing..."}
+                {getStageLabel(isUploading ? 'uploading' : processingStatus)}
               </span>
             </div>
           ) : processingStatus === 'error' && !isUploading && !isProcessing ? (
