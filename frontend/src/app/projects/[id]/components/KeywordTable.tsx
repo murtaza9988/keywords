@@ -34,6 +34,10 @@ interface FilterState {
   serpFeatures: string[];
 }
 
+type SerpFeatureSource = {
+  serpFeatures?: string[] | string | null;
+};
+
 const TableScroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div ref={ref} className={cn("flex-1 overflow-y-auto", className)} {...props} />
@@ -117,6 +121,7 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
     fetchSerpFeaturesData();
   }, [projectId]);
 
+  const getSerpFeatures = (item: SerpFeatureSource | null | undefined): string[] => {
   const getSerpFeatures = (
     item: Keyword | { serpFeatures?: string[] | string | null }
   ): string[] => {
