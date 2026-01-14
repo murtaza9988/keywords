@@ -1,5 +1,9 @@
+import time
 from collections import deque
 from typing import Any, Deque, Dict, List, Optional
+
+# Timeout in seconds - if processing hasn't updated in this time, consider it stuck
+PROCESSING_TIMEOUT_SECONDS = 300  # 5 minutes
 
 
 class ProcessingQueueService:
@@ -9,6 +13,8 @@ class ProcessingQueueService:
         self.processing_results: Dict[int, Dict[str, Any]] = {}
         self.processing_current_files: Dict[int, Dict[str, Any]] = {}
         self.batch_uploads: Dict[int, Dict[str, Dict[str, Any]]] = {}
+        # Track last update timestamp for each project
+        self.last_update_time: Dict[int, float] = {}
 
     def enqueue(
         self,
@@ -28,6 +34,7 @@ class ProcessingQueueService:
         )
         if self.processing_tasks.get(project_id) not in {"processing", "uploading", "combining"}:
             self.processing_tasks[project_id] = "queued"
+        self._touch(project_id)
 
     def start_next(self, project_id: int) -> Optional[Dict[str, Any]]:
         if self.processing_tasks.get(project_id) == "processing":
@@ -37,6 +44,7 @@ class ProcessingQueueService:
             next_item = queue.popleft()
             self.processing_current_files[project_id] = next_item
             self.processing_tasks[project_id] = "processing"
+            self._touch(project_id)
             return next_item
 
         self.processing_current_files.pop(project_id, None)
@@ -45,7 +53,32 @@ class ProcessingQueueService:
         return None
 
     def get_status(self, project_id: int) -> str:
-        return self.processing_tasks.get(project_id, "not_started")
+        status = self.processing_tasks.get(project_id, "not_started")
+        # Auto-detect stuck processing
+        if status in ("processing", "uploading", "combining", "queued"):
+            if self.is_stale(project_id):
+                # Processing appears to be stuck - auto-reset to error state
+                self.mark_error(
+                    project_id,
+                    message="Processing timed out. Please try uploading again."
+                )
+                return "error"
+        return status
+
+    def is_stale(self, project_id: int) -> bool:
+        """Check if processing is stale (no updates in PROCESSING_TIMEOUT_SECONDS)."""
+        last_update = self.last_update_time.get(project_id)
+        if last_update is None:
+            return False
+        return (time.time() - last_update) > PROCESSING_TIMEOUT_SECONDS
+
+    def get_last_update_time(self, project_id: int) -> float:
+        """Get the last update timestamp for a project."""
+        return self.last_update_time.get(project_id, 0)
+
+    def _touch(self, project_id: int) -> None:
+        """Update the last activity timestamp for a project."""
+        self.last_update_time[project_id] = time.time()
 
     def get_result(self, project_id: int) -> Dict[str, Any]:
         return self.processing_results.get(project_id, self._default_result())
@@ -119,6 +152,7 @@ class ProcessingQueueService:
             result["keywords"] = keywords
         if message is not None:
             result["message"] = message
+        self._touch(project_id)
 
     def mark_complete(
         self,
@@ -148,6 +182,7 @@ class ProcessingQueueService:
 
     def set_status(self, project_id: int, status: str) -> None:
         self.processing_tasks[project_id] = status
+        self._touch(project_id)
 
     def cleanup(self, project_id: int) -> None:
         self.processing_tasks.pop(project_id, None)
@@ -155,6 +190,28 @@ class ProcessingQueueService:
         self.processing_queue.pop(project_id, None)
         self.processing_current_files.pop(project_id, None)
         self.batch_uploads.pop(project_id, None)
+        self.last_update_time.pop(project_id, None)
+
+    def reset_processing(self, project_id: int) -> Dict[str, Any]:
+        """
+        Reset stuck processing state for a project.
+        Returns info about what was cleared.
+        """
+        cleared_info = {
+            "had_status": self.processing_tasks.get(project_id),
+            "had_queue": len(self.processing_queue.get(project_id, [])),
+            "had_current_file": self.processing_current_files.get(project_id) is not None,
+        }
+        
+        # Clear all processing state
+        self.processing_tasks[project_id] = "idle"
+        self.processing_results[project_id] = self._default_result()
+        self.processing_queue.pop(project_id, None)
+        self.processing_current_files.pop(project_id, None)
+        self.batch_uploads.pop(project_id, None)
+        self.last_update_time.pop(project_id, None)
+        
+        return cleared_info
 
     def register_batch_upload(self, project_id: int, batch_id: str, total_files: int) -> None:
         project_batches = self.batch_uploads.setdefault(project_id, {})

@@ -78,6 +78,11 @@ export function ProcessingPanel({
         currentFileName={processingCurrentFile}
         queuedFiles={processingQueue}
         message={processingMessage}
+        projectId={projectId}
+        onReset={() => {
+          // Trigger status refresh after reset
+          onUploadSuccess('idle', 'Processing reset. You can now try uploading again.');
+        }}
       />
     </div>
   );

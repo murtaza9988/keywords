@@ -1,7 +1,8 @@
 // ProcessingProgressBar.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { ProcessingStatus } from './types';
-import { CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
+import apiClient from '@/lib/apiClient';
 
 interface ProcessingProgressBarProps {
   status: ProcessingStatus;
@@ -9,6 +10,8 @@ interface ProcessingProgressBarProps {
   currentFileName?: string | null;
   queuedFiles?: string[];
   message?: string;
+  projectId?: string;
+  onReset?: () => void;
 }
 
 const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({ 
@@ -16,8 +19,25 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   progress,
   currentFileName,
   queuedFiles,
-  message
+  message,
+  projectId,
+  onReset
 }) => {
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (!projectId || isResetting) return;
+    
+    setIsResetting(true);
+    try {
+      await apiClient.resetProcessing(projectId);
+      onReset?.();
+    } catch (error) {
+      console.error('Failed to reset processing:', error);
+    } finally {
+      setIsResetting(false);
+    }
+  };
   if (status === 'idle') {
     return null;
   }
@@ -58,12 +78,22 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   return (
     <div className="w-full mt-3 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <div className="flex flex-wrap items-center gap-2 text-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-foreground">
           {status === 'error' ? (
-            <>
+            <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-500" />
               <span className="text-red-600">Processing failed</span>
-            </>
+              {projectId && (
+                <button
+                  onClick={handleReset}
+                  disabled={isResetting}
+                  className="ml-2 inline-flex items-center gap-1 rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-200 disabled:opacity-50 transition-colors"
+                >
+                  <RotateCcw className={`h-3 w-3 ${isResetting ? 'animate-spin' : ''}`} />
+                  {isResetting ? 'Resetting...' : 'Reset & Retry'}
+                </button>
+              )}
+            </div>
           ) : (
             <>
               <Loader2 className="h-4 w-4 animate-spin text-blue-500" />

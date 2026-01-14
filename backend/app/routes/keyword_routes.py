@@ -41,6 +41,37 @@ os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
 def _sanitize_segment(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9._-]", "_", value)
+@router.post("/projects/{project_id}/reset-processing", status_code=status.HTTP_200_OK)
+async def reset_processing_status(
+    project_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """Reset stuck processing state for a project."""
+    project = await ProjectService.get_by_id(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    cleared_info = processing_queue_service.reset_processing(project_id)
+    
+    await ActivityLogService.log_activity(
+        db,
+        project_id=project_id,
+        action="reset_processing",
+        details={
+            "previous_status": cleared_info.get("had_status"),
+            "had_queued_files": cleared_info.get("had_queue", 0),
+            "had_current_file": cleared_info.get("had_current_file"),
+        },
+        user=current_user.get("username", "admin"),
+    )
+    
+    return {
+        "message": "Processing state reset successfully",
+        "cleared": cleared_info,
+    }
+
+
 @router.get("/projects/{project_id}/processing-status", response_model=ProcessingStatus)
 async def get_processing_status(
     project_id: int,
