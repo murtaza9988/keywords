@@ -1,10 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
-import FileUploader from './FileUploader';
-import CSVUploadDropdown from './CSVUploadDropdown';
-import ProcessingProgressBar from './ProcessingProgressBar';
+import { ProcessingPanel } from './ProcessingPanel';
 import { ProcessingStatus } from './types';
 
 interface ProjectStatsSummary {
@@ -19,7 +16,6 @@ interface ProjectDetailOverviewProps {
   projectId: string;
   stats: ProjectStatsSummary;
   totalChildKeywords: number;
-  showUploadLoader: boolean;
   isUploading: boolean;
   processingStatus: ProcessingStatus;
   processingMessage: string;
@@ -36,7 +32,6 @@ export function ProjectDetailOverview({
   projectId,
   stats,
   totalChildKeywords,
-  showUploadLoader,
   isUploading,
   processingStatus,
   processingMessage,
@@ -50,47 +45,17 @@ export function ProjectDetailOverview({
 }: ProjectDetailOverviewProps): React.ReactElement {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-3">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="min-w-[220px] flex flex-col gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted">Upload CSVs</span>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="min-w-[180px] max-w-[220px]">
-                <FileUploader
-                  projectId={projectId}
-                  onUploadStart={onUploadStart}
-                  onUploadBatchStart={onUploadBatchStart}
-                  onUploadSuccess={onUploadSuccess}
-                  onUploadError={onUploadError}
-                />
-              </div>
-              <CSVUploadDropdown projectId={projectId} />
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center h-6">
-        {showUploadLoader ? (
-          <div className="flex items-center text-blue-600">
-            <Loader2 size={16} className="animate-spin mr-2" />
-            <span className="text-xs">
-              {isUploading ? "Uploading..." : "Processing..."}
-            </span>
-          </div>
-        ) : processingStatus === 'error' && !isUploading ? (
-          <div className="text-red-600 text-xs">
-            {processingMessage || 'Processing failed. Try uploading again.'}
-          </div>
-        ) : (
-          <span className="text-xs text-transparent">Status</span>
-        )}
-      </div>
-      <ProcessingProgressBar
-        status={processingStatus}
-        progress={displayProgress}
-        currentFileName={processingCurrentFile}
-        queuedFiles={processingQueue}
-        message={processingMessage}
+      <ProcessingPanel
+        projectId={projectId}
+        isUploading={isUploading}
+        processingStatus={processingStatus}
+        processingMessage={processingMessage}
+        displayProgress={displayProgress}
+        processingCurrentFile={processingCurrentFile}
+        processingQueue={processingQueue}
+        onUploadStart={onUploadStart}
+        onUploadSuccess={onUploadSuccess}
+        onUploadError={onUploadError}
       />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">

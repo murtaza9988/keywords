@@ -5,7 +5,8 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import projectReducer from '@/store/projectSlice';
 import ProjectDetail from '@/app/projects/[id]/components/ProjectDetail';
-import apiClient from '@/lib/apiClient';
+import * as keywordsApi from '@/lib/api/keywords';
+import * as projectsApi from '@/lib/api/projects';
 
 const mockPush = jest.fn();
 const mockRouter = { push: mockPush };
@@ -15,7 +16,8 @@ jest.mock('next/navigation', () => ({
   useParams: () => ({ id: '1' }),
 }));
 
-jest.mock('@/lib/apiClient');
+jest.mock('@/lib/api/keywords');
+jest.mock('@/lib/api/projects');
 
 jest.mock('../projects/[id]/components/Header', () => ({
   Header: () => <div data-testid="header">Header</div>,
@@ -71,12 +73,13 @@ const createTestStore = () =>
     },
   });
 
-const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const mockKeywordsApi = keywordsApi as jest.Mocked<typeof keywordsApi>;
+const mockProjectsApi = projectsApi as jest.Mocked<typeof projectsApi>;
 
 describe('ProjectDetail', () => {
   beforeEach(() => {
     mockPush.mockReset();
-    mockApiClient.fetchInitialData.mockResolvedValue({
+    mockKeywordsApi.fetchInitialData.mockResolvedValue({
       stats: {
         ungroupedCount: 1,
         groupedKeywordsCount: 0,
@@ -90,19 +93,34 @@ describe('ProjectDetail', () => {
       },
       currentView: {
         keywords: [
-          { id: 101, keyword: 'alpha', volume: 10, status: 'ungrouped' },
+          {
+            id: 101,
+            project_id: 1,
+            keyword: 'alpha',
+            tokens: ['alpha'],
+            volume: 10,
+            length: 5,
+            difficulty: 0,
+            isParent: false,
+            groupId: null,
+            groupName: null,
+            status: 'ungrouped',
+            childCount: 0,
+            original_volume: 10,
+            serpFeatures: [],
+          },
         ],
       },
       pagination: { total: 300, page: 1, limit: 250, pages: 2 },
     });
-    mockApiClient.fetchKeywords.mockResolvedValue({
+    mockKeywordsApi.fetchKeywords.mockResolvedValue({
       ungroupedKeywords: [],
       groupedKeywords: [],
       confirmedKeywords: [],
       blockedKeywords: [],
       pagination: { total: 300, page: 1, limit: 250, pages: 2 },
     });
-    mockApiClient.fetchSingleProjectStats.mockResolvedValue({
+    mockProjectsApi.fetchProjectStats.mockResolvedValue({
       ungroupedCount: 1,
       groupedKeywordsCount: 0,
       groupedPages: 0,
@@ -126,16 +144,16 @@ describe('ProjectDetail', () => {
     );
 
     await waitFor(() => {
-      expect(mockApiClient.fetchInitialData).toHaveBeenCalled();
+      expect(mockKeywordsApi.fetchInitialData).toHaveBeenCalled();
     });
 
-    expect(mockApiClient.fetchKeywords).toHaveBeenCalled();
+    expect(mockKeywordsApi.fetchKeywords).toHaveBeenCalled();
     expect(await screen.findByTestId('page')).toHaveTextContent('Page 1');
 
     await userEvent.click(screen.getByRole('button', { name: /next page/i }));
 
     await waitFor(() => {
-      const lastCall = mockApiClient.fetchKeywords.mock.calls.at(-1);
+      const lastCall = mockKeywordsApi.fetchKeywords.mock.calls.at(-1);
       expect(lastCall?.[0]).toBe('1');
       expect(lastCall?.[2]).toBe(false);
       const params = lastCall?.[1] as URLSearchParams;

@@ -1,11 +1,27 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store/store';
 import { setKeywordsForView, setChildrenForGroup, setProjectStats } from '@/store/projectSlice';
-import apiClient from '@/lib/apiClient';
+import {
+  blockToken,
+  checkProcessingStatus as checkProcessingStatusApi,
+  confirmKeywords,
+  exportGroupedKeywords,
+  exportParentKeywords,
+  fetchInitialData as fetchInitialDataApi,
+  fetchKeywordChildren,
+  fetchKeywords as fetchKeywordsApi,
+  groupKeywords,
+  importParentKeywords,
+  regroupKeywords,
+  unconfirmKeywords,
+  unblockKeywords,
+  ungroupKeywords,
+} from '@/lib/api/keywords';
+import { fetchProjectStats as fetchProjectStatsApi } from '@/lib/api/projects';
 import { Header } from './Header';
 import { FiltersSection } from './FiltersSection';
 import { MainContent } from './MainContent';
@@ -18,8 +34,12 @@ import { ProjectDetailProcess } from './ProjectDetailProcess';
 import { ProjectDetailLogs } from './ProjectDetailLogs';
 import { ProjectDetailToolbar } from './ProjectDetailToolbar';
 import {
-  ProcessingStatus, ActiveKeywordView, SnackbarMessage, SortParams,
-  Keyword, PaginationInfo
+  initialProjectDetailState,
+  projectDetailReducer,
+} from './ProjectDetail.state';
+import {
+  ProcessingStatus, ActiveKeywordView, SortParams,
+  Keyword
 } from './types';
 import { 
   selectUngroupedKeywordsForProject, 
@@ -162,70 +182,89 @@ export default function ProjectDetail(): React.ReactElement {
   );
 
   // Component state
-  const [activeView, setActiveView] = useState<ActiveKeywordView>('ungrouped');
-  const [activeTab, setActiveTab] = useState<ProjectDetailTab>('group');
-  const [logsRefreshKey, setLogsRefreshKey] = useState(0);
-  const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
-  const [includeFilter, setIncludeFilter] = useState('');
-  const [excludeFilter, setExcludeFilter] = useState('');
-  const [includeMatchType, setIncludeMatchType] = useState<'any' | 'all'>('any');
-  const [excludeMatchType, setExcludeMatchType] = useState<'any' | 'all'>('any');
-  const [stats, setStats] = useState({
-    ungroupedCount: 0,
-    groupedKeywordsCount: 0,
-    confirmedKeywordsCount: 0,
-    confirmedPages: 0,
-    groupedPages: 0,
-    blockedCount: 0,
-    totalKeywords: 0,
-    totalParentKeywords: 0,
-  });
-  const [sortParams, setSortParams] = useState<SortParams>({
-    column: 'volume',
-    direction: 'desc'
-  });
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    total: 0,
-    page: 1,
-    limit: 250,
-    pages: 0
-  });
-  const [selectedKeywordIds, setSelectedKeywordIds] = useState<Set<number>>(new Set());
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [loadingChildren, setLoadingChildren] = useState<Set<string>>(new Set());
-  const [groupName, setGroupName] = useState<string>('');
-  const [isTableLoading, setIsTableLoading] = useState<boolean>(false);
-  const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
-  const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [, setUploadSuccess] = useState<boolean>(false);
-  const [processingStatus, setProcessingStatus] = useState<ProcessingStatus>('idle');
-  const [isProcessingAction, setIsProcessingAction] = useState<boolean>(false);
-  const [snackbarMessages, setSnackbarMessages] = useState<SnackbarMessage[]>([]);
-  const [processingProgress, setProcessingProgress] = useState<number>(0);
-  const [processingMessage, setProcessingMessage] = useState<string>('');
-  const [processingCurrentFile, setProcessingCurrentFile] = useState<string | null>(null);
-  const [processingQueue, setProcessingQueue] = useState<string[]>([]);
-  const [expectedUploadFiles, setExpectedUploadFiles] = useState<string[]>([]);
+  const [state, detailDispatch] = useReducer(
+    projectDetailReducer,
+    initialProjectDetailState
+  );
+  const {
+    view,
+    filters,
+    pagination: paginationState,
+    selection,
+    processing,
+    stats,
+  } = state;
+  const activeView = view.activeView;
+  const activeTab = view.activeTab;
+  const logsRefreshKey = view.logsRefreshKey;
+  const selectedTokens = filters.selectedTokens;
+  const includeFilter = filters.includeFilter;
+  const excludeFilter = filters.excludeFilter;
+  const includeMatchType = filters.includeMatchType;
+  const excludeMatchType = filters.excludeMatchType;
+  const sortParams = paginationState.sortParams;
+  const pagination = paginationState.pagination;
+  const selectedKeywordIds = selection.selectedKeywordIds;
+  const expandedGroups = selection.expandedGroups;
+  const loadingChildren = selection.loadingChildren;
+  const groupName = selection.groupName;
+  const isTableLoading = processing.isTableLoading;
+  const isLoadingData = processing.isLoadingData;
+  const isUploading = processing.isUploading;
+  const processingStatus = processing.processingStatus;
+  const isProcessingAction = processing.isProcessingAction;
+  const snackbarMessages = processing.snackbarMessages;
+  const processingProgress = processing.processingProgress;
+  const processingMessage = processing.processingMessage;
+  const processingCurrentFile = processing.processingCurrentFile;
+  const processingQueue = processing.processingQueue;
+  const displayProgress = processing.displayProgress;
+  const minVolume = filters.minVolume;
+  const maxVolume = filters.maxVolume;
+  const minLength = filters.minLength;
+  const maxLength = filters.maxLength;
+  const minDifficulty = filters.minDifficulty;
+  const maxDifficulty = filters.maxDifficulty;
+  const minRating = filters.minRating;
+  const maxRating = filters.maxRating;
+  const isExportingParent = processing.isExportingParent;
+  const isImportingParent = processing.isImportingParent;
+  const selectedSerpFeatures = filters.selectedSerpFeatures;
+  const isExporting = processing.isExporting;
   const prevActiveViewRef = useRef(activeView);
-  const [displayProgress, setDisplayProgress] = useState<number>(0);
   const targetProgressRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
-  const [minVolume, setMinVolume] = useState<string>('');
-  const [maxVolume, setMaxVolume] = useState<string>('');
-  const [minLength, setMinLength] = useState<string>('');
-  const [maxLength, setMaxLength] = useState<string>('');
-  const [minDifficulty, setMinDifficulty] = useState<string>('');
-  const [maxDifficulty, setMaxDifficulty] = useState<string>('');
-  const [minRating, setMinRating] = useState<string>('');
-  const [maxRating, setMaxRating] = useState<string>('');
-  const [isExportingParent, setIsExportingParent] = useState<boolean>(false);
-  const [isImportingParent, setIsImportingParent] = useState<boolean>(false);
-
-  const [selectedSerpFeatures, setSelectedSerpFeatures] = useState<string[]>([]);
-  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const displayProgressRef = useRef(displayProgress);
+  const filterParams = useMemo(() => ({
+    tokens: selectedTokens,
+    include: includeFilter,
+    exclude: excludeFilter,
+    minVolume: minVolume ? parseInt(minVolume) : "",
+    maxVolume: maxVolume ? parseInt(maxVolume) : "",
+    minLength: minLength ? parseInt(minLength) : "",
+    maxLength: maxLength ? parseInt(maxLength) : "",
+    minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
+    maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
+    minRating: minRating ? parseInt(minRating) : "",
+    maxRating: maxRating ? parseInt(maxRating) : "",
+    serpFeatures: selectedSerpFeatures,
+  }), [
+    selectedTokens,
+    includeFilter,
+    excludeFilter,
+    minVolume,
+    maxVolume,
+    minLength,
+    maxLength,
+    minDifficulty,
+    maxDifficulty,
+    minRating,
+    maxRating,
+    selectedSerpFeatures,
+  ]);
 
   const bumpLogsRefresh = useCallback(() => {
-    setLogsRefreshKey((prev) => prev + 1);
+    detailDispatch({ type: 'bumpLogsRefresh' });
   }, []);
 
   const addSnackbarMessage = useCallback((
@@ -234,35 +273,71 @@ export default function ProjectDetail(): React.ReactElement {
     options?: { description?: string; stage?: ProcessingStatus }
   ) => {
     const id = Date.now();
-    setSnackbarMessages(prev => [
-      ...prev,
-      {
+    detailDispatch({
+      type: 'addSnackbarMessage',
+      payload: {
         id,
         text,
         type,
         description: options?.description,
-        stage: options?.stage
-      }
-    ]);
+        stage: options?.stage,
+      },
+    });
     setTimeout(() => {
-      setSnackbarMessages(prev => prev.filter(msg => msg.id !== id));
+      detailDispatch({ type: 'removeSnackbarMessage', payload: id });
     }, 3000);
   }, []);
 
   const removeSnackbarMessage = useCallback((id: number) => {
-    setSnackbarMessages(prev => prev.filter(msg => msg.id !== id));
+    detailDispatch({ type: 'removeSnackbarMessage', payload: id });
   }, []);
+
+  const setActiveTab = useCallback((tab: ProjectDetailTab) => {
+    detailDispatch({
+      type: 'updateView',
+      payload: { activeTab: tab },
+    });
+  }, []);
+
+  const setGroupName = useCallback((value: string) => {
+    detailDispatch({
+      type: 'updateSelection',
+      payload: { groupName: value },
+    });
+  }, []);
+
+  const setIncludeMatchType = useCallback((value: 'any' | 'all') => {
+    detailDispatch({
+      type: 'updateFilters',
+      payload: { includeMatchType: value },
+    });
+  }, []);
+
+  const setExcludeMatchType = useCallback((value: 'any' | 'all') => {
+    detailDispatch({
+      type: 'updateFilters',
+      payload: { excludeMatchType: value },
+    });
+  }, []);
+
+  useEffect(() => {
+    displayProgressRef.current = displayProgress;
+  }, [displayProgress]);
 
   useEffect(() => {
     targetProgressRef.current = processingProgress;
     
     const animateProgress = () => {
-      setDisplayProgress(prev => {
-        const target = targetProgressRef.current;
-        if (Math.abs(prev - target) < 0.1) return target;
-        return prev + (target - prev) * 0.1;
+      const target = targetProgressRef.current;
+      const current = displayProgressRef.current;
+      const next = Math.abs(current - target) < 0.1
+        ? target
+        : current + (target - current) * 0.1;
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { displayProgress: next },
       });
-      if (Math.abs(displayProgress - targetProgressRef.current) > 0.1) {
+      if (Math.abs(next - targetProgressRef.current) > 0.1) {
         animationFrameRef.current = requestAnimationFrame(animateProgress);
       }
     };
@@ -273,7 +348,7 @@ export default function ProjectDetail(): React.ReactElement {
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [processingProgress, displayProgress]);
+  }, [processingProgress]);
 
   const getCurrentViewData = useCallback(() => {
     let data: Keyword[] = [];
@@ -318,19 +393,27 @@ export default function ProjectDetail(): React.ReactElement {
   const fetchProjectStats = useCallback(async () => {
     if (!projectIdStr) return;
     try {
-      const statsData = await apiClient.fetchSingleProjectStats(projectIdStr);
-      setStats({
-        ungroupedCount: statsData.ungroupedCount || 0,
-        groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
-        groupedPages: statsData.groupedPages || 0,
-        confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
-        confirmedPages: statsData.confirmedPages || 0,
-        blockedCount: statsData.blockedCount || 0,
-        totalParentKeywords: statsData.totalParentKeywords || 0,
-        totalKeywords: statsData.totalKeywords ||
-          (statsData.ungroupedCount + statsData.groupedKeywordsCount +
-            (statsData.confirmedKeywordsCount ?? 0) + statsData.blockedCount),
+      const statsData = await fetchProjectStatsApi(projectIdStr);
+      detailDispatch({
+        type: 'setStats',
+        payload: {
+          ungroupedCount: statsData.ungroupedCount || 0,
+          groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
+          groupedPages: statsData.groupedPages || 0,
+          confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
+          confirmedPages: statsData.confirmedPages || 0,
+          blockedCount: statsData.blockedCount || 0,
+          totalParentKeywords: statsData.totalParentKeywords || 0,
+          totalKeywords: statsData.totalKeywords ||
+            (statsData.ungroupedCount + statsData.groupedKeywordsCount +
+              (statsData.confirmedKeywordsCount ?? 0) + statsData.blockedCount),
+        },
       });
+
+      dispatch(setProjectStats({
+        projectId: projectIdStr,
+        stats: statsData,
+      }));
     } catch (error) {
       console.error('Error fetching project stats:', error);
       addSnackbarMessage(
@@ -360,24 +443,14 @@ export default function ProjectDetail(): React.ReactElement {
     limit = pagination.limit,
     view = activeView,
     sort = sortParams,
-    filters = { 
-      tokens: selectedTokens, 
-      include: includeFilter, 
-      exclude: excludeFilter,
-      minVolume: minVolume ? parseInt(minVolume) : "",
-      maxVolume: maxVolume ? parseInt(maxVolume) : "",
-      minLength: minLength ? parseInt(minLength) : "",
-      maxLength: maxLength ? parseInt(maxLength) : "",
-      minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-      maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-      minRating: minRating ? parseInt(minRating) : "",
-      maxRating: maxRating ? parseInt(maxRating) : "",
-      serpFeatures: selectedSerpFeatures,
-    },
+    filters = filterParams,
     forceRefresh = false
   ) => {
     if (!projectIdStr) return;
-    setIsTableLoading(true);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isTableLoading: true },
+    });
     const requestedPage = page;
     
     try {
@@ -416,14 +489,22 @@ export default function ProjectDetail(): React.ReactElement {
           totalCount: cachedTotalCount,
         }));
         
-        setPagination(prev => ({
-          total: cachedTotalCount,
-          page: validPage,
-          limit: limit,
-          pages: totalPages
-        }));
+        detailDispatch({
+          type: 'updatePagination',
+          payload: {
+            pagination: {
+              total: cachedTotalCount,
+              page: validPage,
+              limit: limit,
+              pages: totalPages,
+            },
+          },
+        });
         
-        setIsTableLoading(false);
+        detailDispatch({
+          type: 'updateProcessing',
+          payload: { isTableLoading: false },
+        });
         return;
       }
 
@@ -456,7 +537,7 @@ export default function ProjectDetail(): React.ReactElement {
         if (filters.serpFeatures?.length > 0) {
           filters.serpFeatures.forEach(feature => largeQueryParams.append('serpFeatures', feature));
         }
-        const largeData = await apiClient.fetchKeywords(projectIdStr, largeQueryParams, true);
+        const largeData = await fetchKeywordsApi(projectIdStr, largeQueryParams, true);
         let allKeywords: Keyword[] = [];
         if ((view as string) === 'ungrouped') allKeywords = largeData.ungroupedKeywords || [];
         else if (view === 'grouped') allKeywords = largeData.groupedKeywords || [];
@@ -576,14 +657,22 @@ export default function ProjectDetail(): React.ReactElement {
           totalCount: totalItems,
         }));
 
-        setPagination(prev => ({
-          total: totalItems,
-          page: validPage,
-          limit: limit,
-          pages: totalPages
-        }));
+        detailDispatch({
+          type: 'updatePagination',
+          payload: {
+            pagination: {
+              total: totalItems,
+              page: validPage,
+              limit: limit,
+              pages: totalPages,
+            },
+          },
+        });
         
-        setIsTableLoading(false);
+        detailDispatch({
+          type: 'updateProcessing',
+          payload: { isTableLoading: false },
+        });
         return;
       }
       const queryParams = new URLSearchParams({
@@ -612,7 +701,7 @@ export default function ProjectDetail(): React.ReactElement {
       if (filters.serpFeatures?.length > 0) {
         filters.serpFeatures.forEach(feature => queryParams.append('serpFeatures', feature));
       }
-      const data = await apiClient.fetchKeywords(projectIdStr, queryParams, false);
+      const data = await fetchKeywordsApi(projectIdStr, queryParams, false);
       let keywords: Keyword[] = [];
       if (view === 'ungrouped') keywords = data.ungroupedKeywords || [];
       else if (view === 'grouped') keywords = data.groupedKeywords || [];
@@ -637,12 +726,17 @@ export default function ProjectDetail(): React.ReactElement {
         })),
         totalCount: totalItems,
       }));
-      setPagination(prev => ({
-        total: totalItems,
-        page: validPage,
-        limit: limit,
-        pages: totalPages
-      }));
+      detailDispatch({
+        type: 'updatePagination',
+        payload: {
+          pagination: {
+            total: totalItems,
+            page: validPage,
+            limit: limit,
+            pages: totalPages,
+          },
+        },
+      });
     } catch (error) {
       console.error('Error fetching keywords:', error);
       addSnackbarMessage(
@@ -650,28 +744,20 @@ export default function ProjectDetail(): React.ReactElement {
         'error'
       );
     } finally {
-      setIsTableLoading(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isTableLoading: false },
+      });
     }
   }, [
     projectIdStr, 
-    minVolume, 
-    maxVolume, 
-    minLength,
-    maxLength,
-    minDifficulty, 
-    maxDifficulty, 
-    minRating,
-    maxRating,
     pagination.page, 
     pagination.limit, 
     activeView, 
     sortParams, 
-    selectedTokens, 
-    includeFilter, 
-    excludeFilter, 
     includeMatchType, 
     excludeMatchType, 
-    selectedSerpFeatures,
+    filterParams,
     projectIdNum, 
     dispatch, 
     addSnackbarMessage, 
@@ -697,7 +783,7 @@ export default function ProjectDetail(): React.ReactElement {
     if (!projectIdStr) return [];
     try {
       const timestamp = new Date().getTime();
-      const data = await apiClient.fetchChildren(projectIdStr, groupId);
+      const data = await fetchKeywordChildren(projectIdStr, groupId);
       return data.children;
     } catch (error) {
       console.error('Error fetching children:', error);
@@ -712,11 +798,14 @@ export default function ProjectDetail(): React.ReactElement {
   const handleExportCSV = useCallback(async () => {
     if (activeView !== 'grouped' && activeView !== 'confirmed') return;
 
-    setIsExporting(true);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isExporting: true },
+    });
     addSnackbarMessage('Starting export, please wait...', 'success');
 
     try {
-      const blobData = await apiClient.exportGroupedKeywords(projectIdStr, activeView);
+      const blobData = await exportGroupedKeywords(projectIdStr, activeView);
       const url = window.URL.createObjectURL(blobData);
       const link = document.createElement('a');
       link.href = url;
@@ -736,17 +825,22 @@ export default function ProjectDetail(): React.ReactElement {
         'error'
       );
     } finally {
-      setIsExporting(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isExporting: false },
+      });
     }
   }, [activeView, projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
 
   const handleExportParentKeywords = useCallback(async () => {
-
-    setIsExportingParent(true);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isExportingParent: true },
+    });
     addSnackbarMessage('Starting parent keywords export, please wait...', 'success');
 
     try {
-      const blobData = await apiClient.exportParentKeywords(projectIdStr);
+      const blobData = await exportParentKeywords(projectIdStr);
       const url = window.URL.createObjectURL(blobData);
       const link = document.createElement('a');
       link.href = url;
@@ -765,35 +859,35 @@ export default function ProjectDetail(): React.ReactElement {
         'error'
       );
     } finally {
-      setIsExportingParent(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isExportingParent: false },
+      });
     }
   }, [projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
-  const handleImportParentKeywords = useCallback(async (file: File) => {
 
-    setIsImportingParent(true);
+  const handleImportParentKeywords = useCallback(async (file: File) => {
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isImportingParent: true },
+    });
     addSnackbarMessage('Starting parent keywords import, please wait...', 'success');
 
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
-      await apiClient.importParentKeywords(projectIdStr, formData);
+
+      await importParentKeywords(projectIdStr, formData);
       addSnackbarMessage('Parent keywords imported successfully', 'success');
-      
-      await fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-        tokens: selectedTokens,
-        include: includeFilter,
-        exclude: excludeFilter,
-        minVolume: minVolume ? parseInt(minVolume) : "",
-        maxVolume: maxVolume ? parseInt(maxVolume) : "",
-        minLength: minLength ? parseInt(minLength) : "",
-        maxLength: maxLength ? parseInt(maxLength) : "",
-        minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-        maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-        minRating: minRating ? parseInt(minRating) : "",
-        maxRating: maxRating ? parseInt(maxRating) : "",
-        serpFeatures: selectedSerpFeatures
-      }, true);
+
+      await fetchKeywords(
+        pagination.page,
+        pagination.limit,
+        activeView,
+        sortParams,
+        filterParams,
+        true
+      );
       bumpLogsRefresh();
     } catch (error) {
       console.error('Error during parent import:', error);
@@ -802,21 +896,35 @@ export default function ProjectDetail(): React.ReactElement {
         'error'
       );
     } finally {
-      setIsImportingParent(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isImportingParent: false },
+      });
     }
-  }, [projectIdStr, addSnackbarMessage, fetchKeywords, pagination, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures, bumpLogsRefresh]);
+  }, [projectIdStr, addSnackbarMessage, fetchKeywords, pagination, activeView, sortParams, filterParams, bumpLogsRefresh]);
 
-const handleViewChange = useCallback((newView: ActiveKeywordView) => {
+  const handleViewChange = useCallback((newView: ActiveKeywordView) => {
   if (activeView !== newView) {
-    setActiveView(newView);
-    setSelectedKeywordIds(new Set());
-    setExpandedGroups(new Set());
-    setPagination(prev => ({ ...prev, page: 1 }));
+    detailDispatch({
+      type: 'updateView',
+      payload: { activeView: newView },
+    });
+    detailDispatch({
+      type: 'updateSelection',
+      payload: {
+        selectedKeywordIds: new Set(),
+        expandedGroups: new Set(),
+      },
+    });
+    detailDispatch({
+      type: 'updatePagination',
+      payload: {
+        pagination: { ...pagination, page: 1 },
+      },
+    });
     apiCache.invalidateByView(projectIdStr, newView);
     fetchKeywords(1, pagination.limit, newView, sortParams, {
-      tokens: selectedTokens,
-      include: includeFilter,
-      exclude: excludeFilter,
+      ...filterParams,
       minVolume: "",
       maxVolume: "",
       minLength: "",
@@ -825,77 +933,48 @@ const handleViewChange = useCallback((newView: ActiveKeywordView) => {
       maxDifficulty: "",
       serpFeatures: [],
       minRating: '',
-      maxRating: ''
+      maxRating: '',
     }, true);
   }
 }, [
-  activeView, pagination.limit, sortParams, selectedTokens, 
-  includeFilter, excludeFilter, fetchKeywords, projectIdStr, apiCache
+  activeView, pagination.limit, sortParams, filterParams, fetchKeywords, projectIdStr, apiCache
 ]);
 
 const handlePageChange = useCallback((newPage: number) => {
   if (newPage < 1 || newPage === pagination.page || newPage > pagination.pages || isLoadingData) return;
-  setPagination(prev => ({ ...prev, page: newPage }));
-  fetchKeywords(newPage, pagination.limit, activeView, sortParams, {
-    tokens: selectedTokens,
-    include: includeFilter,
-    exclude: excludeFilter,
-    minVolume: minVolume ? parseInt(minVolume) : "",
-    maxVolume: maxVolume ? parseInt(maxVolume) : "",
-    minLength: minLength ? parseInt(minLength) : "",
-    maxLength: maxLength ? parseInt(maxLength) : "",
-    minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-    maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-    serpFeatures: selectedSerpFeatures,
-    minRating: minRating ? parseInt(minRating) : "",
-    maxRating: maxRating ? parseInt(maxRating) : "",
-  }, false);
-}, [pagination.page, pagination.pages, pagination.limit, isLoadingData, fetchKeywords, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]);
+  detailDispatch({
+    type: 'updatePagination',
+    payload: {
+      pagination: { ...pagination, page: newPage },
+    },
+  });
+  fetchKeywords(newPage, pagination.limit, activeView, sortParams, filterParams, false);
+}, [pagination, isLoadingData, fetchKeywords, activeView, sortParams, filterParams]);
 const handleLimitChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
   const newLimit = parseInt(event.target.value, 10);
   if (!isNaN(newLimit) && newLimit !== pagination.limit) {
-    setPagination(prev => ({
-      ...prev,
-      limit: newLimit,
-      page: 1
-    }));
-  fetchKeywords(1, newLimit, activeView, sortParams, {
-    tokens: selectedTokens,
-    include: includeFilter,
-    exclude: excludeFilter,
-    minVolume: minVolume ? parseInt(minVolume) : "",
-    maxVolume: maxVolume ? parseInt(maxVolume) : "",
-    minLength: minLength ? parseInt(minLength) : "",
-    maxLength: maxLength ? parseInt(maxLength) : "",
-    minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-    maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-    serpFeatures: selectedSerpFeatures,
-    minRating: minRating ? parseInt(minRating) : "",
-    maxRating: maxRating ? parseInt(maxRating) : "",
-  }, true);
+    detailDispatch({
+      type: 'updatePagination',
+      payload: {
+        pagination: { ...pagination, limit: newLimit, page: 1 },
+      },
+    });
+  fetchKeywords(1, newLimit, activeView, sortParams, filterParams, true);
   }
-}, [pagination.limit, fetchKeywords, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]);
+}, [pagination, fetchKeywords, activeView, sortParams, filterParams]);
 const handleSort = useCallback((column: string) => {
   if (column === 'tokens' || column === 'serpFeatures') return;
   const newDirection: 'asc' | 'desc' = sortParams.column === column && sortParams.direction === 'asc' ? 'desc' : 'asc';
   const newSortParams: SortParams = { column, direction: newDirection };
-  setSortParams(newSortParams);
-  setPagination(prev => ({ ...prev, page: 1 }));
-  fetchKeywords(pagination.page, pagination.limit, activeView, newSortParams, {
-    tokens: selectedTokens,
-    include: includeFilter,
-    exclude: excludeFilter,
-    minVolume: minVolume ? parseInt(minVolume) : "",
-    maxVolume: maxVolume ? parseInt(maxVolume) : "",
-    minLength: minLength ? parseInt(minLength) : "",
-    maxLength: maxLength ? parseInt(maxLength) : "",
-    minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-    maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-    serpFeatures: selectedSerpFeatures,
-    minRating: minRating ? parseInt(minRating) : "",
-    maxRating: maxRating ? parseInt(maxRating) : "",
+  detailDispatch({
+    type: 'updatePagination',
+    payload: {
+      sortParams: newSortParams,
+      pagination: { ...pagination, page: 1 },
+    },
   });
-}, [sortParams.column, sortParams.direction, fetchKeywords, pagination.page, pagination.limit, activeView, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]);
+  fetchKeywords(1, pagination.limit, activeView, newSortParams, filterParams);
+}, [sortParams.column, sortParams.direction, fetchKeywords, pagination, activeView, filterParams]);
 
 const filteredAndSortedKeywords = useMemo(() => {
   return getCurrentViewData();
@@ -953,71 +1032,75 @@ const formatDataForDisplay = useMemo(() => {
   excludeMatchType
 ]);
 const toggleKeywordSelection = useCallback(async (keywordId: number) => {
-  setSelectedKeywordIds(prevSelected => {
-    const newSelected = new Set(prevSelected);
-    const allFilteredIds = filteredAndSortedKeywords.map(k => k.id);
+  let nextSelected = new Set(selectedKeywordIds);
+  let nextGroupName = groupName;
+  const allFilteredIds = filteredAndSortedKeywords.map(k => k.id);
 
-    const toggleAsync = async () => {
-      if (keywordId === -1) {
-        // SELECT ALL - this is the only case where we auto-select children
-        for (const id of allFilteredIds) {
-          newSelected.add(id);
-          const parent = filteredAndSortedKeywords.find(k => k.id === id);
-          // Only auto-select children when using SELECT ALL and selecting PARENT keywords
-          if (activeView === 'grouped' && parent?.groupId && parent.isParent) {
-            let children = childrenCache[parent.groupId] || [];
-            if (children.length === 0 && (parent.childCount ?? 0) > 0) {
-              try {
-                children = await fetchChildren(parent.groupId);
-                dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId: parent.groupId, children }));
-              } catch (error) {
-                console.error('Error fetching children for group:', parent.groupId, error);
-                children = [];
-              }
-            }
-                  // Only add children if they were successfully fetched
-                  if (children && children.length > 0) {
-                    children.forEach(child => newSelected.add(child.id));
-                  }
-          }
-        }
-        const highestVolumeKeyword = filteredAndSortedKeywords.reduce((max, curr) => 
-          (curr.volume || 0) > (max.volume || 0) ? curr : max,
-          filteredAndSortedKeywords[0]
-        );
-        if (highestVolumeKeyword) {
-          if (activeView === 'ungrouped') {
-            setGroupName(highestVolumeKeyword.keyword);
-          } else if (activeView === 'grouped') {
-            // For grouped view, use parent keyword name if available
-            if (highestVolumeKeyword.isParent) {
-              setGroupName(highestVolumeKeyword.keyword);
-            } else {
-              const parentKeyword = filteredAndSortedKeywords.find(
-                k => k.groupId === highestVolumeKeyword.groupId && k.isParent
-              );
-              setGroupName(parentKeyword ? parentKeyword.keyword : highestVolumeKeyword.keyword);
+  try {
+    if (keywordId === -1) {
+      // SELECT ALL - this is the only case where we auto-select children
+      for (const id of allFilteredIds) {
+        nextSelected.add(id);
+        const parent = filteredAndSortedKeywords.find(k => k.id === id);
+        // Only auto-select children when using SELECT ALL and selecting PARENT keywords
+        if (activeView === 'grouped' && parent?.groupId && parent.isParent) {
+          let children = childrenCache[parent.groupId] || [];
+          if (children.length === 0 && (parent.childCount ?? 0) > 0) {
+            try {
+              children = await fetchChildren(parent.groupId);
+              dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId: parent.groupId, children }));
+            } catch (error) {
+              console.error('Error fetching children for group:', parent.groupId, error);
+              children = [];
             }
           }
+          // Only add children if they were successfully fetched
+          if (children && children.length > 0) {
+            nextSelected = new Set(nextSelected);
+            children.forEach(child => nextSelected.add(child.id));
+          }
         }
-      } else if (keywordId === 0) {
-        newSelected.clear();
-        setGroupName('');
+      }
+      const highestVolumeKeyword = filteredAndSortedKeywords.reduce((max, curr) => 
+        (curr.volume || 0) > (max.volume || 0) ? curr : max,
+        filteredAndSortedKeywords[0]
+      );
+      if (highestVolumeKeyword) {
+        if (activeView === 'ungrouped') {
+          nextGroupName = highestVolumeKeyword.keyword;
+        } else if (activeView === 'grouped') {
+          // For grouped view, use parent keyword name if available
+          if (highestVolumeKeyword.isParent) {
+            nextGroupName = highestVolumeKeyword.keyword;
+          } else {
+            const parentKeyword = filteredAndSortedKeywords.find(
+              k => k.groupId === highestVolumeKeyword.groupId && k.isParent
+            );
+            nextGroupName = parentKeyword ? parentKeyword.keyword : highestVolumeKeyword.keyword;
+          }
+        }
+      }
+    } else if (keywordId === 0) {
+      nextSelected = new Set();
+      nextGroupName = '';
+    } else {
+      const selectedKeyword = filteredAndSortedKeywords.find(k => k.id === keywordId) ||
+        Object.values(childrenCache).flat().find(k => k.id === keywordId);
+
+      if (nextSelected.has(keywordId)) {
+        nextSelected = new Set(nextSelected);
+        nextSelected.delete(keywordId);
+        // NO AUTO-DESELECTION - only deselect what the user explicitly clicks
+        if (nextSelected.size === 0) {
+          nextGroupName = '';
+        }
       } else {
-        const selectedKeyword = filteredAndSortedKeywords.find(k => k.id === keywordId) ||
-          Object.values(childrenCache).flat().find(k => k.id === keywordId);
-
-        if (newSelected.has(keywordId)) {
-          newSelected.delete(keywordId);
-          // NO AUTO-DESELECTION - only deselect what the user explicitly clicks
-          if (newSelected.size === 0) {
-            setGroupName('');
-          }
-        } else {
-          newSelected.add(keywordId);
+        if (selectedKeyword) {
+          nextSelected = new Set(nextSelected);
+          nextSelected.add(keywordId);
           // NO AUTO-SELECTION - only select what the user explicitly clicks
           
-          const selectedKeywords = Array.from(newSelected).map(id => 
+          const selectedKeywords = Array.from(nextSelected).map(id => 
             filteredAndSortedKeywords.find(k => k.id === id) || 
             Object.values(childrenCache).flat().find(k => k.id === id)
           ).filter(Boolean);
@@ -1029,34 +1112,49 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           
           if (highestVolumeKeyword) {
             if (activeView === 'ungrouped') {
-              setGroupName(highestVolumeKeyword.keyword);
+              nextGroupName = highestVolumeKeyword.keyword;
             } else if (activeView === 'grouped') {
               // For grouped view, always use the parent keyword name if it's a parent
               if (highestVolumeKeyword.isParent) {
-                setGroupName(highestVolumeKeyword.keyword);
+                nextGroupName = highestVolumeKeyword.keyword;
               } else {
                 // If it's a child, find its parent
                 const parentKeyword = filteredAndSortedKeywords.find(
                   k => k.groupId === highestVolumeKeyword.groupId && k.isParent
                 );
-                setGroupName(parentKeyword ? parentKeyword.keyword : highestVolumeKeyword.keyword);
+                nextGroupName = parentKeyword ? parentKeyword.keyword : highestVolumeKeyword.keyword;
               }
             }
           }
         }
       }
-    };
+    }
 
-    toggleAsync().catch(err => {
-      console.error('Error in toggleKeywordSelection:', err);
-      addSnackbarMessage(
-        'Error selecting keywords: ' + (isError(err) ? err.message : 'Unknown error'),
-        'error'
-      );
+    detailDispatch({
+      type: 'updateSelection',
+      payload: {
+        selectedKeywordIds: nextSelected,
+        groupName: nextGroupName,
+      },
     });
-    return newSelected;
-  });
-}, [filteredAndSortedKeywords, activeView, childrenCache, fetchChildren, dispatch, projectIdStr, addSnackbarMessage]);
+  } catch (err) {
+    console.error('Error in toggleKeywordSelection:', err);
+    addSnackbarMessage(
+      'Error selecting keywords: ' + (isError(err) ? err.message : 'Unknown error'),
+      'error'
+    );
+  }
+}, [
+  selectedKeywordIds,
+  groupName,
+  filteredAndSortedKeywords,
+  activeView,
+  childrenCache,
+  fetchChildren,
+  dispatch,
+  projectIdStr,
+  addSnackbarMessage,
+]);
 
   const handleSelectAllClick = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const isChecked = event.target.checked;
@@ -1069,31 +1167,25 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   }, [toggleKeywordSelection, addSnackbarMessage]);
 
   const toggleTokenSelection = useCallback((token: string) => {
-    setSelectedTokens(prev => {
-      const isCurrentlySelected = prev.includes(token);
-      const newTokens = isCurrentlySelected
-        ? prev.filter(t => t !== token)
-        : [...prev, token];
-      const currentPage = pagination.page;
-      apiCache.invalidate(projectIdStr + '-' + activeView);
-      fetchKeywords(currentPage, pagination.limit, activeView, sortParams, {
-        tokens: newTokens,
-        include: includeFilter,
-        exclude: excludeFilter,
-        minVolume: minVolume ? parseInt(minVolume) : "",
-        maxVolume: maxVolume ? parseInt(maxVolume) : "",
-        minLength: minLength ? parseInt(minLength) : "",
-        maxLength: maxLength ? parseInt(maxLength) : "",
-        minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-        maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-        serpFeatures: selectedSerpFeatures,
-        minRating: minRating ? parseInt(minRating) : "",
-        maxRating: maxRating ? parseInt(maxRating) : "",
-      }, true);
-      
-      return newTokens;
+    const isCurrentlySelected = selectedTokens.includes(token);
+    const newTokens = isCurrentlySelected
+      ? selectedTokens.filter(t => t !== token)
+      : [...selectedTokens, token];
+    detailDispatch({
+      type: 'updateFilters',
+      payload: { selectedTokens: newTokens },
     });
-  }, [pagination.page, pagination.limit, apiCache, projectIdStr, activeView, fetchKeywords, sortParams, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]);
+    const currentPage = pagination.page;
+    apiCache.invalidate(projectIdStr + '-' + activeView);
+    fetchKeywords(
+      currentPage,
+      pagination.limit,
+      activeView,
+      sortParams,
+      { ...filterParams, tokens: newTokens },
+      true
+    );
+  }, [selectedTokens, pagination, apiCache, projectIdStr, activeView, fetchKeywords, sortParams, filterParams]);
   
 
   const handleAdvancedTokenSelection = useCallback(async (token: string, event: React.MouseEvent) => {
@@ -1101,8 +1193,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault();
       if (!projectIdStr) return;
-      setIsProcessingAction(true);
-      setIsTableLoading(true);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isProcessingAction: true, isTableLoading: true },
+      });
       try {
         const tokensBackup = [...selectedTokens].filter(t => t !== token);
         const includeFilterBackup = includeFilter;
@@ -1113,7 +1207,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         const maxDifficultyBackup = maxDifficulty;
         const serpFeaturesBackup = [...selectedSerpFeatures];
         const currentPage = pagination.page;
-        const data = await apiClient.blockToken(projectIdStr, token);
+        const data = await blockToken(projectIdStr, token);
         addSnackbarMessage('Blockd ' + data.count + ' keywords with token "' + token + '"', 'success');
         apiCache.invalidate(projectIdStr + '-' + activeView + '-total-');
         await fetchProjectStats();
@@ -1146,40 +1240,47 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           'error'
         );
       } finally {
-        setIsProcessingAction(false);
-        setIsTableLoading(false);
+        detailDispatch({
+          type: 'updateProcessing',
+          payload: { isProcessingAction: false, isTableLoading: false },
+        });
       }
     } else {
       toggleTokenSelection(token);
     }
-  }, [projectIdStr, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, pagination.page, pagination.limit, addSnackbarMessage, apiCache, activeView, fetchProjectStats, fetchKeywords, sortParams, minRating, maxRating, toggleTokenSelection, bumpLogsRefresh]);
+  }, [projectIdStr, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, pagination, addSnackbarMessage, apiCache, activeView, fetchProjectStats, fetchKeywords, sortParams, minRating, maxRating, toggleTokenSelection, bumpLogsRefresh]);
 
 
   const removeToken = useCallback((token: string) => {
-    setSelectedTokens(prev => prev.filter(t => t !== token));
+    detailDispatch({
+      type: 'updateFilters',
+      payload: { selectedTokens: selectedTokens.filter(t => t !== token) },
+    });
     const currentPage = pagination.page;
     apiCache.invalidate(projectIdStr + '-' + activeView);
-    fetchKeywords(currentPage, pagination.limit, activeView, sortParams, {
-      tokens: selectedTokens.filter(t => t !== token),
-      include: includeFilter,
-      exclude: excludeFilter,
-      minVolume: minVolume ? parseInt(minVolume) : "",
-      maxVolume: maxVolume ? parseInt(maxVolume) : "",
-      minLength: minLength ? parseInt(minLength) : "",
-      maxLength: maxLength ? parseInt(maxLength) : "",
-      minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-      maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-      serpFeatures: selectedSerpFeatures,
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
-    }, true);
-  }, [pagination.page, pagination.limit, apiCache, projectIdStr, activeView, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]);
+    fetchKeywords(
+      currentPage,
+      pagination.limit,
+      activeView,
+      sortParams,
+      { ...filterParams, tokens: selectedTokens.filter(t => t !== token) },
+      true
+    );
+  }, [pagination, apiCache, projectIdStr, activeView, fetchKeywords, sortParams, selectedTokens, filterParams]);
   const handleIncludeFilterChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
-      setIncludeFilter(newValue);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { includeFilter: newValue },
+      });
       const executeSearch = async () => {
-        setPagination(prev => ({ ...prev, page: 1 }));
+        detailDispatch({
+          type: 'updatePagination',
+          payload: {
+            pagination: { ...pagination, page: 1 },
+          },
+        });
         if (activeView === 'grouped' && newValue) {
           const existingChildrenGroups = Object.keys(childrenCache).filter(
             groupId => childrenCache[groupId] && childrenCache[groupId].length > 0
@@ -1203,70 +1304,82 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           });
           
           if (groupsToExpand.size > 0) {
-            setExpandedGroups(groupsToExpand);
+            detailDispatch({
+              type: 'updateSelection',
+              payload: { expandedGroups: groupsToExpand },
+            });
           }
         } else if (!newValue) {
-          setExpandedGroups(new Set());
+          detailDispatch({
+            type: 'updateSelection',
+            payload: { expandedGroups: new Set() },
+          });
         }
         
-        await fetchKeywords(1, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: newValue,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
-        }, true);
+        await fetchKeywords(
+          1,
+          pagination.limit,
+          activeView,
+          sortParams,
+          { ...filterParams, include: newValue },
+          true
+        );
       };
       
       executeSearch();
     },
-    [activeView, fetchKeywords, pagination.limit, sortParams, selectedTokens, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, childrenCache, includeMatchType]
+    [activeView, fetchKeywords, pagination, sortParams, excludeFilter, childrenCache, includeMatchType, filterParams]
   );
   const handleExcludeFilterChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
-      setExcludeFilter(newValue);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { excludeFilter: newValue },
+      });
       const executeSearch = async () => {
-        setPagination(prev => ({ ...prev, page: 1 }));
-        await fetchKeywords(1, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: newValue,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
-        }, true);
+        detailDispatch({
+          type: 'updatePagination',
+          payload: {
+            pagination: { ...pagination, page: 1 },
+          },
+        });
+        await fetchKeywords(
+          1,
+          pagination.limit,
+          activeView,
+          sortParams,
+          { ...filterParams, exclude: newValue },
+          true
+        );
       };
       
       executeSearch();
     },
-    [fetchKeywords, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]
+    [fetchKeywords, pagination, activeView, sortParams, filterParams]
   );
   const clearAllFilters = useCallback(() => {
-    setSelectedTokens([]);
-    setIncludeFilter('');
-    setExcludeFilter('');
-    setIncludeMatchType('any');
-    setExcludeMatchType('any');
-    setMinVolume('');
-    setMaxVolume('');
-    setMinDifficulty('');
-    setMaxDifficulty('');
-    setSelectedSerpFeatures([]);
-    setPagination(prev => ({ ...prev, page: 1 }));
+    detailDispatch({
+      type: 'updateFilters',
+      payload: {
+        selectedTokens: [],
+        includeFilter: '',
+        excludeFilter: '',
+        includeMatchType: 'any',
+        excludeMatchType: 'any',
+        minVolume: '',
+        maxVolume: '',
+        minDifficulty: '',
+        maxDifficulty: '',
+        selectedSerpFeatures: [],
+      },
+    });
+    detailDispatch({
+      type: 'updatePagination',
+      payload: {
+        pagination: { ...pagination, page: 1 },
+      },
+    });
     apiCache.invalidate(projectIdStr + '-' + activeView);
     fetchKeywords(1, pagination.limit, activeView, sortParams, {
       tokens: [],
@@ -1295,38 +1408,51 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     if (!groupId || !hasChildren || !projectIdStr) return;
     const isCurrentlyExpanded = expandedGroups.has(groupId);
     if (isCurrentlyExpanded) {
-      setExpandedGroups(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(groupId);
-        return newSet;
+      const newSet = new Set(expandedGroups);
+      newSet.delete(groupId);
+      detailDispatch({
+        type: 'updateSelection',
+        payload: { expandedGroups: newSet },
       });
     } else {
-      setExpandedGroups(prev => new Set(prev).add(groupId));
+      const newSet = new Set(expandedGroups);
+      newSet.add(groupId);
+      detailDispatch({
+        type: 'updateSelection',
+        payload: { expandedGroups: newSet },
+      });
       const groupData = childrenCache[groupId];
 
-      setLoadingChildren(prevLoading => new Set(prevLoading).add(groupId));
+      const nextLoading = new Set(loadingChildren);
+      nextLoading.add(groupId);
+      detailDispatch({
+        type: 'updateSelection',
+        payload: { loadingChildren: nextLoading },
+      });
       try {
         const children = await fetchChildren(groupId);
         dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId, children }));
       } catch (err) {
-        setExpandedGroups(expanded => { 
-          const newSet = new Set(expanded); 
-          newSet.delete(groupId); 
-          return newSet; 
+        const nextExpanded = new Set(expandedGroups);
+        nextExpanded.delete(groupId);
+        detailDispatch({
+          type: 'updateSelection',
+          payload: { expandedGroups: nextExpanded },
         });
         addSnackbarMessage(
           'Error loading children: ' + (isError(err) ? err.message : 'Unknown error'),
           'error'
         );
       } finally {
-        setLoadingChildren(prevLoading => {
-          const newSet = new Set(prevLoading);
-          newSet.delete(groupId);
-          return newSet;
+        const nextLoadingSet = new Set(loadingChildren);
+        nextLoadingSet.delete(groupId);
+        detailDispatch({
+          type: 'updateSelection',
+          payload: { loadingChildren: nextLoadingSet },
         });
       }
     }
-  }, [projectIdStr, childrenCache, dispatch, addSnackbarMessage, expandedGroups, fetchChildren]);
+  }, [projectIdStr, childrenCache, dispatch, addSnackbarMessage, expandedGroups, loadingChildren, fetchChildren]);
 
   const handleConfirmKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1342,8 +1468,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       pagination.total
     );
 
-    setIsProcessingAction(true);
-    setIsTableLoading(true);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isProcessingAction: true, isTableLoading: true },
+    });
 
     try {
       dispatch(setKeywordsForView({
@@ -1356,31 +1484,41 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId, children: [] }));
       });
 
-      const data = await apiClient.confirmKeywords(projectIdStr, keywordIds);
+      const data = await confirmKeywords(projectIdStr, keywordIds);
       addSnackbarMessage('Confirmed ' + data.count + ' keywords', 'success');
 
       await Promise.all([
-        fetchKeywords(maintainedPage, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: "",
-          maxVolume: "",
-          minLength: "",
-          maxLength: "",
-          minDifficulty: "",
-          maxDifficulty: "",
-          serpFeatures: [],
-          minRating: '',
-          maxRating: ''
-        }, true),
+        fetchKeywords(
+          maintainedPage,
+          pagination.limit,
+          activeView,
+          sortParams,
+          {
+            ...filterParams,
+            minVolume: "",
+            maxVolume: "",
+            minLength: "",
+            maxLength: "",
+            minDifficulty: "",
+            maxDifficulty: "",
+            serpFeatures: [],
+            minRating: '',
+            maxRating: '',
+          },
+          true
+        ),
         fetchProjectStats(),
       ]);
 
       bumpLogsRefresh();
-      setSelectedKeywordIds(new Set());
-      setGroupName('');
-      setExpandedGroups(new Set());
+      detailDispatch({
+        type: 'updateSelection',
+        payload: {
+          selectedKeywordIds: new Set(),
+          groupName: '',
+          expandedGroups: new Set(),
+        },
+      });
       
     } catch (error) {
       addSnackbarMessage(
@@ -1388,10 +1526,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         'error'
       );
     } finally {
-      setIsProcessingAction(false);
-      setIsTableLoading(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isProcessingAction: false, isTableLoading: false },
+      });
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
 
   const handleUnconfirmKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1407,8 +1547,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       pagination.total
     );
 
-    setIsProcessingAction(true);
-    setIsTableLoading(true);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isProcessingAction: true, isTableLoading: true },
+    });
 
     try {
       dispatch(setKeywordsForView({
@@ -1421,31 +1563,41 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId, children: [] }));
       });
 
-      const data = await apiClient.unconfirmKeywords(projectIdStr, keywordIds);
+      const data = await unconfirmKeywords(projectIdStr, keywordIds);
       addSnackbarMessage('Unconfirmed ' + data.count + ' keywords', 'success');
 
       await Promise.all([
-        fetchKeywords(maintainedPage, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: "",
-          maxVolume: "",
-          minLength: "",
-          maxLength: "",
-          minDifficulty: "",
-          maxDifficulty: "",
-          serpFeatures: [],
-          minRating: '',
-          maxRating: ''
-        }, true),
+        fetchKeywords(
+          maintainedPage,
+          pagination.limit,
+          activeView,
+          sortParams,
+          {
+            ...filterParams,
+            minVolume: "",
+            maxVolume: "",
+            minLength: "",
+            maxLength: "",
+            minDifficulty: "",
+            maxDifficulty: "",
+            serpFeatures: [],
+            minRating: '',
+            maxRating: '',
+          },
+          true
+        ),
         fetchProjectStats(),
       ]);
 
       bumpLogsRefresh();
-      setSelectedKeywordIds(new Set());
-      setGroupName('');
-      setExpandedGroups(new Set());
+      detailDispatch({
+        type: 'updateSelection',
+        payload: {
+          selectedKeywordIds: new Set(),
+          groupName: '',
+          expandedGroups: new Set(),
+        },
+      });
       
     } catch (error) {
       addSnackbarMessage(
@@ -1453,10 +1605,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         'error'
       );
     } finally {
-      setIsProcessingAction(false);
-      setIsTableLoading(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isProcessingAction: false, isTableLoading: false },
+      });
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
 
   const handleGroupKeywords = useCallback(async (overrideGroupName?: string) => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1476,8 +1630,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       pagination.total
     );
 
-    setIsProcessingAction(true);
-    setIsTableLoading(true);  
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isProcessingAction: true, isTableLoading: true },
+    });  
     
     try {
       let data;
@@ -1505,7 +1661,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         const totalSelected = selectedParents.length + selectedChildren.length;
           
         if (totalSelected > 0) {
-          data = await apiClient.regroupKeywords(projectIdStr, keywordIds, trimmedGroupName);
+          data = await regroupKeywords(projectIdStr, keywordIds, trimmedGroupName);
           
           if (selectedParents.length > 1) {
             messagePrefix = 'merged';
@@ -1527,12 +1683,14 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           }
         } else {
           addSnackbarMessage('Unable to identify selected keywords for regrouping', 'error');
-          setIsProcessingAction(false);
-          setIsTableLoading(false);
+          detailDispatch({
+            type: 'updateProcessing',
+            payload: { isProcessingAction: false, isTableLoading: false },
+          });
           return;
         }
       } else {
-        data = await apiClient.groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
+        data = await groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
         addSnackbarMessage(
           'Successfully ' + messagePrefix + ' ' + data.count + ' keywords as "' + trimmedGroupName + '"',
           'success'
@@ -1546,14 +1704,21 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId, children: [] }));
       });
       
-      setSelectedKeywordIds(new Set());
-      setGroupName('');
+      detailDispatch({
+        type: 'updateSelection',
+        payload: {
+          selectedKeywordIds: new Set(),
+          groupName: '',
+        },
+      });
       
       const refreshData = async () => {
         try {
-          const statsData = await apiClient.fetchSingleProjectStats(projectIdStr);
+          const statsData = await fetchProjectStatsApi(projectIdStr);
           if (statsData) {
-            setStats({
+            detailDispatch({
+              type: 'setStats',
+              payload: {
               ungroupedCount: statsData.ungroupedCount || 0,
               groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
               confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
@@ -1563,6 +1728,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               totalParentKeywords: statsData.totalParentKeywords || 0,
               totalKeywords: statsData.totalKeywords ||
                 (statsData.ungroupedCount + statsData.groupedKeywordsCount + (statsData.confirmedKeywordsCount || 0) + statsData.blockedCount),
+              },
             });
             
             dispatch(setProjectStats({
@@ -1571,20 +1737,14 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             }));
           }
           
-          await fetchKeywords(maintainedPage, pagination.limit, activeView, sortParams, {
-            tokens: selectedTokens,
-            include: includeFilter,
-            exclude: excludeFilter,
-            minVolume: minVolume ? parseInt(minVolume) : "",
-            maxVolume: maxVolume ? parseInt(maxVolume) : "",
-            minLength: minLength ? parseInt(minLength) : "",
-            maxLength: maxLength ? parseInt(maxLength) : "",
-            minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-            maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-            serpFeatures: [],
-            minRating: minRating ? parseInt(minRating) : "",
-            maxRating: maxRating ? parseInt(maxRating) : "",
-          }, true); 
+          await fetchKeywords(
+            maintainedPage,
+            pagination.limit,
+            activeView,
+            sortParams,
+            { ...filterParams, serpFeatures: [] },
+            true
+          ); 
           
           if (data && data.groupId) {
             const newGroupId = data.groupId;
@@ -1601,8 +1761,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             'error'
           );
         } finally {
-          setIsProcessingAction(false);
-          setIsTableLoading(false);
+          detailDispatch({
+            type: 'updateProcessing',
+            payload: { isProcessingAction: false, isTableLoading: false },
+          });
         }
       };
       
@@ -1614,10 +1776,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         'Error grouping keywords: ' + (isError(error) ? error.message : 'Unknown error'),
         'error'
       );
-      setIsProcessingAction(false);
-      setIsTableLoading(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isProcessingAction: false, isTableLoading: false },
+      });
     }
-  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, bumpLogsRefresh]);
+  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, filterParams, bumpLogsRefresh]);
 
   useEffect(() => {
       const blurActiveCheckboxes = () => {
@@ -1754,8 +1918,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       pagination.total
     );
 
-    setIsProcessingAction(true);
-    setIsTableLoading(true);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isProcessingAction: true, isTableLoading: true },
+    });
     
     try {
       dispatch(setKeywordsForView({
@@ -1768,31 +1934,30 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         dispatch(setChildrenForGroup({ projectId: projectIdStr, groupId, children: [] }));
       });
       
-              const data = await apiClient.ungroupKeywords(projectIdStr, keywordIds);
+              const data = await ungroupKeywords(projectIdStr, keywordIds);
       addSnackbarMessage('Ungrouped ' + data.count + ' keywords', 'success');
       
       await Promise.all([
-        fetchKeywords(maintainedPage, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : ""
-        }, true),
+        fetchKeywords(
+          maintainedPage,
+          pagination.limit,
+          activeView,
+          sortParams,
+          filterParams,
+          true
+        ),
         fetchProjectStats(),
       ]);
       
       bumpLogsRefresh();
-      setSelectedKeywordIds(new Set());
-      setGroupName('');
-      setExpandedGroups(new Set());
+      detailDispatch({
+        type: 'updateSelection',
+        payload: {
+          selectedKeywordIds: new Set(),
+          groupName: '',
+          expandedGroups: new Set(),
+        },
+      });
       
     } catch (error) {
       addSnackbarMessage(
@@ -1800,10 +1965,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         'error'
       );
     } finally {
-      setIsProcessingAction(false);
-      setIsTableLoading(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isProcessingAction: false, isTableLoading: false },
+      });
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
 
   const handleUnblockKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1818,43 +1985,44 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       pagination.total
     );
 
-    setIsProcessingAction(true);
-    setIsTableLoading(true);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isProcessingAction: true, isTableLoading: true },
+    });
     
     try {
-              const data = await apiClient.unblockKeywords(projectIdStr, keywordIds);
+              const data = await unblockKeywords(projectIdStr, keywordIds);
       addSnackbarMessage('Unblocked ' + data.count + ' keywords', 'success');
       
       await Promise.all([
-        fetchKeywords(maintainedPage, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : ""
-        }, true),
+        fetchKeywords(
+          maintainedPage,
+          pagination.limit,
+          activeView,
+          sortParams,
+          filterParams,
+          true
+        ),
         fetchProjectStats(),
       ]);
       
       bumpLogsRefresh();
-      setSelectedKeywordIds(new Set());
+      detailDispatch({
+        type: 'updateSelection',
+        payload: { selectedKeywordIds: new Set() },
+      });
     } catch (error) {
       addSnackbarMessage(
         'Error unblocking keywords: ' + (isError(error) ? error.message : 'Unknown error'),
         'error'
       );
     } finally {
-      setIsProcessingAction(false);
-      setIsTableLoading(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isProcessingAction: false, isTableLoading: false },
+      });
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
     
     const handleMiddleClickGroup = useCallback(async (keywordIds: number[]) => {
     if (activeView !== 'ungrouped') {
@@ -1895,39 +2063,41 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       ? ungroupedKeywords.find(k => k.id === keywordIds[0])?.keyword
       : keywordIds.length + ' keywords';
   
-    setIsProcessingAction(true);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isProcessingAction: true },
+    });
     try {
-              const data = await apiClient.groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
+              const data = await groupKeywords(projectIdStr, keywordIds, trimmedGroupName);
       addSnackbarMessage('Grouped ' + keywordInfo + ' as "' + trimmedGroupName + '"', 'success');
   
-      await fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-        tokens: selectedTokens,
-        include: includeFilter,
-        exclude: excludeFilter,
-        minVolume: minVolume ? parseInt(minVolume) : "",
-        maxVolume: maxVolume ? parseInt(maxVolume) : "",
-        minLength: minLength ? parseInt(minLength) : "",
-        maxLength: maxLength ? parseInt(maxLength) : "",
-        minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-        maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-        serpFeatures: selectedSerpFeatures,
-        minRating: minRating ? parseInt(minRating) : "",
-        maxRating: maxRating ? parseInt(maxRating) : ""
-      }, true);
+      await fetchKeywords(
+        pagination.page,
+        pagination.limit,
+        activeView,
+        sortParams,
+        filterParams,
+        true
+      );
       await fetchProjectStats();
       bumpLogsRefresh();
-      setSelectedKeywordIds(new Set());
+      detailDispatch({
+        type: 'updateSelection',
+        payload: { selectedKeywordIds: new Set() },
+      });
     } catch (error) {
       addSnackbarMessage(
         'Error grouping keyword: ' + (isError(error) ? error.message : 'Unknown error'),
         'error'
       );
     } finally {
-      setIsProcessingAction(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isProcessingAction: false },
+      });
     }
   }, [activeView, groupName, projectIdStr, ungroupedKeywords, addSnackbarMessage, setGroupName,
-      fetchKeywords, pagination, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, 
-      setSelectedKeywordIds, setIsProcessingAction, bumpLogsRefresh]);
+      fetchKeywords, pagination, sortParams, filterParams, fetchProjectStats, bumpLogsRefresh]);
       
   const stopProcessingCheck = useCallback(() => {
     if (statusCheckIntervalRef.current) {
@@ -1940,26 +2110,23 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     if (!projectIdStr) return;
 
     try {
-              const data = await apiClient.checkProcessingStatus(projectIdStr);
-
-      const uploadedFileCount =
-        data.uploadedFileCount ?? data.uploadedFiles?.length ?? 0;
-      const processedFileCount =
-        data.processedFileCount ?? data.processedFiles?.length ?? 0;
-      const expectedCount = Math.max(expectedUploadFiles.length, uploadedFileCount);
-      const validationError = data.validationError ?? (
-        expectedCount > 0 && processedFileCount < expectedCount
-          ? `${expectedCount - processedFileCount} CSV file(s) did not finish processing.`
-          : null
-      );
+              const data = await checkProcessingStatusApi(projectIdStr);
       
       if (data.progress !== undefined) {
         const normalizedProgress = Math.max(0, Math.min(100, data.progress));
-        setProcessingProgress(normalizedProgress);
+        detailDispatch({
+          type: 'updateProcessing',
+          payload: { processingProgress: normalizedProgress },
+        });
       }
-      setProcessingMessage(validationError ?? data.message ?? '');
-      setProcessingCurrentFile(data.currentFileName ?? null);
-      setProcessingQueue(data.queuedFiles ?? []);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: {
+          processingMessage: data.message ?? '',
+          processingCurrentFile: data.currentFileName ?? null,
+          processingQueue: data.queuedFiles ?? [],
+        },
+      });
 
       if (validationError && data.status === 'complete') {
         setProcessingStatus('error');
@@ -1971,28 +2138,21 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       }
 
       if (data.status === 'complete') {
-        setProcessingStatus('complete');
-        setIsUploading(false);
-        setUploadSuccess(true);
-        setExpectedUploadFiles([]);
+        detailDispatch({
+          type: 'updateProcessing',
+          payload: {
+            processingStatus: 'complete',
+            isUploading: false,
+            uploadSuccess: true,
+          },
+        });
         stopProcessingCheck();
         addSnackbarMessage('Processing complete', 'success', {
           stage: 'complete',
           description: 'Your keywords are ready to review.'
         });
         fetchKeywords(1, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : ""
+          ...filterParams,
         }, true);
         
         fetchProjectStats();
@@ -2000,20 +2160,34 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         return;
       }
       if (data.status !== processingStatus) {
-        setProcessingStatus(data.status);
+        detailDispatch({
+          type: 'updateProcessing',
+          payload: { processingStatus: data.status },
+        });
 
         if (data.status === 'error') {
-          setIsUploading(false);
-          setProcessingProgress(0);
+          detailDispatch({
+            type: 'updateProcessing',
+            payload: { isUploading: false, processingProgress: 0 },
+          });
           addSnackbarMessage(data.message || 'File processing failed', 'error');
           stopProcessingCheck();
         } else if (data.status === 'idle') {
-          setIsUploading(false);
+          detailDispatch({
+            type: 'updateProcessing',
+            payload: { isUploading: false },
+          });
           stopProcessingCheck();
         } else if (data.status === 'uploading' || data.status === 'combining') {
-          setIsUploading(true);
+          detailDispatch({
+            type: 'updateProcessing',
+            payload: { isUploading: true },
+          });
         } else if (data.status === 'queued' || data.status === 'processing') {
-          setIsUploading(false);
+          detailDispatch({
+            type: 'updateProcessing',
+            payload: { isUploading: false },
+          });
         }
       }
 
@@ -2075,17 +2249,25 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       console.error('Error checking processing status:', error);
       const message = 'Error checking status: ' + (isError(error) ? error.message : 'Unknown error');
       addSnackbarMessage(message, 'error');
-      setIsUploading(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isUploading: false },
+      });
       stopProcessingCheck();
-      setProcessingStatus('error');
-      setProcessingProgress(0);
-      setProcessingMessage(message);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: {
+          processingStatus: 'error',
+          processingProgress: 0,
+          processingMessage: message,
+        },
+      });
     }
   }, [
     projectIdStr, processingStatus, stopProcessingCheck, 
     fetchKeywords, pagination.limit, activeView, sortParams, 
-    selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, addSnackbarMessage, 
-    dispatch, projectIdNum, fetchProjectStats, bumpLogsRefresh, expectedUploadFiles
+    filterParams, addSnackbarMessage, 
+    dispatch, projectIdNum, fetchProjectStats, bumpLogsRefresh
   ]);
 
   useEffect(() => {
@@ -2124,7 +2306,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   const fetchInitialData = useCallback(async () => {
     if (!projectIdStr) return;
   
-    setIsLoadingData(true);
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: { isLoadingData: true },
+    });
     try {
       const queryParams = new URLSearchParams({
         page: '1',
@@ -2132,7 +2317,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         status: activeView
       });
       
-              const initialData = await apiClient.fetchInitialData(projectIdStr + '?' + queryParams.toString());
+              const initialData = await fetchInitialDataApi(projectIdStr + '?' + queryParams.toString());
       
       if (initialData) {
         if (initialData.stats) {
@@ -2168,7 +2353,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           }));
         }
         if (initialData.pagination) {
-          setPagination(initialData.pagination);
+          detailDispatch({
+            type: 'updatePagination',
+            payload: { pagination: initialData.pagination },
+          });
         }
         if (initialData.processingStatus?.status) {
           const processingStatus = initialData.processingStatus as {
@@ -2179,14 +2367,16 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             queuedFiles?: string[];
             uploadedFiles?: string[];
           };
-          setProcessingStatus(processingStatus.status ?? 'idle');
-          setProcessingProgress(processingStatus.progress || 0);
-          setProcessingMessage(processingStatus.message || '');
-          setProcessingCurrentFile(processingStatus.currentFileName ?? null);
-          setProcessingQueue(processingStatus.queuedFiles ?? []);
-          if (processingStatus.uploadedFiles?.length) {
-            setExpectedUploadFiles(processingStatus.uploadedFiles);
-          }
+          detailDispatch({
+            type: 'updateProcessing',
+            payload: {
+              processingStatus: processingStatus.status ?? 'idle',
+              processingProgress: processingStatus.progress || 0,
+              processingMessage: processingStatus.message || '',
+              processingCurrentFile: processingStatus.currentFileName ?? null,
+              processingQueue: processingStatus.queuedFiles ?? [],
+            },
+          });
           if (
             initialData.processingStatus.status === 'uploading' ||
             initialData.processingStatus.status === 'combining' ||
@@ -2201,30 +2391,25 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       console.error('Error fetching initial data:', error);
       const errorMessage = isError(error) ? error.message : String(error);
       addSnackbarMessage('Error loading initial data: ' + errorMessage, 'error');
-      fetchKeywords(1, pagination.limit, activeView, sortParams, {
-        tokens: selectedTokens,
-        include: includeFilter,
-        exclude: excludeFilter,
-        minVolume: "",
-        maxVolume: "",
-        minLength: "",
-        maxLength: "",
-        minDifficulty: "",
-        maxDifficulty: "",
-        serpFeatures: [],
-        minRating: '',
-        maxRating: ''
-      });
+      fetchKeywords(1, pagination.limit, activeView, sortParams, filterParams);
     } finally {
-      setIsLoadingData(false);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: { isLoadingData: false },
+      });
     }
-  }, [projectIdStr, pagination.limit, activeView, dispatch, projectIdNum, startProcessingCheck, addSnackbarMessage, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter]);
+  }, [projectIdStr, pagination.limit, activeView, dispatch, projectIdNum, startProcessingCheck, addSnackbarMessage, fetchKeywords, sortParams, filterParams]);
   
   const handleUploadStart = useCallback(() => {
-    setIsUploading(true);
-    setProcessingStatus('uploading');
-    setProcessingProgress(0);
-    setProcessingMessage('Uploading CSV...');
+    detailDispatch({
+      type: 'updateProcessing',
+      payload: {
+        isUploading: true,
+        processingStatus: 'uploading',
+        processingProgress: 0,
+        processingMessage: 'Uploading CSV...',
+      },
+    });
     startProcessingCheck();
     bumpLogsRefresh();
   }, [startProcessingCheck, bumpLogsRefresh]);  
@@ -2233,30 +2418,26 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   }, []);
   const handleUploadSuccess = useCallback(
     (status: ProcessingStatus, message?: string) => {
-      setProcessingStatus(status);
-      setProcessingMessage(message || '');
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: {
+          processingStatus: status,
+          processingMessage: message || '',
+        },
+      });
       if (status === 'complete') {
-        setIsUploading(false);
-        setUploadSuccess(true);
-        setProcessingProgress(100);
-        setExpectedUploadFiles([]);
+        detailDispatch({
+          type: 'updateProcessing',
+          payload: {
+            isUploading: false,
+            uploadSuccess: true,
+            processingProgress: 100,
+          },
+        });
         stopProcessingCheck();
         addSnackbarMessage(message || 'File uploaded and processed successfully', 'success');
         fetchProjectStats();
-        fetchKeywords(1, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : ""
-        }, true);
+        fetchKeywords(1, pagination.limit, activeView, sortParams, filterParams, true);
         bumpLogsRefresh();
       } else if (status === 'queued' || status === 'processing') {
         startProcessingCheck();
@@ -2267,25 +2448,32 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             : 'Processing is queued and will begin shortly.')
         });
       } else {
-        setIsUploading(false);
+        detailDispatch({
+          type: 'updateProcessing',
+          payload: { isUploading: false },
+        });
         if (message) addSnackbarMessage(message, 'success');
       }
     },
     [
       addSnackbarMessage, startProcessingCheck, stopProcessingCheck, bumpLogsRefresh,
       fetchKeywords, pagination.limit, activeView, sortParams,
-      selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats
+      filterParams, fetchProjectStats
     ]
   );
 
   const handleUploadError = useCallback(
     (message: string) => {
-      setIsUploading(false);
-      setProcessingStatus('error');
-      setProcessingProgress(0);
-      setDisplayProgress(0);
-      setProcessingMessage(message);
-      setExpectedUploadFiles([]);
+      detailDispatch({
+        type: 'updateProcessing',
+        payload: {
+          isUploading: false,
+          processingStatus: 'error',
+          processingProgress: 0,
+          displayProgress: 0,
+          processingMessage: message,
+        },
+      });
       addSnackbarMessage(message, 'error');
       stopProcessingCheck();
     },
@@ -2298,20 +2486,14 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       const initialPage = activeView !== prevActiveViewRef.current ? 1 : pagination.page;
       prevActiveViewRef.current = activeView;
       
-      fetchKeywords(initialPage, pagination.limit, activeView, sortParams, {
-        tokens: selectedTokens,
-        include: includeFilter,
-        exclude: excludeFilter,
-        minVolume: minVolume ? parseInt(minVolume) : "",
-        maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-        minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-        maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-        serpFeatures: selectedSerpFeatures,        
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
-      }, true);
+      fetchKeywords(
+        initialPage,
+        pagination.limit,
+        activeView,
+        sortParams,
+        filterParams,
+        true
+      );
       
       fetchProjectStats();
     }
@@ -2319,7 +2501,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       stopProcessingCheck();
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [projectIdStr, activeView, fetchProjectStats, fetchInitialData, fetchKeywords, stopProcessingCheck, pagination.limit, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, pagination.page, minRating, maxRating]);
+  }, [projectIdStr, activeView, fetchProjectStats, fetchInitialData, fetchKeywords, stopProcessingCheck, pagination.limit, sortParams, filterParams, pagination.page]);
   const { isAllSelected, isAnySelected } = useMemo(() => {
     const keywords = filteredAndSortedKeywords;
     const allFilteredIds = keywords.map(k => k.id);
@@ -2363,220 +2545,244 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   }, [getCurrentViewData]);
   const handleMinVolumeChange = useCallback(
     (value: string) => {
-      setMinVolume(value);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { minVolume: value },
+      });
       const debouncedFetch = debounce(() => {
-        setPagination(prev => ({ ...prev, page: 1 }));
-        fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: value ? parseInt(value) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,          
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
+        detailDispatch({
+          type: 'updatePagination',
+          payload: { pagination: { ...pagination, page: 1 } },
         });
+        fetchKeywords(
+          pagination.page,
+          pagination.limit,
+          activeView,
+          sortParams,
+          { ...filterParams, minVolume: value ? parseInt(value) : "" }
+        );
       }, 500);
   
       debouncedFetch();
     },
-    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]
+    [fetchKeywords, pagination, activeView, sortParams, filterParams]
   );
   
   const handleMaxVolumeChange = useCallback(
     (value: string) => {
-      setMaxVolume(value);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { maxVolume: value },
+      });
       if (value && !minVolume) {
-        setMinVolume('0');
+        detailDispatch({
+          type: 'updateFilters',
+          payload: { minVolume: '0' },
+        });
       }
       const debouncedFetch = debounce(() => {
-        setPagination(prev => ({ ...prev, page: 1 }));
-        fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : (value ? 0 : ""),
-          maxVolume: value ? parseInt(value) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,          
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
+        detailDispatch({
+          type: 'updatePagination',
+          payload: { pagination: { ...pagination, page: 1 } },
         });
+        fetchKeywords(
+          pagination.page,
+          pagination.limit,
+          activeView,
+          sortParams,
+          {
+            ...filterParams,
+            minVolume: minVolume ? parseInt(minVolume) : (value ? 0 : ""),
+            maxVolume: value ? parseInt(value) : "",
+          }
+        );
       }, 500);
   
       debouncedFetch();
     },
-    [minVolume, fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, minLength, maxLength]
+    [minVolume, fetchKeywords, pagination, activeView, sortParams, filterParams]
   );
 
 
   
   const handleMinDifficultyChange = useCallback(
     (value: string) => {
-      setMinDifficulty(value);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { minDifficulty: value },
+      });
       if (value && !minDifficulty) {
-        setMinDifficulty('0');
+        detailDispatch({
+          type: 'updateFilters',
+          payload: { minDifficulty: '0' },
+        });
       }
       const debouncedFetch = debounce(() => {
-        setPagination(prev => ({ ...prev, page: 1 }));
-        fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : (value ? 0 : ""),
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,          
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
+        detailDispatch({
+          type: 'updatePagination',
+          payload: { pagination: { ...pagination, page: 1 } },
         });
+        fetchKeywords(
+          pagination.page,
+          pagination.limit,
+          activeView,
+          sortParams,
+          {
+            ...filterParams,
+            minDifficulty: minDifficulty ? parseFloat(minDifficulty) : (value ? 0 : ""),
+          }
+        );
       }, 500);
   
       debouncedFetch();
     },
-    [minDifficulty, fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, maxDifficulty, selectedSerpFeatures, minRating, maxRating]
+    [minDifficulty, fetchKeywords, pagination, activeView, sortParams, filterParams]
   );
   
   const handleMaxDifficultyChange = useCallback(
     (value: string) => {
-      setMaxDifficulty(value);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { maxDifficulty: value },
+      });
       const debouncedFetch = debounce(() => {
-        setPagination(prev => ({ ...prev, page: 1 }));
-        fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: value ? parseFloat(value) : "",
-          serpFeatures: selectedSerpFeatures,
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
+        detailDispatch({
+          type: 'updatePagination',
+          payload: { pagination: { ...pagination, page: 1 } },
         });
+        fetchKeywords(
+          pagination.page,
+          pagination.limit,
+          activeView,
+          sortParams,
+          {
+            ...filterParams,
+            maxDifficulty: value ? parseFloat(value) : "",
+          }
+        );
       }, 500);
   
       debouncedFetch();
     },
-    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, selectedSerpFeatures, minRating, maxRating]
+    [fetchKeywords, pagination, activeView, sortParams, filterParams]
   );
     const handleMinRatingChange = useCallback(
     (value: string) => {
-      setMinRating(value);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { minRating: value },
+      });
       const debouncedFetch = debounce(() => {
-        setPagination(prev => ({ ...prev, page: 1 }));
-        fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          minRating: value ? parseInt(value) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
-          serpFeatures: selectedSerpFeatures,
+        detailDispatch({
+          type: 'updatePagination',
+          payload: { pagination: { ...pagination, page: 1 } },
         });
+        fetchKeywords(
+          pagination.page,
+          pagination.limit,
+          activeView,
+          sortParams,
+          {
+            ...filterParams,
+            minRating: value ? parseInt(value) : "",
+          }
+        );
       }, 500);
   
       debouncedFetch();
     },
-    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, maxRating, selectedSerpFeatures]
+    [fetchKeywords, pagination, activeView, sortParams, filterParams]
   );
   
   const handleMaxRatingChange = useCallback(
     (value: string) => {
-      setMaxRating(value);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { maxRating: value },
+      });
       if (value && !minRating) {
-        setMinRating('0');
+        detailDispatch({
+          type: 'updateFilters',
+          payload: { minRating: '0' },
+        });
       }
       const debouncedFetch = debounce(() => {
-        setPagination(prev => ({ ...prev, page: 1 }));
-        fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          minRating: minRating ? parseInt(minRating) : (value ? 0 : ""),
-          maxRating: value ? parseInt(value) : "",
-          serpFeatures: selectedSerpFeatures,
+        detailDispatch({
+          type: 'updatePagination',
+          payload: { pagination: { ...pagination, page: 1 } },
         });
+        fetchKeywords(
+          pagination.page,
+          pagination.limit,
+          activeView,
+          sortParams,
+          {
+            ...filterParams,
+            minRating: minRating ? parseInt(minRating) : (value ? 0 : ""),
+            maxRating: value ? parseInt(value) : "",
+          }
+        );
       }, 500);
   
       debouncedFetch();
     },
-    [minRating, fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures]
+    [minRating, fetchKeywords, pagination, activeView, sortParams, filterParams]
   );
 
   const handleMinLengthChange = useCallback(
     (value: string) => {
-      setMinLength(value);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { minLength: value },
+      });
       const debouncedFetch = debounce(() => {
-        setPagination(prev => ({ ...prev, page: 1 }));
-        fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: value ? parseInt(value) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
-          serpFeatures: selectedSerpFeatures,
+        detailDispatch({
+          type: 'updatePagination',
+          payload: { pagination: { ...pagination, page: 1 } },
         });
+        fetchKeywords(
+          pagination.page,
+          pagination.limit,
+          activeView,
+          sortParams,
+          {
+            ...filterParams,
+            minLength: value ? parseInt(value) : "",
+          }
+        );
       }, 500);
   
       debouncedFetch();
     },
-    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
+    [fetchKeywords, pagination, activeView, sortParams, filterParams]
   );
   
   const handleMaxLengthChange = useCallback(
     (value: string) => {
-      setMaxLength(value);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { maxLength: value },
+      });
       const debouncedFetch = debounce(() => {
-        setPagination(prev => ({ ...prev, page: 1 }));
-        fetchKeywords(pagination.page, pagination.limit, activeView, sortParams, {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: value ? parseInt(value) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          minRating: minRating ? parseInt(minRating) : "",
-          maxRating: maxRating ? parseInt(maxRating) : "",
-          serpFeatures: selectedSerpFeatures,
+        detailDispatch({
+          type: 'updatePagination',
+          payload: { pagination: { ...pagination, page: 1 } },
         });
+        fetchKeywords(
+          pagination.page,
+          pagination.limit,
+          activeView,
+          sortParams,
+          {
+            ...filterParams,
+            maxLength: value ? parseInt(value) : "",
+          }
+        );
       }, 500);
   
       debouncedFetch();
     },
-    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
+    [fetchKeywords, pagination, activeView, sortParams, filterParams]
   );
 
   const handleSerpFilterChange = useCallback((features: string[]) => {
@@ -2584,38 +2790,30 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       features.length !== selectedSerpFeatures.length || 
       features.some(f => !selectedSerpFeatures.includes(f))
     ) {
-      setSelectedSerpFeatures(features);
-      setPagination(prev => ({ ...prev, page: 1 }));
-      fetchKeywords(1, pagination.limit, activeView, sortParams, {
-        tokens: selectedTokens,
-        include: includeFilter,
-        exclude: excludeFilter,
-        minVolume: minVolume ? parseInt(minVolume) : "",
-        maxVolume: maxVolume ? parseInt(maxVolume) : "",
-        minLength: minLength ? parseInt(minLength) : "",
-        maxLength: maxLength ? parseInt(maxLength) : "",
-        minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-        maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-        serpFeatures: features,
-        minRating: '',
-        maxRating: ''
-      }, true);
+      detailDispatch({
+        type: 'updateFilters',
+        payload: { selectedSerpFeatures: features },
+      });
+      detailDispatch({
+        type: 'updatePagination',
+        payload: { pagination: { ...pagination, page: 1 } },
+      });
+      fetchKeywords(
+        1,
+        pagination.limit,
+        activeView,
+        sortParams,
+        { ...filterParams, serpFeatures: features },
+        true
+      );
     }
   }, [
     fetchKeywords, 
-    pagination.limit, 
+    pagination, 
     activeView, 
     sortParams, 
-    selectedTokens, 
-    includeFilter, 
-    excludeFilter, 
-    minVolume, 
-    maxVolume, 
-    minLength,
-    maxLength,
-    minDifficulty, 
-    maxDifficulty, 
-    selectedSerpFeatures
+    selectedSerpFeatures,
+    filterParams
   ]);
 
   const handleTokenDataChange = useCallback(async () => {
@@ -2626,25 +2824,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         pagination.limit,
         activeView,
         sortParams,
-        {
-          tokens: selectedTokens,
-          include: includeFilter,
-          exclude: excludeFilter,
-          minVolume: minVolume ? parseInt(minVolume) : "",
-          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-          minLength: minLength ? parseInt(minLength) : "",
-          maxLength: maxLength ? parseInt(maxLength) : "",
-          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-          serpFeatures: selectedSerpFeatures,
-          minRating: '',
-          maxRating: ''
-        },
+        filterParams,
         true
       ),
       fetchProjectStats(),
     ]);
-  }, [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, fetchProjectStats,apiCache, projectIdStr]);
+  }, [fetchKeywords, pagination, activeView, sortParams, filterParams, fetchProjectStats, apiCache, projectIdStr]);
   if (!projectIdStr) {
     return (
       <div className="min-h-screen flex justify-center items-center">
@@ -2653,8 +2838,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     );
   }
 
-  const isProcessing = processingStatus === 'queued' || processingStatus === 'processing';
-  const showUploadLoader = isUploading || isProcessing;
   const totalChildKeywords = Math.max(0, stats.totalKeywords - stats.totalParentKeywords);
 
   return (
@@ -2662,9 +2845,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       <Header projectName={project?.name} />
       <ProjectDetailToolbar
         activeView={activeView}
-        isExportingParent={isExportingParent}
-        isImportingParent={isImportingParent}
-        isExporting={isExporting}
         onExportParentKeywords={handleExportParentKeywords}
         onImportParentKeywords={handleImportParentKeywords}
         onExportCSV={handleExportCSV}
@@ -2685,7 +2865,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     projectId={projectIdStr}
                     stats={stats}
                     totalChildKeywords={totalChildKeywords}
-                    showUploadLoader={showUploadLoader}
                     isUploading={isUploading}
                     processingStatus={processingStatus}
                     processingMessage={processingMessage}
@@ -2728,49 +2907,60 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       handleUnconfirmKeywords={handleUnconfirmKeywords}
                     />
                     <MainContent
-                      activeView={activeView}
-                      isTableLoading={isTableLoading}
-                      keywordsToDisplay={formatDataForDisplay}
-                      pagination={pagination}
-                      isLoadingData={isLoadingData}
-                      loadingChildren={loadingChildren}
-                      expandedGroups={expandedGroups}
-                      selectedKeywordIds={selectedKeywordIds}
-                      selectedTokens={selectedTokens}
-                      sortParams={sortParams}
-                      isAllSelected={isAllSelected}
-                      isAnySelected={isAnySelected}
-                      projectIdStr={projectIdStr}
-                      selectedParentKeywordCount={selectedParentKeywordCount}
-                      minVolume={minVolume}
-                      maxVolume={maxVolume}
-                      minLength={minLength}
-                      maxLength={maxLength}
-                      minRating={minRating}
-                      maxRating={maxRating}
-                      minDifficulty={minDifficulty}
-                      maxDifficulty={maxDifficulty}
-                      handleViewChange={handleViewChange}
-                      handlePageChange={handlePageChange}
-                      handleLimitChange={handleLimitChange}
-                      handleMinVolumeChange={handleMinVolumeChange}
-                      handleMaxVolumeChange={handleMaxVolumeChange}
-                      handleMinLengthChange={handleMinLengthChange}
-                      handleMaxLengthChange={handleMaxLengthChange}
-                      handleMinDifficultyChange={handleMinDifficultyChange}
-                      handleMaxDifficultyChange={handleMaxDifficultyChange}
-                      handleMinRatingChange={handleMinRatingChange}
-                      handleMaxRatingChange={handleMaxRatingChange}
-                      toggleGroupExpansion={toggleGroupExpansion}
-                      toggleKeywordSelection={toggleKeywordSelection}
-                      toggleTokenSelection={handleAdvancedTokenSelection}
-                      removeToken={removeToken}
-                      handleSort={handleSort}
-                      handleSelectAllClick={handleSelectAllClick}
-                      handleMiddleClickGroup={handleMiddleClickGroup}
-                      stats={stats}
-                      selectedSerpFeatures={selectedSerpFeatures}
-                      handleSerpFilterChange={handleSerpFilterChange}
+                      viewState={{
+                        activeView,
+                        stats,
+                        selectedParentKeywordCount,
+                      }}
+                      tableState={{
+                        keywordsToDisplay: formatDataForDisplay,
+                        pagination,
+                        isLoadingData,
+                        isTableLoading,
+                        loadingChildren,
+                        expandedGroups,
+                        selectedKeywordIds,
+                        selectedTokens,
+                        sortParams,
+                        isAllSelected,
+                        isAnySelected,
+                        projectIdStr,
+                      }}
+                      filterValues={{
+                        minVolume,
+                        maxVolume,
+                        minLength,
+                        maxLength,
+                        minRating,
+                        maxRating,
+                        minDifficulty,
+                        maxDifficulty,
+                      }}
+                      filterHandlers={{
+                        onMinVolumeChange: handleMinVolumeChange,
+                        onMaxVolumeChange: handleMaxVolumeChange,
+                        onMinLengthChange: handleMinLengthChange,
+                        onMaxLengthChange: handleMaxLengthChange,
+                        onMinDifficultyChange: handleMinDifficultyChange,
+                        onMaxDifficultyChange: handleMaxDifficultyChange,
+                        onMinRatingChange: handleMinRatingChange,
+                        onMaxRatingChange: handleMaxRatingChange,
+                      }}
+                      tableHandlers={{
+                        onViewChange: handleViewChange,
+                        onPageChange: handlePageChange,
+                        onLimitChange: handleLimitChange,
+                        onSort: handleSort,
+                        onSelectAllClick: handleSelectAllClick,
+                        onMiddleClickGroup: handleMiddleClickGroup,
+                        toggleGroupExpansion,
+                        toggleKeywordSelection,
+                        toggleTokenSelection: handleAdvancedTokenSelection,
+                        removeToken,
+                      }}
+                      serpFilters={{
+                        onSerpFilterChange: handleSerpFilterChange,
+                      }}
                     />
                   </>
                 )}
@@ -2797,20 +2987,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                         pagination.limit,
                         activeView,
                         sortParams,
-                        {
-                          tokens: selectedTokens,
-                          include: includeFilter,
-                          exclude: excludeFilter,
-                          minVolume: minVolume ? parseInt(minVolume) : "",
-                          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-                          minLength: minLength ? parseInt(minLength) : "",
-                          maxLength: maxLength ? parseInt(maxLength) : "",
-                          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-                          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-                          serpFeatures: selectedSerpFeatures,
-                          minRating: minRating ? parseInt(minRating) : "",
-                          maxRating: maxRating ? parseInt(maxRating) : "",
-                        },
+                        filterParams,
                         true
                       ),
                       fetchProjectStats()
@@ -2824,20 +3001,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                         pagination.limit,
                         activeView,
                         sortParams,
-                        {
-                          tokens: selectedTokens,
-                          include: includeFilter,
-                          exclude: excludeFilter,
-                          minVolume: minVolume ? parseInt(minVolume) : "",
-                          maxVolume: maxVolume ? parseInt(maxVolume) : "",
-                          minLength: minLength ? parseInt(minLength) : "",
-                          maxLength: maxLength ? parseInt(maxLength) : "",
-                          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-                          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-                          serpFeatures: selectedSerpFeatures,
-                          minRating: minRating ? parseInt(minRating) : "",
-                          maxRating: maxRating ? parseInt(maxRating) : "",
-                        },
+                        filterParams,
                         true
                       ),
                       fetchProjectStats()

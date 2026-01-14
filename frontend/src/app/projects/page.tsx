@@ -7,29 +7,20 @@ import CreateProjectForm from './components/CreateProjectForm';
 import ProjectsTable from './components/ProjectsTable';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store/store';
-import apiClient from '../../lib/apiClient';
+import {
+  createProject,
+  deleteProject,
+  fetchProjectsWithStats,
+  updateProject as updateProjectApi,
+} from '../../lib/api/projects';
 import authService from '../../lib/authService';
-import { addProject, removeProject, setProjects, updateProject } from '../../store/projectSlice';
-import { Project } from '@/lib/types';
+import { addProject, removeProject, setProjects, updateProject as updateProjectAction } from '../../store/projectSlice';
+import { Project, ProjectWithStats } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 
 function isError(error: unknown): error is Error {
   return error instanceof Error;
-}
-export interface ProjectStats {
-  totalKeywords: number;
-  ungroupedCount: number;
-  groupedKeywordsCount: number;
-  confirmedKeywordsCount: number;
-  blockedCount: number;
-  groupedPages: number;
-  confirmedPages: number;
-  totalParentKeywords: number;
-}
-
-export interface ProjectWithStats extends Project {
-  stats?: ProjectStats;
 }
 export default function Projects() {
   const [newProjectName, setNewProjectName] = useState<string>('');
@@ -60,7 +51,7 @@ export default function Projects() {
 
       try {
         setIsLoadingProjects(true);
-        const response = await apiClient.fetchProjectsWithStats();
+        const response = await fetchProjectsWithStats();
         const projectsWithStats = response.projects;
         setLocalProjects(projectsWithStats);
         dispatch(setProjects(projectsWithStats.map(p => ({ id: p.id, name: p.name, created_at: p.created_at, updated_at: p.updated_at }))));
@@ -84,12 +75,12 @@ export default function Projects() {
     setIsCreating(true);
     setError('');
     try {
-      const newProjectData = await apiClient.createProject(trimmedName);
+      const newProjectData = await createProject(trimmedName);
       dispatch(addProject(newProjectData));
       setNewProjectName('');
       
       // Refresh the entire projects list with stats
-      const response = await apiClient.fetchProjectsWithStats();
+      const response = await fetchProjectsWithStats();
       setLocalProjects(response.projects);
     } catch (creationError: unknown) {
       const message = isError(creationError) ? creationError.message : 'Failed to create project.';
@@ -113,8 +104,8 @@ export default function Projects() {
     setIsEditing(true);
     setError('');
     try {
-      const updatedProject = await apiClient.updateProject(projectId, trimmedName);
-      dispatch(updateProject(updatedProject));
+      const updatedProject = await updateProjectApi(projectId, trimmedName);
+      dispatch(updateProjectAction(updatedProject));
       setLocalProjects((prev) =>
         prev.map((p) => (p.id === projectId ? { ...p, ...updatedProject } : p))
       );
@@ -140,7 +131,7 @@ export default function Projects() {
     setIsDeleting(true);
     setError('');
     try {
-      await apiClient.deleteProject(projectToDelete.id);
+      await deleteProject(projectToDelete.id);
       dispatch(removeProject({ projectId: projectToDelete.id }));
       setLocalProjects((prev) => prev.filter((p) => p.id !== projectToDelete.id));
       setShowDeleteModal(false);

@@ -1,25 +1,10 @@
 import React, { memo } from 'react';
-import { KeywordTable } from './KeywordTable';
-import Pagination from './Pagination';
-import { ActiveKeywordView, GroupedKeywordsDisplay, PaginationInfo, SortParams } from './types';
 import { debounce } from 'lodash';
-const LIMIT_OPTIONS = [100, 250, 500, 1000, 2500, 5000];
+import { KeywordTableContainer } from './KeywordTableContainer';
+import { SelectionToolbar } from './SelectionToolbar';
+import { ActiveKeywordView, GroupedKeywordsDisplay, PaginationInfo, SortParams } from './types';
 
-interface MainContentProps {
-  activeView: ActiveKeywordView;
-  keywordsToDisplay: GroupedKeywordsDisplay[];
-  pagination: PaginationInfo;
-  isLoadingData: boolean;
-  loadingChildren: Set<string>;
-  expandedGroups: Set<string>;
-  selectedKeywordIds: Set<number>;
-  selectedTokens: string[];
-  sortParams: SortParams;
-  isAllSelected: boolean;
-  isAnySelected: boolean;
-  projectIdStr: string;
-  isTableLoading: boolean;
-  selectedParentKeywordCount: number;
+interface FilterValues {
   minVolume: string;
   maxVolume: string;
   minLength: string;
@@ -28,37 +13,66 @@ interface MainContentProps {
   maxDifficulty: string;
   minRating: string;
   maxRating: string;
-  handleMinRatingChange: (value: string) => void; 
-  handleMaxRatingChange: (value: string) => void; 
-  handleViewChange: (newView: ActiveKeywordView) => void;
-  handlePageChange: (newPage: number) => void;
-  handleLimitChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
-  handleMinVolumeChange: (value: string) => void; 
-  handleMaxVolumeChange: (value: string) => void; 
-  handleMinLengthChange: (value: string) => void; 
-  handleMaxLengthChange: (value: string) => void; 
-  handleMinDifficultyChange: (value: string) => void; 
-  handleMaxDifficultyChange: (value: string) => void; 
-  toggleGroupExpansion: (groupId: string, hasChildren: boolean) => void;
-  toggleKeywordSelection: (keywordId: number) => void;
-  toggleTokenSelection: (token: string, event: React.MouseEvent) => void;
-  removeToken: (token: string) => void;
-  handleSort: (column: string) => void;
-  handleSelectAllClick: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  handleMiddleClickGroup: (keywordIds: number[]) => void;
-  currentGroupId?: string;
-  groupName?: string;
-  stats: {
-    ungroupedCount: number;
-    groupedKeywordsCount: number;
-    groupedPages: number;
-    confirmedKeywordsCount?: number;
-    confirmedPages?: number;
-    blockedCount: number;
-    totalKeywords: number;
+}
+
+interface FilterHandlers {
+  onMinVolumeChange: (value: string) => void;
+  onMaxVolumeChange: (value: string) => void;
+  onMinLengthChange: (value: string) => void;
+  onMaxLengthChange: (value: string) => void;
+  onMinDifficultyChange: (value: string) => void;
+  onMaxDifficultyChange: (value: string) => void;
+  onMinRatingChange: (value: string) => void;
+  onMaxRatingChange: (value: string) => void;
+}
+
+interface StatsSummary {
+  ungroupedCount: number;
+  groupedKeywordsCount: number;
+  groupedPages: number;
+  confirmedKeywordsCount?: number;
+  confirmedPages?: number;
+  blockedCount: number;
+  totalKeywords: number;
+}
+
+interface MainContentProps {
+  viewState: {
+    activeView: ActiveKeywordView;
+    stats: StatsSummary;
+    selectedParentKeywordCount: number;
   };
-  selectedSerpFeatures: string[];
-  handleSerpFilterChange: (features: string[]) => void;
+  tableState: {
+    keywordsToDisplay: GroupedKeywordsDisplay[];
+    pagination: PaginationInfo;
+    isLoadingData: boolean;
+    isTableLoading: boolean;
+    loadingChildren: Set<string>;
+    expandedGroups: Set<string>;
+    selectedKeywordIds: Set<number>;
+    selectedTokens: string[];
+    sortParams: SortParams;
+    isAllSelected: boolean;
+    isAnySelected: boolean;
+    projectIdStr: string;
+  };
+  filterValues: FilterValues;
+  filterHandlers: FilterHandlers;
+  tableHandlers: {
+    onViewChange: (newView: ActiveKeywordView) => void;
+    onPageChange: (newPage: number) => void;
+    onLimitChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+    onSort: (column: string) => void;
+    onSelectAllClick: (event: React.ChangeEvent<HTMLInputElement>) => void;
+    onMiddleClickGroup: (keywordIds: number[]) => void;
+    toggleGroupExpansion: (groupId: string, hasChildren: boolean) => void;
+    toggleKeywordSelection: (keywordId: number) => void;
+    toggleTokenSelection: (token: string, event: React.MouseEvent) => void;
+    removeToken: (token: string) => void;
+  };
+  serpFilters: {
+    onSerpFilterChange: (features: string[]) => void;
+  };
 }
 
 const VolumeInputs = memo(
@@ -115,7 +129,6 @@ const VolumeInputs = memo(
       debouncedMaxChange(value);
     };
 
-    
     return (
       <div className="flex items-center">
         <span className="text-[13px] text-foreground font-light mr-1">Vol:</span>
@@ -284,8 +297,6 @@ const DifficultyInputs = memo(
       debouncedMaxChange(value);
     };
 
-  
-   
     return (
       <div className="flex items-center ml-2 ">
         <span className="text-[13px] text-foreground font-light mr-1">Diff:</span>
@@ -316,6 +327,7 @@ const DifficultyInputs = memo(
     );
   }
 );
+
 const RatingInputs = memo(
   ({
     minRating,
@@ -398,80 +410,44 @@ const RatingInputs = memo(
     );
   }
 );
+
 VolumeInputs.displayName = 'VolumeInputs';
 DifficultyInputs.displayName = 'DifficultyInputs';
 RatingInputs.displayName = 'RatingInputs';
 
 export const MainContent: React.FC<MainContentProps> = memo(({
-  activeView,
-  keywordsToDisplay,
-  pagination,
-  isLoadingData,
-  loadingChildren,
-  expandedGroups,
-  selectedKeywordIds,
-  selectedTokens,
-  sortParams,
-  isAllSelected,
-  isAnySelected,
-  projectIdStr,
-  isTableLoading,
-  selectedParentKeywordCount,
-  minVolume,
-  maxVolume,
-  minLength,
-  maxLength,
-  minDifficulty,
-  maxDifficulty,
-  minRating,
-  maxRating,
-  handleViewChange,
-  handlePageChange,
-  handleLimitChange,
-  handleMinVolumeChange,
-  handleMaxVolumeChange,
-  handleMinLengthChange,
-  handleMaxLengthChange,
-  handleMinDifficultyChange,
-  handleMaxDifficultyChange,
-  handleMinRatingChange,
-  handleMaxRatingChange,
-  toggleGroupExpansion,
-  toggleKeywordSelection,
-  toggleTokenSelection,
-  removeToken,
-  handleSort,
-  handleSelectAllClick,
-  handleMiddleClickGroup,
-  stats,
-  handleSerpFilterChange,
+  viewState,
+  tableState,
+  filterValues,
+  filterHandlers,
+  tableHandlers,
+  serpFilters,
 }) => {
-  const totalKeywords = stats.totalKeywords > 0
-    ? stats.totalKeywords
-    : (stats.ungroupedCount + stats.groupedKeywordsCount + (stats.confirmedKeywordsCount || 0) + stats.blockedCount);
+  const totalKeywords = viewState.stats.totalKeywords > 0
+    ? viewState.stats.totalKeywords
+    : (viewState.stats.ungroupedCount + viewState.stats.groupedKeywordsCount + (viewState.stats.confirmedKeywordsCount || 0) + viewState.stats.blockedCount);
 
   const ungroupedPercent = totalKeywords > 0
-    ? ((stats.ungroupedCount / totalKeywords) * 100).toFixed(2)
+    ? ((viewState.stats.ungroupedCount / totalKeywords) * 100).toFixed(2)
     : '0.0';
   const groupedPercent = totalKeywords > 0
-    ? ((stats.groupedKeywordsCount / totalKeywords) * 100).toFixed(2)
+    ? ((viewState.stats.groupedKeywordsCount / totalKeywords) * 100).toFixed(2)
     : '0.0';
-  const confirmedPercent = totalKeywords > 0 && stats.confirmedKeywordsCount
-    ? ((stats.confirmedKeywordsCount / totalKeywords) * 100).toFixed(2)
+  const confirmedPercent = totalKeywords > 0 && viewState.stats.confirmedKeywordsCount
+    ? ((viewState.stats.confirmedKeywordsCount / totalKeywords) * 100).toFixed(2)
     : '0.0';
   const blockedPercent = totalKeywords > 0
-    ? ((stats.blockedCount / totalKeywords) * 100).toFixed(2)
+    ? ((viewState.stats.blockedCount / totalKeywords) * 100).toFixed(2)
     : '0.0';
 
-  const viewLabels = {
-    ungrouped: `View 1 (UG; ${stats.ungroupedCount.toLocaleString()}/${ungroupedPercent}%)`,
-    grouped: `View 2 (G; ${stats.groupedPages.toLocaleString()}/${stats.groupedKeywordsCount.toLocaleString()}/${groupedPercent}%)`,
-    confirmed: `View 3 (C; ${(stats.confirmedPages || 0).toLocaleString()}/${(stats.confirmedKeywordsCount || 0).toLocaleString()}/${confirmedPercent}%)`,
-    blocked: `View 4 (${stats.blockedCount.toLocaleString()}/${blockedPercent}%)`,
+  const viewLabels: Record<ActiveKeywordView, string> = {
+    ungrouped: `View 1 (UG; ${viewState.stats.ungroupedCount.toLocaleString()}/${ungroupedPercent}%)`,
+    grouped: `View 2 (G; ${viewState.stats.groupedPages.toLocaleString()}/${viewState.stats.groupedKeywordsCount.toLocaleString()}/${groupedPercent}%)`,
+    confirmed: `View 3 (C; ${(viewState.stats.confirmedPages || 0).toLocaleString()}/${(viewState.stats.confirmedKeywordsCount || 0).toLocaleString()}/${confirmedPercent}%)`,
+    blocked: `View 4 (${viewState.stats.blockedCount.toLocaleString()}/${blockedPercent}%)`,
   };
 
-  const shouldShowPagination = pagination.pages >= 1;
-  const showSelectedParentCount = activeView === 'grouped' && selectedKeywordIds.size > 0;
+  const showSelectedParentCount = viewState.activeView === 'grouped' && tableState.selectedKeywordIds.size > 0;
 
   return (
     <>
@@ -479,134 +455,77 @@ export const MainContent: React.FC<MainContentProps> = memo(({
         <h2 className="text-[15px] font-semibold text-foreground">Keyword Management</h2>
         {showSelectedParentCount && (
           <span className="text-xs text-muted">
-            Selected parent keywords: {selectedParentKeywordCount.toLocaleString()}
+            Selected parent keywords: {viewState.selectedParentKeywordCount.toLocaleString()}
           </span>
         )}
       </div>
       <div className="flex flex-col justify-end mb-4 gap-3 shrink-0 bg-surface-muted/40 rounded-lg p-2">
         <div className="flex items-center gap-2 w-full justify-end">
           <VolumeInputs
-            minVolume={minVolume}
-            maxVolume={maxVolume}
-            onMinVolumeChange={handleMinVolumeChange}
-            onMaxVolumeChange={handleMaxVolumeChange}
+            minVolume={filterValues.minVolume}
+            maxVolume={filterValues.maxVolume}
+            onMinVolumeChange={filterHandlers.onMinVolumeChange}
+            onMaxVolumeChange={filterHandlers.onMaxVolumeChange}
           />
           <LengthInputs
-            minLength={minLength}
-            maxLength={maxLength}
-            onMinLengthChange={handleMinLengthChange}
-            onMaxLengthChange={handleMaxLengthChange}
+            minLength={filterValues.minLength}
+            maxLength={filterValues.maxLength}
+            onMinLengthChange={filterHandlers.onMinLengthChange}
+            onMaxLengthChange={filterHandlers.onMaxLengthChange}
           />
           <DifficultyInputs
-            minDifficulty={minDifficulty}
-            maxDifficulty={maxDifficulty}
-            onMinDifficultyChange={handleMinDifficultyChange}
-            onMaxDifficultyChange={handleMaxDifficultyChange}
+            minDifficulty={filterValues.minDifficulty}
+            maxDifficulty={filterValues.maxDifficulty}
+            onMinDifficultyChange={filterHandlers.onMinDifficultyChange}
+            onMaxDifficultyChange={filterHandlers.onMaxDifficultyChange}
           />
           <RatingInputs
-            minRating={minRating}
-            maxRating={maxRating}
-            onMinRatingChange={handleMinRatingChange}
-            onMaxRatingChange={handleMaxRatingChange}
+            minRating={filterValues.minRating}
+            maxRating={filterValues.maxRating}
+            onMinRatingChange={filterHandlers.onMinRatingChange}
+            onMaxRatingChange={filterHandlers.onMaxRatingChange}
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex border border-border p-0.5 gap-2 rounded bg-surface-muted w-full sm:w-auto justify-center shrink-0">
-            <button
-              onClick={() => handleViewChange('ungrouped')}
-              className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'ungrouped' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
-            >
-              {viewLabels.ungrouped}
-            </button>
-            <button
-              onClick={() => handleViewChange('grouped')}
-              className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'grouped' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
-            >
-              {viewLabels.grouped}
-            </button>
-            <button
-              onClick={() => handleViewChange('confirmed')}
-              className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'confirmed' ? 'bg-green-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
-            >
-              {viewLabels.confirmed}
-            </button>
-            <button
-              onClick={() => handleViewChange('blocked')}
-              className={`flex-1 sm:flex-none px-1 py-2 text-sm rounded transition-colors hover:cursor-pointer ${activeView === 'blocked' ? 'bg-red-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
-            >
-              {viewLabels.blocked}
-            </button>
-          </div>
-
-          <div className="flex items-center justify-center sm:justify-end gap-1 text-xs text-foreground">
-            <span className="flex-shrink-0">
-              Showing <span className="inline-block min-w-[30px] text-center">{keywordsToDisplay.length.toLocaleString()}</span> | 
-              Page <span className="inline-block min-w-[10px] text-center">{pagination.page}</span> /
-              <span className="inline-block min-w-[20px] text-center">{pagination.pages.toLocaleString()}</span> | 
-              Total: <span className="inline-block min-w-[50px] text-center">{pagination.total.toLocaleString()}</span>
-            </span>
-            <div className="relative inline-block ml-1">
-              <select
-                id="itemsPerPage"
-                value={pagination.limit}
-                onChange={handleLimitChange}
-                className="appearance-none bg-white border border-border rounded text-sm py-1 pl-2 pr-6 focus:outline-none cursor-pointer"
-                aria-label="Items per page"
-                disabled={isLoadingData}
-              >
-                {LIMIT_OPTIONS.map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-foreground">
-                <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SelectionToolbar
+          activeView={viewState.activeView}
+          viewLabels={viewLabels}
+          keywordsCount={tableState.keywordsToDisplay.length}
+          pagination={tableState.pagination}
+          isLoadingData={tableState.isLoadingData}
+          onViewChange={tableHandlers.onViewChange}
+          onLimitChange={tableHandlers.onLimitChange}
+        />
       </div>
 
-      <div className="relative flex-1 min-h-0 overflow-hidden">
-        <div className="flex h-full flex-col min-h-0">
-          <KeywordTable
-            groupedKeywords={keywordsToDisplay}
-            loading={isLoadingData}
-            isTableLoading={isTableLoading}
-            loadingChildren={loadingChildren}
-            expandedGroups={expandedGroups}
-            toggleGroupExpansion={toggleGroupExpansion}
-            selectedKeywordIds={selectedKeywordIds}
-            toggleKeywordSelection={toggleKeywordSelection}
-            selectedTokens={selectedTokens}
-            toggleTokenSelection={toggleTokenSelection}
-            removeToken={removeToken}
-            projectId={projectIdStr}
-            currentView={activeView}
-            sortParams={sortParams}
-            onSort={handleSort}
-            isAllSelected={isAllSelected}
-            isAnySelected={isAnySelected}
-            handleSelectAllClick={handleSelectAllClick}
-            handleMiddleClickGroup={handleMiddleClickGroup}
-            onSerpFilterChange={handleSerpFilterChange}
-          />
-          {shouldShowPagination && (
-            <div className="sticky bottom-0 bg-white border-t border-border px-2 py-2">
-              <Pagination
-                total={pagination.total}
-                page={pagination.page}
-                limit={pagination.limit}
-                pages={pagination.pages}
-                onPageChange={handlePageChange}
-                disabled={isLoadingData}
-              />
-            </div>
-          )}
-        </div>
-      </div>
+      <KeywordTableContainer
+        tableState={{
+          groupedKeywords: tableState.keywordsToDisplay,
+          isLoadingData: tableState.isLoadingData,
+          isTableLoading: tableState.isTableLoading,
+          loadingChildren: tableState.loadingChildren,
+          expandedGroups: tableState.expandedGroups,
+          selectedKeywordIds: tableState.selectedKeywordIds,
+          selectedTokens: tableState.selectedTokens,
+          sortParams: tableState.sortParams,
+          isAllSelected: tableState.isAllSelected,
+          isAnySelected: tableState.isAnySelected,
+          projectId: tableState.projectIdStr,
+          currentView: viewState.activeView,
+          pagination: tableState.pagination,
+        }}
+        handlers={{
+          toggleGroupExpansion: tableHandlers.toggleGroupExpansion,
+          toggleKeywordSelection: tableHandlers.toggleKeywordSelection,
+          toggleTokenSelection: tableHandlers.toggleTokenSelection,
+          removeToken: tableHandlers.removeToken,
+          onSort: tableHandlers.onSort,
+          onSelectAllClick: tableHandlers.onSelectAllClick,
+          onMiddleClickGroup: tableHandlers.onMiddleClickGroup,
+          onPageChange: tableHandlers.onPageChange,
+        }}
+        serpFilters={serpFilters}
+      />
     </>
   );
 });
