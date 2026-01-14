@@ -728,7 +728,7 @@ export function TokenManagement({
       />
 
       <div className="flex flex-col flex-1 min-h-0 border border-border rounded-md bg-white overflow-hidden">
-        <div className="flex-1 overflow-y-auto overflow-x-auto relative">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden relative">
           {isLoading ? (
             <div className="flex justify-center items-center h-full w-full bg-white absolute inset-0 z-20">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
