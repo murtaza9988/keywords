@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface Project {
   id: number;
   name: string;
@@ -71,10 +70,23 @@ export interface ProcessingStatusResponse {
   keywordCount: number;
   processedCount?: number;
   skippedCount?: number;
-  keywords?: any[];
+  keywords?: ProcessingKeyword[];
   complete?: boolean;
   totalRows?: number; 
   progress?: number; 
+}
+export interface ProcessingKeyword {
+  id?: number;
+  keyword?: string;
+  tokens?: string[] | string;
+  volume?: number;
+  difficulty?: number;
+  is_parent?: boolean;
+  group_id?: string | null;
+  status?: string;
+  child_count?: number;
+  original_volume?: number;
+  serpFeatures?: string[];
 }
 export interface GroupKeywordsResponse {
     message: string;
@@ -114,7 +126,7 @@ export interface ProjectState {
   keywordsCache: Record<string, Record<ActiveKeywordView, Keyword[]>>;
   sortedKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
   filteredKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
-  metaData: Record<string, Record<string, any>>;
+  metaData: Record<string, Record<string, unknown>>;
   stats: Record<string, {
     ungroupedCount: number;
     groupedKeywordsCount: number;
