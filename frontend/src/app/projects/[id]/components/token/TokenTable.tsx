@@ -66,10 +66,15 @@ export function TokenTable({
     return null;
   };
 
-  const renderSortableHeader = (column: string, label: string, align: 'left' | 'right' = 'left') => (
+  const renderSortableHeader = (
+    column: string,
+    label: string,
+    align: 'left' | 'right' = 'left',
+    className = ''
+  ) => (
     <th
       scope="col"
-      className={`px-1 py-1.5 text-${align} text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer hover:text-muted`}
+      className={`px-1 py-1.5 text-${align} text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer hover:text-muted ${className}`}
       onClick={() => onSort(column)}
     >
       <div className={`flex items-center ${align === 'right' ? 'justify-end' : ''}`}>
@@ -101,7 +106,7 @@ export function TokenTable({
    <div className="relative h-full">
         <table className="w-full table-fixed divide-y divide-gray-200 text-xs">
           <colgroup>
-            <col className="w-8" />
+            <col className="w-[40px]" />
             <col className="w-[42%]" />
             <col className="w-[12%]" />
             <col className="w-[12%]" />
@@ -110,7 +115,7 @@ export function TokenTable({
           </colgroup>
           <thead className="bg-surface-muted sticky top-0 z-5">
             <tr>
-              <th scope="col" className="px-1 py-1.5 text-left">
+              <th scope="col" className="px-1 py-1.5 text-left sticky left-0 z-20 bg-surface-muted">
                 <input
                   type="checkbox"
                   className="rounded border-border w-4 h-4 text-blue-600"
@@ -120,7 +125,7 @@ export function TokenTable({
                   aria-label={allSelected ? 'Deselect all tokens' : 'Select all tokens'}
                 />
               </th>
-              {renderSortableHeader('tokenName', 'Token', 'left')}
+              {renderSortableHeader('tokenName', 'Token', 'left', 'sticky left-[40px] z-10 bg-surface-muted')}
               {renderSortableHeader('count', 'Ct.', 'right')}
               {renderSortableHeader('volume', 'Vol', 'right')}
               {renderSortableHeader('difficulty', 'Diff', 'right')}
@@ -147,7 +152,7 @@ export function TokenTable({
                         hasChildren ? 'border-b-0' : ''
                       }`}
                     >
-                      <td className="px-1 py-1 whitespace-nowrap">
+                      <td className={`px-1 py-1 whitespace-nowrap sticky left-0 z-10 ${isSelected ? 'bg-surface-muted' : rowBgClass}`}>
                         <input
                           type="checkbox"
                           className="rounded border-border text-blue-600"
@@ -158,7 +163,7 @@ export function TokenTable({
                         />
                       </td>
                       <td
-                        className="pr-0.5 pl-1 py-1 whitespace-nowrap text-[13px] font-medium text-foreground relative"
+                        className={`pr-0.5 pl-1 py-1 whitespace-nowrap text-[13px] font-medium text-foreground relative sticky left-[40px] z-10 ${isSelected ? 'bg-surface-muted' : rowBgClass}`}
                         onMouseEnter={() => onTokenHover(token.tokenName)}
                         onMouseLeave={() => onTokenHover(null)}
                       >

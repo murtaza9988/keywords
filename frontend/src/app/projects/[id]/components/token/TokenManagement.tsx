@@ -713,45 +713,49 @@ export function TokenManagement({
         onLimitChange={handleLimitChange} 
       />
 
-      <div className="flex-grow overflow-y-auto overflow-x-hidden border border-border rounded-md relative min-h-[400px] bg-white">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-full w-full bg-white absolute inset-0 z-20">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          </div>
-        ) : tokens.length > 0 ? (
-          <TokenTable
-            tokens={tokens}
-            selectedTokenNames={selectedTokenNames}
-            expandedTokens={expandedTokens}
-            onSelectAll={handleSelectAllClick}
-            onToggleSelection={toggleLocalTokenSelection}
-            onToggleExpansion={toggleTokenExpansion}
-            onTokenClick={handleTokenClick}
-            onBlockToken={handleBlockSingleToken}
-            onUnblockToken={handleUnblockSingleToken}
-            onUnmergeToken={handleUnmergeToken}
-            onUnmergeIndividualToken={handleUnmergeIndividualToken}
-            isLoading={false}
-            isProcessingAction={isProcessingAction}
-            sortParams={sortParams}
-            onSort={handleSort}
-            getTopKeywords={getTopKeywords}
-            onTokenHover={setHoveredToken}
-            hoveredToken={hoveredToken}
-            activeTokenView={activeTokenView}
-          />
-        ) : (
-          <div className="flex justify-center items-center h-full">
-            <p className="text-muted">No tokens found</p>
-          </div>
-        )}
-      </div>
+      <div className="flex flex-col flex-1 min-h-0 border border-border rounded-md bg-white overflow-hidden">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden relative">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-full w-full bg-white absolute inset-0 z-20">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : tokens.length > 0 ? (
+            <TokenTable
+              tokens={tokens}
+              selectedTokenNames={selectedTokenNames}
+              expandedTokens={expandedTokens}
+              onSelectAll={handleSelectAllClick}
+              onToggleSelection={toggleLocalTokenSelection}
+              onToggleExpansion={toggleTokenExpansion}
+              onTokenClick={handleTokenClick}
+              onBlockToken={handleBlockSingleToken}
+              onUnblockToken={handleUnblockSingleToken}
+              onUnmergeToken={handleUnmergeToken}
+              onUnmergeIndividualToken={handleUnmergeIndividualToken}
+              isLoading={false}
+              isProcessingAction={isProcessingAction}
+              sortParams={sortParams}
+              onSort={handleSort}
+              getTopKeywords={getTopKeywords}
+              onTokenHover={setHoveredToken}
+              hoveredToken={hoveredToken}
+              activeTokenView={activeTokenView}
+            />
+          ) : (
+            <div className="flex justify-center items-center h-full">
+              <p className="text-muted">No tokens found</p>
+            </div>
+          )}
+        </div>
 
-      <TokenPagination
-        pagination={pagination}
-        onPageChange={handlePageChange}
-        isLoading={isLoading}
-      />
+        <div className="sticky bottom-0 border-t border-border bg-white px-2 py-2">
+          <TokenPagination
+            pagination={pagination}
+            onPageChange={handlePageChange}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
 
       {showCreateToken && (
         <CreateTokenModal

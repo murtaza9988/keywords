@@ -16,6 +16,7 @@ import {
   TokenListResponse,
   Note,
   CSVUpload,
+  ActivityLog,
 } from './types';
 import authService from './authService';
 
@@ -217,6 +218,22 @@ class ApiClient {
   async fetchProjectsWithStats(): Promise<{ projects: any[] }> {
     const data = await this.request<{ projects: any[] }>('get', '/api/projects/with-stats', undefined, undefined, true);
     return data;
+  }
+
+  async fetchProjectLogs(projectId: string): Promise<ActivityLog[]> {
+    const data = await this.request<ActivityLog[]>(
+      'get',
+      `/api/projects/${projectId}/logs`,
+      undefined,
+      undefined,
+      true
+    );
+    return data.map((log) => ({
+      ...log,
+      projectId: log.projectId ?? (log as any).project_id ?? Number(projectId),
+      createdAt: log.createdAt ?? (log as any).created_at ?? new Date().toISOString(),
+      details: log.details ?? null,
+    }));
   }
 
   async fetchSingleProjectStats(projectId: string): Promise<any> {

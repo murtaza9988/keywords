@@ -248,12 +248,12 @@ const toggleSerpFeature = useCallback((feature: string) => {
   const displayData = filterState.serpFeatures.length > 0 ? filteredData : groupedKeywords;
 
   return (
-    <div className="flex flex-col lg:h-[calc(100vh-400px)] border border-border shadow-sm">
+    <div className="flex flex-col lg:h-[calc(100vh-320px)] min-h-[520px] border border-border shadow-sm">
       <TableScroller>
         <KeywordTableElement>
           <thead className="bg-surface-muted sticky top-0 z-10">
             <tr onDoubleClick={handleDoubleClick}>
-              <th scope="col" className="w-8 px-3 py-1 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+              <th scope="col" className="w-[44px] px-2 py-1 text-left text-xs font-semibold text-muted uppercase tracking-wider sticky left-0 z-20 bg-surface-muted">
                 <input
                   type="checkbox"
                   className="h-6 w-6 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
@@ -264,13 +264,17 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   disabled={groupedKeywords.length === 0}
                 />
               </th>
-              <th scope="col" className="w-[55%] py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort(keywordColumnKey)}>
+              <th
+                scope="col"
+                className="w-[52%] py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer sticky left-[44px] z-10 bg-surface-muted"
+                onClick={() => onSort(keywordColumnKey)}
+              >
                 <div className="flex items-center">
                   <span>{keywordColumnHeader}</span>
                   {renderSortIcon(keywordColumnKey)}
                 </div>
               </th>
-              <th scope="col" className="w-[30%] px-2 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">Tokens</th>
+              <th scope="col" className="w-[28%] px-2 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">Tokens</th>
               <th scope="col" className="w-[40px] px-0.5 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1 justify-center">

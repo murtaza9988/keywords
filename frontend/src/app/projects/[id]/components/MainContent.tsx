@@ -559,41 +559,43 @@ export const MainContent: React.FC<MainContentProps> = memo(({
       </div>
 
       <div className="relative flex-1 min-h-0 overflow-hidden">
-        <KeywordTable
-          groupedKeywords={keywordsToDisplay}
-          loading={isLoadingData}
-          isTableLoading={isTableLoading}
-          loadingChildren={loadingChildren}
-          expandedGroups={expandedGroups}
-          toggleGroupExpansion={toggleGroupExpansion}
-          selectedKeywordIds={selectedKeywordIds}
-          toggleKeywordSelection={toggleKeywordSelection}
-          selectedTokens={selectedTokens}
-          toggleTokenSelection={toggleTokenSelection}
-          removeToken={removeToken}
-          projectId={projectIdStr}
-          currentView={activeView}
-          sortParams={sortParams}
-          onSort={handleSort}
-          isAllSelected={isAllSelected}
-          isAnySelected={isAnySelected}
-          handleSelectAllClick={handleSelectAllClick}
-          handleMiddleClickGroup={handleMiddleClickGroup}
-          onSerpFilterChange={handleSerpFilterChange}
-        />
-      </div>
-      {shouldShowPagination && (
-        <div className="shrink-0">
-          <Pagination
-            total={pagination.total}
-            page={pagination.page}
-            limit={pagination.limit}
-            pages={pagination.pages}
-            onPageChange={handlePageChange}
-            disabled={isLoadingData}
+        <div className="flex h-full flex-col min-h-0">
+          <KeywordTable
+            groupedKeywords={keywordsToDisplay}
+            loading={isLoadingData}
+            isTableLoading={isTableLoading}
+            loadingChildren={loadingChildren}
+            expandedGroups={expandedGroups}
+            toggleGroupExpansion={toggleGroupExpansion}
+            selectedKeywordIds={selectedKeywordIds}
+            toggleKeywordSelection={toggleKeywordSelection}
+            selectedTokens={selectedTokens}
+            toggleTokenSelection={toggleTokenSelection}
+            removeToken={removeToken}
+            projectId={projectIdStr}
+            currentView={activeView}
+            sortParams={sortParams}
+            onSort={handleSort}
+            isAllSelected={isAllSelected}
+            isAnySelected={isAnySelected}
+            handleSelectAllClick={handleSelectAllClick}
+            handleMiddleClickGroup={handleMiddleClickGroup}
+            onSerpFilterChange={handleSerpFilterChange}
           />
+          {shouldShowPagination && (
+            <div className="sticky bottom-0 bg-white border-t border-border px-2 py-2">
+              <Pagination
+                total={pagination.total}
+                page={pagination.page}
+                limit={pagination.limit}
+                pages={pagination.pages}
+                onPageChange={handlePageChange}
+                disabled={isLoadingData}
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </>
   );
 });

@@ -121,6 +121,7 @@ export const KeywordRow: React.FC<{
     };
     const keywordPaddingClass = isChild ? 'pl-6' : 'pl-1';
     const rowBgClass = index % 2 === 0 ? 'bg-table-row' : 'bg-table-row-alt';
+    const stickyBgClass = isSelected ? 'bg-surface-muted' : rowBgClass;
     const showCheckbox = currentView !== 'ungrouped' || !isChild;
     const showRatingColumn = currentView === 'ungrouped' || currentView === 'grouped';
   
@@ -129,7 +130,7 @@ export const KeywordRow: React.FC<{
         className={`${rowBgClass} hover:bg-surface-muted transition-colors duration-100 ${expandable ? 'cursor-pointer' : ''} ${isSelected ? 'bg-surface-muted' : ''} h-8`}
         onMouseDown={handleMouseDown}
       >
-        <td className="w-1 px-3 py-1 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+        <td className={`w-[44px] px-2 py-1 whitespace-nowrap sticky left-0 z-10 ${stickyBgClass}`} onClick={e => e.stopPropagation()}>
           {showCheckbox && (
             <input
               type="checkbox"
@@ -145,7 +146,7 @@ export const KeywordRow: React.FC<{
           )}
           {!showCheckbox && <span className="w-6 inline-block"></span>}
         </td>
-        <td className="w-[55%] py-1 text-[13px] font-light text-foreground">
+        <td className={`w-[52%] py-1 text-[13px] font-light text-foreground sticky left-[44px] z-10 ${stickyBgClass}`}>
           <div className={`flex items-start gap-x-0.5 ${keywordPaddingClass}`}>
             <span className="break-words leading-tight" title={displayText}>{displayText}</span>
             <span className="w-5 h-5 inline-flex items-center justify-center flex-shrink-0 flex-shrink-0" onClick={handleRowClick}>
@@ -163,7 +164,7 @@ export const KeywordRow: React.FC<{
             </span>
           </div>
         </td>
-        <td className="w-[30%] py-1 text-[13px] text-foreground whitespace-nowrap">
+        <td className="w-[28%] py-1 text-[13px] text-foreground whitespace-nowrap">
           <div className="flex flex-wrap gap-1 items-center">
             {orderedTokens.length > 0 ? (
               orderedTokens.map((token, index) => (
