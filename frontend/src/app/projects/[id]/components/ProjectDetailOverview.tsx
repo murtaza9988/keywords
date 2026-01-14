@@ -27,6 +27,7 @@ interface ProjectDetailOverviewProps {
   processingCurrentFile: string | null;
   processingQueue: string[];
   onUploadStart: () => void;
+  onUploadBatchStart: (files: File[]) => void;
   onUploadSuccess: (status: ProcessingStatus, message?: string) => void;
   onUploadError: (message: string) => void;
 }
@@ -43,6 +44,7 @@ export function ProjectDetailOverview({
   processingCurrentFile,
   processingQueue,
   onUploadStart,
+  onUploadBatchStart,
   onUploadSuccess,
   onUploadError,
 }: ProjectDetailOverviewProps): React.ReactElement {
@@ -57,6 +59,7 @@ export function ProjectDetailOverview({
                 <FileUploader
                   projectId={projectId}
                   onUploadStart={onUploadStart}
+                  onUploadBatchStart={onUploadBatchStart}
                   onUploadSuccess={onUploadSuccess}
                   onUploadError={onUploadError}
                 />

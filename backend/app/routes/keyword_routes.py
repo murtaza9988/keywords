@@ -51,6 +51,43 @@ async def get_processing_status(
     queue = processing_queue_service.get_queue(project_id)
     current_file = processing_queue_service.get_current_file(project_id)
     queued_files = [item.get("file_name") for item in queue] if queue else []
+    uploaded_files = result.get("uploaded_files", [])
+    processed_files = result.get("processed_files", [])
+    uploaded_count = len(uploaded_files)
+    processed_count = len(processed_files)
+    validation_error = None
+
+    if (
+        status in {"complete", "idle"}
+        and uploaded_count > 0
+        and processed_count < uploaded_count
+        and not queued_files
+        and not current_file
+    ):
+        missing_count = uploaded_count - processed_count
+        validation_error = f"{missing_count} CSV file(s) did not finish processing."
+        status = "error"
+
+    if validation_error:
+        return {
+            "status": "error",
+            "keywordCount": result.get("processed_count", 0),
+            "processedCount": result.get("processed_count", 0),
+            "skippedCount": result.get("skipped_count", 0),
+            "keywords": result.get("keywords", []),
+            "complete": False,
+            "totalRows": result.get("total_rows", 0),
+            "progress": progress,
+            "message": validation_error,
+            "currentFileName": current_file.get("file_name") if current_file else None,
+            "queuedFiles": queued_files,
+            "queueLength": len(queued_files),
+            "uploadedFiles": uploaded_files,
+            "processedFiles": processed_files,
+            "uploadedFileCount": uploaded_count,
+            "processedFileCount": processed_count,
+            "validationError": validation_error,
+        }
 
     if status == "complete" or result.get("complete", False):
         keyword_count = await KeywordService.count_parents_by_project(db, project_id)
@@ -66,7 +103,12 @@ async def get_processing_status(
             "message": result.get("message", ""),
             "currentFileName": current_file.get("file_name") if current_file else None,
             "queuedFiles": queued_files,
-            "queueLength": len(queued_files)
+            "queueLength": len(queued_files),
+            "uploadedFiles": uploaded_files,
+            "processedFiles": processed_files,
+            "uploadedFileCount": uploaded_count,
+            "processedFileCount": processed_count,
+            "validationError": validation_error,
         }
     elif status == "idle":
         count = await KeywordService.count_parents_by_project(db, project_id)
@@ -83,7 +125,12 @@ async def get_processing_status(
                 "message": result.get("message", ""),
                 "currentFileName": current_file.get("file_name") if current_file else None,
                 "queuedFiles": queued_files,
-                "queueLength": len(queued_files)
+                "queueLength": len(queued_files),
+                "uploadedFiles": uploaded_files,
+                "processedFiles": processed_files,
+                "uploadedFileCount": uploaded_count,
+                "processedFileCount": processed_count,
+                "validationError": validation_error,
             }
 
     return {
@@ -98,7 +145,12 @@ async def get_processing_status(
         "message": result.get("message", ""),
         "currentFileName": current_file.get("file_name") if current_file else None,
         "queuedFiles": queued_files,
-        "queueLength": len(queued_files)
+        "queueLength": len(queued_files),
+        "uploadedFiles": uploaded_files,
+        "processedFiles": processed_files,
+        "uploadedFileCount": uploaded_count,
+        "processedFileCount": processed_count,
+        "validationError": validation_error,
     }
 @router.post("/projects/{project_id}/upload", status_code=status.HTTP_202_ACCEPTED)
 async def upload_keywords(
@@ -118,7 +170,10 @@ async def upload_keywords(
     
     if not file.filename or not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
-    if processing_queue_service.get_status(project_id) not in {"processing", "queued"}:
+    current_status = processing_queue_service.get_status(project_id)
+    if current_status not in {"processing", "queued", "uploading", "combining"}:
+        processing_queue_service.reset_for_new_batch(project_id)
+    if current_status not in {"processing", "queued"}:
         processing_queue_service.set_status(project_id, "uploading")
     
     is_chunked_upload = chunkIndex is not None and totalChunks is not None and originalFilename is not None
@@ -198,11 +253,12 @@ async def upload_keywords(
                 user=current_user.get("username", "admin"),
             )
             
-            if processing_queue_service.get_status(project_id) != "processing":
-                processing_queue_service.reset_results(project_id)
+            if originalFilename:
+                processing_queue_service.register_upload(project_id, originalFilename)
             
-            enqueue_processing_file(project_id, final_path, originalFilename)
-            await start_next_processing(project_id)
+            if originalFilename:
+                enqueue_processing_file(project_id, final_path, originalFilename)
+                await start_next_processing(project_id)
             
             return {
                 "message": "Upload complete. Processing queued.",
@@ -253,8 +309,7 @@ async def upload_keywords(
             user=current_user.get("username", "admin"),
         )
         
-        if processing_queue_service.get_status(project_id) != "processing":
-            processing_queue_service.reset_results(project_id)
+        processing_queue_service.register_upload(project_id, file.filename)
         
         enqueue_processing_file(project_id, file_path, file.filename)
         await start_next_processing(project_id)
@@ -658,6 +713,23 @@ async def get_project_initial_data(
             else processing_queue_service.get_status(project_id),
             "progress": processing_queue_service.get_result(project_id).get("progress", 100.0),
             "complete": processing_queue_service.get_result(project_id).get("complete", True),
+            "message": processing_queue_service.get_result(project_id).get("message", ""),
+            "currentFileName": processing_queue_service.get_current_file(project_id).get("file_name")
+            if processing_queue_service.get_current_file(project_id)
+            else None,
+            "queuedFiles": [
+                item.get("file_name") for item in processing_queue_service.get_queue(project_id)
+            ],
+            "queueLength": len(processing_queue_service.get_queue(project_id)),
+            "uploadedFiles": processing_queue_service.get_result(project_id).get("uploaded_files", []),
+            "processedFiles": processing_queue_service.get_result(project_id).get("processed_files", []),
+            "uploadedFileCount": len(
+                processing_queue_service.get_result(project_id).get("uploaded_files", [])
+            ),
+            "processedFileCount": len(
+                processing_queue_service.get_result(project_id).get("processed_files", [])
+            ),
+            "validationError": processing_queue_service.get_result(project_id).get("validation_error"),
         }
     }
     

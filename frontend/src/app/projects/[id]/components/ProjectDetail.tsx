@@ -205,6 +205,7 @@ export default function ProjectDetail(): React.ReactElement {
   const [processingMessage, setProcessingMessage] = useState<string>('');
   const [processingCurrentFile, setProcessingCurrentFile] = useState<string | null>(null);
   const [processingQueue, setProcessingQueue] = useState<string[]>([]);
+  const [expectedUploadFiles, setExpectedUploadFiles] = useState<string[]>([]);
   const prevActiveViewRef = useRef(activeView);
   const [displayProgress, setDisplayProgress] = useState<number>(0);
   const targetProgressRef = useRef<number>(0);
@@ -1940,19 +1941,40 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
 
     try {
               const data = await apiClient.checkProcessingStatus(projectIdStr);
+
+      const uploadedFileCount =
+        data.uploadedFileCount ?? data.uploadedFiles?.length ?? 0;
+      const processedFileCount =
+        data.processedFileCount ?? data.processedFiles?.length ?? 0;
+      const expectedCount = Math.max(expectedUploadFiles.length, uploadedFileCount);
+      const validationError = data.validationError ?? (
+        expectedCount > 0 && processedFileCount < expectedCount
+          ? `${expectedCount - processedFileCount} CSV file(s) did not finish processing.`
+          : null
+      );
       
       if (data.progress !== undefined) {
         const normalizedProgress = Math.max(0, Math.min(100, data.progress));
         setProcessingProgress(normalizedProgress);
       }
-      setProcessingMessage(data.message ?? '');
+      setProcessingMessage(validationError ?? data.message ?? '');
       setProcessingCurrentFile(data.currentFileName ?? null);
       setProcessingQueue(data.queuedFiles ?? []);
+
+      if (validationError && data.status === 'complete') {
+        setProcessingStatus('error');
+        setIsUploading(false);
+        setProcessingProgress(0);
+        addSnackbarMessage(validationError, 'error');
+        stopProcessingCheck();
+        return;
+      }
 
       if (data.status === 'complete') {
         setProcessingStatus('complete');
         setIsUploading(false);
         setUploadSuccess(true);
+        setExpectedUploadFiles([]);
         stopProcessingCheck();
         addSnackbarMessage('Processing complete', 'success', {
           stage: 'complete',
@@ -2063,7 +2085,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     projectIdStr, processingStatus, stopProcessingCheck, 
     fetchKeywords, pagination.limit, activeView, sortParams, 
     selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, addSnackbarMessage, 
-    dispatch, projectIdNum, fetchProjectStats, bumpLogsRefresh
+    dispatch, projectIdNum, fetchProjectStats, bumpLogsRefresh, expectedUploadFiles
   ]);
 
   useEffect(() => {
@@ -2155,12 +2177,16 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             message?: string;
             currentFileName?: string | null;
             queuedFiles?: string[];
+            uploadedFiles?: string[];
           };
           setProcessingStatus(processingStatus.status ?? 'idle');
           setProcessingProgress(processingStatus.progress || 0);
           setProcessingMessage(processingStatus.message || '');
           setProcessingCurrentFile(processingStatus.currentFileName ?? null);
           setProcessingQueue(processingStatus.queuedFiles ?? []);
+          if (processingStatus.uploadedFiles?.length) {
+            setExpectedUploadFiles(processingStatus.uploadedFiles);
+          }
           if (
             initialData.processingStatus.status === 'uploading' ||
             initialData.processingStatus.status === 'combining' ||
@@ -2202,6 +2228,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     startProcessingCheck();
     bumpLogsRefresh();
   }, [startProcessingCheck, bumpLogsRefresh]);  
+  const handleUploadBatchStart = useCallback((files: File[]) => {
+    setExpectedUploadFiles(files.map((file) => file.name));
+  }, []);
   const handleUploadSuccess = useCallback(
     (status: ProcessingStatus, message?: string) => {
       setProcessingStatus(status);
@@ -2210,6 +2239,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         setIsUploading(false);
         setUploadSuccess(true);
         setProcessingProgress(100);
+        setExpectedUploadFiles([]);
         stopProcessingCheck();
         addSnackbarMessage(message || 'File uploaded and processed successfully', 'success');
         fetchProjectStats();
@@ -2228,10 +2258,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           maxRating: maxRating ? parseInt(maxRating) : ""
         }, true);
         bumpLogsRefresh();
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
       } else if (status === 'queued' || status === 'processing') {
         startProcessingCheck();
         addSnackbarMessage('Upload complete', 'success', {
@@ -2259,6 +2285,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setProcessingProgress(0);
       setDisplayProgress(0);
       setProcessingMessage(message);
+      setExpectedUploadFiles([]);
       addSnackbarMessage(message, 'error');
       stopProcessingCheck();
     },
@@ -2666,6 +2693,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     processingCurrentFile={processingCurrentFile}
                     processingQueue={processingQueue}
                     onUploadStart={handleUploadStart}
+                    onUploadBatchStart={handleUploadBatchStart}
                     onUploadSuccess={handleUploadSuccess}
                     onUploadError={handleUploadError}
                   />

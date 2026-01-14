@@ -7,6 +7,7 @@ import { ProcessingStatus } from '@/lib/types';
 interface FileUploaderProps {
   projectId: string;
   onUploadStart: () => void;
+  onUploadBatchStart: (files: File[]) => void;
   onUploadSuccess: (backendStatus: ProcessingStatus, message?: string) => void;
   onUploadError: (message: string) => void;
 }
@@ -21,6 +22,7 @@ function isApiError(error: unknown): error is ApiError {
 const FileUploader: React.FC<FileUploaderProps> = ({
   projectId,
   onUploadStart,
+  onUploadBatchStart,
   onUploadSuccess,
   onUploadError,
 }) => {
@@ -143,6 +145,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
       setIsUploadingInternal(true);
       onUploadStart();
+      onUploadBatchStart(filesToUpload);
       setUploadStage('uploading');
       setTotalFiles(filesToUpload.length);
       let lastStatus: ProcessingStatus = 'complete';
@@ -175,11 +178,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         }
 
         onUploadSuccess(lastStatus, summaryMessage);
-        if (lastStatus === 'complete' || lastStatus === 'processing') {
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        }
       } catch (error: unknown) {
         const message = isApiError(error)
           ? error.message
@@ -192,9 +190,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         setCurrentFileIndex(0);
         setTotalFiles(0);
         setUploadStage('idle');
+        setUploadProgress(0);
+        prevProgressRef.current = 0;
       }
     },
-    [onUploadError, onUploadStart, onUploadSuccess, uploadSingleFile]
+    [onUploadBatchStart, onUploadError, onUploadStart, onUploadSuccess, uploadSingleFile]
   );
 
   const handleDrag = useCallback((e: React.DragEvent) => {
