@@ -146,7 +146,6 @@ export interface ProjectState {
   sortedKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
   filteredKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
   metaData: Record<string, ProjectMetadata>;
-  metaData: Record<string, Record<string, unknown>>;
   stats: Record<string, {
     ungroupedCount: number;
     groupedKeywordsCount: number;

@@ -673,7 +673,6 @@ const fetchProjectStats = useCallback(async () => {
     apiCache
   ]);
 
-const getSerpFeatures = (keyword: SerpFeatureCarrier | null | undefined): string[] => {
 const getSerpFeatures = (
   keyword: Keyword | { serpFeatures?: string[] | string | null }
 ): string[] => {
@@ -1938,8 +1937,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       if ((data.status === 'queued' || data.status === 'processing') && 
           data.keywords && data.keywords.length > 0) {
         const keywords = data.keywords.map((kw) => {
-          let parsedTokens = [];
-          const serpFeatures = Array.isArray(kw.serpFeatures) ? kw.serpFeatures : [];
+          let parsedTokens: string[] = [];
+          let serpFeatures: string[] = [];
+
           try {
             if (typeof kw.tokens === 'string') {
               parsedTokens = JSON.parse(kw.tokens);
@@ -1953,7 +1953,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             }
           }
           
-          const serpFeatures = Array.isArray(kw.serp_features) ? kw.serp_features : [];
+          if (Array.isArray(kw.serp_features)) {
+            serpFeatures = kw.serp_features;
+          } else if (Array.isArray(kw.serpFeatures)) {
+            serpFeatures = kw.serpFeatures;
+          }
 
           return {
             id: kw.id || Date.now() + Math.random(),
@@ -1974,17 +1978,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         });
         
         dispatch(setKeywordsForView({
-            projectId: projectIdStr,
-            view: 'ungrouped',
-            keywords: keywords.map(kw => ({
-              ...kw,
-              original_volume: kw.volume || 0,
-              project_id: projectIdNum,
-              status: 'ungrouped',
-              groupName: kw.keyword || '',
-              serpFeatures: kw.serpFeatures ?? [],
-              length: (kw.keyword || '').length
-            })),
           projectId: projectIdStr,
           view: 'ungrouped',
           keywords: keywords.map(kw => ({
@@ -2070,8 +2063,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }
         
         if (initialData.currentView?.keywords) {
-          const transformedKeywords = initialData.currentView.keywords.map((kw) => ({
-            id: kw.id,
           const transformedKeywords = (initialData.currentView.keywords as Keyword[]).map((kw) => ({
             ...kw,
             original_volume: kw.original_volume || kw.volume || 0,
@@ -2087,7 +2078,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             groupName: typeof kw.groupName === 'string' ? kw.groupName : null,
             status: normalizeKeywordStatus(kw.status, activeView),
             childCount: typeof kw.childCount === 'number' ? kw.childCount : 0,
-            original_volume: typeof kw.original_volume === 'number' ? kw.original_volume : (typeof kw.volume === 'number' ? kw.volume : 0),
             serpFeatures: Array.isArray(kw.serpFeatures) ? kw.serpFeatures : [],
           }));
           
@@ -2103,10 +2093,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }
         if (initialData.processingStatus?.status) {
           setProcessingStatus(initialData.processingStatus.status);
-          setProcessingProgress(initialData.processingStatus.progress || 0);
-          setProcessingMessage(initialData.processingStatus.message || '');
-          setProcessingCurrentFile(initialData.processingStatus.currentFileName ?? null);
-          setProcessingQueue(initialData.processingStatus.queuedFiles ?? []);
+          const ps = initialData.processingStatus as unknown as { message?: string, currentFileName?: string, queuedFiles?: string[], progress?: number };
+          setProcessingProgress(ps.progress || 0);
+          setProcessingMessage(ps.message || '');
+          setProcessingCurrentFile(ps.currentFileName ?? null);
+          setProcessingQueue(ps.queuedFiles ?? []);
           if (
             initialData.processingStatus.status === 'uploading' ||
             initialData.processingStatus.status === 'combining' ||

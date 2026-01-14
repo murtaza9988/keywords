@@ -123,8 +123,6 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
     fetchSerpFeaturesData();
   }, [projectId]);
 
-  const getSerpFeatures = (item: { serpFeatures?: string[] | string | null } | null | undefined): string[] => {
-  const getSerpFeatures = (item: SerpFeatureSource | null | undefined): string[] => {
   const getSerpFeatures = (
     item: Keyword | { serpFeatures?: string[] | string | null }
   ): string[] => {
