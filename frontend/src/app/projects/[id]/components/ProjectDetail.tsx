@@ -2128,6 +2128,15 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         },
       });
 
+      if (validationError && data.status === 'complete') {
+        setProcessingStatus('error');
+        setIsUploading(false);
+        setProcessingProgress(0);
+        addSnackbarMessage(validationError, 'error');
+        stopProcessingCheck();
+        return;
+      }
+
       if (data.status === 'complete') {
         detailDispatch({
           type: 'updateProcessing',
@@ -2356,6 +2365,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             message?: string;
             currentFileName?: string | null;
             queuedFiles?: string[];
+            uploadedFiles?: string[];
           };
           detailDispatch({
             type: 'updateProcessing',
@@ -2403,6 +2413,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     startProcessingCheck();
     bumpLogsRefresh();
   }, [startProcessingCheck, bumpLogsRefresh]);  
+  const handleUploadBatchStart = useCallback((files: File[]) => {
+    setExpectedUploadFiles(files.map((file) => file.name));
+  }, []);
   const handleUploadSuccess = useCallback(
     (status: ProcessingStatus, message?: string) => {
       detailDispatch({
@@ -2426,10 +2439,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         fetchProjectStats();
         fetchKeywords(1, pagination.limit, activeView, sortParams, filterParams, true);
         bumpLogsRefresh();
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
       } else if (status === 'queued' || status === 'processing') {
         startProcessingCheck();
         addSnackbarMessage('Upload complete', 'success', {
@@ -2863,6 +2872,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     processingCurrentFile={processingCurrentFile}
                     processingQueue={processingQueue}
                     onUploadStart={handleUploadStart}
+                    onUploadBatchStart={handleUploadBatchStart}
                     onUploadSuccess={handleUploadSuccess}
                     onUploadError={handleUploadError}
                   />

@@ -137,6 +137,11 @@ class ProcessingStatus(BaseModel):
     current_file_name: Optional[str] = Field(None, alias="currentFileName")
     queued_files: List[str] = Field([], alias="queuedFiles")
     queue_length: int = Field(0, alias="queueLength")
+    uploaded_files: List[str] = Field([], alias="uploadedFiles")
+    processed_files: List[str] = Field([], alias="processedFiles")
+    uploaded_file_count: int = Field(0, alias="uploadedFileCount")
+    processed_file_count: int = Field(0, alias="processedFileCount")
+    validation_error: Optional[str] = Field(None, alias="validationError")
     
     model_config = {
         "populate_by_name": True

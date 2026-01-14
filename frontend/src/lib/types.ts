@@ -116,6 +116,11 @@ export interface ProcessingStatusResponse {
   currentFileName?: string | null;
   queuedFiles?: string[];
   queueLength?: number;
+  uploadedFiles?: string[];
+  processedFiles?: string[];
+  uploadedFileCount?: number;
+  processedFileCount?: number;
+  validationError?: string | null;
 }
 
 export interface InitialProjectStats {
