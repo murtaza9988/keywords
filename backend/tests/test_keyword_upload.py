@@ -39,6 +39,8 @@ def test_upload_keywords_non_chunked_sets_processing_state(
     mock_project_model,
     mock_processing_tasks,
     mock_processing_results,
+    mock_processing_queue,
+    mock_processing_current_files,
     temp_upload_dir,
     monkeypatch,
 ):
@@ -48,7 +50,7 @@ def test_upload_keywords_non_chunked_sets_processing_state(
         AsyncMock(return_value=mock_project_model),
     )
     mock_process = AsyncMock()
-    monkeypatch.setattr("app.routes.keyword_routes.process_csv_file", mock_process)
+    monkeypatch.setattr("app.routes.keyword_processing.process_csv_file", mock_process)
 
     response = test_api_client.post(
         "/api/projects/1/upload",
@@ -63,7 +65,7 @@ def test_upload_keywords_non_chunked_sets_processing_state(
 
     assert response.status_code == 202
     assert response.json()["status"] == "processing"
-    assert mock_processing_tasks[1] == "queued"
+    assert mock_processing_tasks[1] == "processing"
     assert mock_processing_results[1]["complete"] is False
     assert mock_db.add.called
     assert mock_db.commit.await_count >= 1
@@ -71,7 +73,7 @@ def test_upload_keywords_non_chunked_sets_processing_state(
     status_response = test_api_client.get("/api/projects/1/processing-status")
     assert status_response.status_code == 200
     status_payload = status_response.json()
-    assert status_payload["status"] == "queued"
+    assert status_payload["status"] == "processing"
     assert status_payload["progress"] == 0.0
 
 
@@ -80,6 +82,8 @@ def test_upload_keywords_chunked_combines_and_queues(
     mock_project_model,
     mock_processing_tasks,
     mock_processing_results,
+    mock_processing_queue,
+    mock_processing_current_files,
     temp_upload_dir,
     monkeypatch,
 ):
@@ -89,7 +93,7 @@ def test_upload_keywords_chunked_combines_and_queues(
         AsyncMock(return_value=mock_project_model),
     )
     mock_process = AsyncMock()
-    monkeypatch.setattr("app.routes.keyword_routes.process_csv_file", mock_process)
+    monkeypatch.setattr("app.routes.keyword_processing.process_csv_file", mock_process)
 
     chunk_one = b"Keyword,Volume\nalpha,"
     chunk_two = b"10\n"
@@ -105,8 +109,8 @@ def test_upload_keywords_chunked_combines_and_queues(
     )
 
     assert response_first.status_code == 202
-    assert response_first.json()["status"] == "processing"
-    assert mock_processing_tasks == {}
+    assert response_first.json()["status"] == "uploading"
+    assert mock_processing_tasks[1] == "uploading"
 
     response_second = test_api_client.post(
         "/api/projects/1/upload",
@@ -120,7 +124,7 @@ def test_upload_keywords_chunked_combines_and_queues(
 
     assert response_second.status_code == 202
     assert response_second.json()["status"] == "processing"
-    assert mock_processing_tasks[1] == "queued"
+    assert mock_processing_tasks[1] == "processing"
     assert mock_processing_results[1]["complete"] is False
 
 
@@ -128,6 +132,8 @@ def test_processing_status_idle_returns_complete(
     test_api_client,
     mock_processing_tasks,
     mock_processing_results,
+    mock_processing_queue,
+    mock_processing_current_files,
     monkeypatch,
 ):
     mock_processing_tasks.clear()
@@ -159,6 +165,8 @@ def test_processing_status_idle_returns_complete(
 async def test_process_csv_file_parses_and_dedupes(
     mock_processing_tasks,
     mock_processing_results,
+    mock_processing_queue,
+    mock_processing_current_files,
     mock_db_context,
     mocked_nltk,
     tmp_path,
@@ -197,7 +205,7 @@ async def test_process_csv_file_parses_and_dedupes(
     csv_path = tmp_path / "keywords.csv"
     csv_path.write_bytes(sample_csv_bytes)
 
-    await process_csv_file(str(csv_path), project_id=1)
+    await process_csv_file(str(csv_path), project_id=1, file_name="keywords.csv")
 
     assert mock_processing_results[1]["processed_count"] == 2
     assert mock_processing_results[1]["duplicate_count"] == 2

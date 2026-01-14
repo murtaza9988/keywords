@@ -206,6 +206,22 @@ def mock_processing_results(monkeypatch) -> Dict[int, Dict[str, Any]]:
     monkeypatch.setattr("app.routes.keyword_routes.processing_results", mock_results)
     return mock_results
 
+@pytest.fixture
+def mock_processing_queue(monkeypatch) -> Dict[int, List[Dict[str, Any]]]:
+    """Mock and return processing_queue dict."""
+    mock_queue = {}
+    monkeypatch.setattr("app.routes.keyword_processing.processing_queue", mock_queue)
+    monkeypatch.setattr("app.routes.keyword_routes.processing_queue", mock_queue)
+    return mock_queue
+
+@pytest.fixture
+def mock_processing_current_files(monkeypatch) -> Dict[int, Dict[str, str]]:
+    """Mock and return processing_current_files dict."""
+    mock_current = {}
+    monkeypatch.setattr("app.routes.keyword_processing.processing_current_files", mock_current)
+    monkeypatch.setattr("app.routes.keyword_routes.processing_current_files", mock_current)
+    return mock_current
+
 # Fixtures for file handling
 @pytest.fixture
 def temp_upload_dir(monkeypatch, tmp_path):
@@ -235,18 +251,20 @@ def mock_db_context():
 @pytest.fixture
 def test_api_client(client, mock_db, mock_auth):
     """Return a test client with mocked dependencies."""
-    from unittest.mock import patch
-    
+
     # Create mock functions for dependencies
     async def mock_get_db():
         yield mock_db
     
     def mock_get_current_user():
         return mock_auth
-    
-    # Apply patches
-    with patch("app.routes.keyword_routes.get_db", side_effect=mock_get_db), \
-         patch("app.routes.keyword_routes.get_current_user", side_effect=mock_get_current_user), \
-         patch("app.routes.keyword_tokens.get_db", side_effect=mock_get_db), \
-         patch("app.routes.keyword_tokens.get_current_user", side_effect=mock_get_current_user):
+
+    from app.database import get_db
+    from app.utils.security import get_current_user
+
+    app.dependency_overrides[get_db] = mock_get_db
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    try:
         yield client
+    finally:
+        app.dependency_overrides = {}

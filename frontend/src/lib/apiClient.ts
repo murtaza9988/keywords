@@ -378,6 +378,9 @@ class ApiClient {
       return response.data;
     } catch (error) {
       console.error('Upload CSV API Error:', error);
+      if (axios.isAxiosError(error) && error.response?.data?.detail) {
+        throw new Error(error.response.data.detail);
+      }
       throw new Error(isError(error) ? error.message : 'Failed to upload CSV');
     }
   }
