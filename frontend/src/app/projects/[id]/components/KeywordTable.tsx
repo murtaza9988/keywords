@@ -8,6 +8,7 @@ import { KeywordRow } from './KeywordRow';
 import fetchSerpFeatures  from '@/lib/apiClient';
 import apiClient from '@/lib/apiClient';
 import authService from '@/lib/authService';
+import { cn } from '@/lib/cn';
 
 interface KeywordTableProps {
   groupedKeywords: GroupedKeywordsDisplay[];
@@ -36,6 +37,22 @@ interface FilterState {
   serpFeatures: string[];
 }
 
+const TableScroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("flex-1 overflow-y-auto", className)} {...props} />
+  )
+);
+
+TableScroller.displayName = 'TableScroller';
+
+const KeywordTableElement = React.forwardRef<HTMLTableElement, React.TableHTMLAttributes<HTMLTableElement>>(
+  ({ className, ...props }, ref) => (
+    <table ref={ref} className={cn("min-w-full divide-y divide-gray-200 table-fixed", className)} {...props} />
+  )
+);
+
+KeywordTableElement.displayName = 'KeywordTableElement';
+
 export const KeywordTable: React.FC<KeywordTableProps> = memo(({
   groupedKeywords,
   loading,
@@ -60,12 +77,12 @@ export const KeywordTable: React.FC<KeywordTableProps> = memo(({
 }) => {
   const renderSortIcon = (columnKey: keyof Keyword | 'groupName' | 'serpFeatures') => {
     if (sortParams.column !== columnKey) {
-      return <ChevronsUpDown className="h-4 w-4 ml-1 text-gray-400 inline-block" />;
+      return <ChevronsUpDown className="h-4 w-4 ml-1 text-muted inline-block" />;
     }
     return sortParams.direction === 'asc' ? (
-      <ArrowUp className="h-4 w-4 ml-1 text-gray-600 inline-block" />
+      <ArrowUp className="h-4 w-4 ml-1 text-muted inline-block" />
     ) : (
-      <ArrowDown className="h-4 w-4 ml-1 text-gray-600 inline-block" />
+      <ArrowDown className="h-4 w-4 ml-1 text-muted inline-block" />
     );
   };
 
@@ -224,22 +241,22 @@ const toggleSerpFeature = useCallback((feature: string) => {
 
   useEffect(() => {
     applyFilters(filterState);
-  }, [groupedKeywords, applyFilters]);
+  }, [groupedKeywords, applyFilters, filterState]);
 
   const keywordColumnKey = currentView === 'grouped' ? 'groupName' : 'keyword';
   const keywordColumnHeader = currentView === 'grouped' ? 'Page Name' : 'Keyword';
   const displayData = filterState.serpFeatures.length > 0 ? filteredData : groupedKeywords;
 
   return (
-    <div className="flex flex-col lg:h-[calc(100vh-400px)]  border border-[#eaeaea] shadow-sm">
-      <div className="flex-1 overflow-y-auto">
-        <table className="min-w-full divide-y divide-gray-200 table-fixed">
-          <thead className="bg-gray-100 sticky top-0 z-10">
+    <div className="flex flex-col lg:h-[calc(100vh-320px)] min-h-[520px] border border-border shadow-sm">
+      <TableScroller>
+        <KeywordTableElement>
+          <thead className="bg-surface-muted sticky top-0 z-10">
             <tr onDoubleClick={handleDoubleClick}>
-              <th scope="col" className="w-8 px-3 py-1 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="w-[44px] px-2 py-1 text-left text-xs font-semibold text-muted uppercase tracking-wider sticky left-0 z-20 bg-surface-muted">
                 <input
                   type="checkbox"
-                  className="h-6 w-6 rounded border-[#eaeaea] text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  className="h-6 w-6 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
                   checked={isAllSelected}
                   ref={input => { if (input) input.indeterminate = !isAllSelected && isAnySelected }}
                   onChange={handleSelectAllClick}
@@ -247,22 +264,26 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   disabled={groupedKeywords.length === 0}
                 />
               </th>
-              <th scope="col" className="w-[30%] py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort(keywordColumnKey)}>
+              <th
+                scope="col"
+                className="w-[52%] py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer sticky left-[44px] z-10 bg-surface-muted"
+                onClick={() => onSort(keywordColumnKey)}
+              >
                 <div className="flex items-center">
                   <span>{keywordColumnHeader}</span>
                   {renderSortIcon(keywordColumnKey)}
                 </div>
               </th>
-              <th scope="col" className="w-[18%] px-2 py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider">Tokens</th>
-              <th scope="col" className="w-14 px-2 py-1 text-left text-[13px] font-light text-gray-800 uppercase tracking-wider">
+              <th scope="col" className="w-[28%] px-2 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">Tokens</th>
+              <th scope="col" className="w-[40px] px-0.5 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-1">
-                    <span>SERP</span>
+                  <div className="flex items-center gap-1 justify-center">
+                    <span title="SERP Features">S</span>
                     {filterState.serpFeatures.length > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-blue-600" title="Filters active"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600" title="Filters active"></span>
                     )}
                     <button
-                      className="text-gray-500 hover:text-gray-700 focus:outline-none p-2 rounded-full hover:bg-gray-200"
+                      className="text-muted hover:text-foreground focus:outline-none p-1 rounded-full hover:bg-surface-muted"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowSerpFilter(prev => !prev);
@@ -282,7 +303,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                 </div>
                 {showSerpFilter && createPortal(
                   <div
-                    className="bg-white shadow-xl rounded-lg border border-gray-200 w-64 z-[9999]"
+                    className="bg-surface shadow-xl rounded-lg border border-border w-64 z-[9999]"
                     style={{
                       position: 'absolute',
                       top: dropdownPosition.top + 'px',
@@ -291,22 +312,22 @@ const toggleSerpFeature = useCallback((feature: string) => {
                     ref={serpFilterDropdownRef}
                   >
                     <div className="p-3">
-                      <div className="text-xs font-semibold text-gray-700 mb-2">Filter by Values</div>
+                      <div className="text-xs font-semibold text-foreground mb-2">Filter by Values</div>
                       <div className="max-h-60 overflow-y-auto">
                         {isLoadingSerpFeatures ? (
                           <div className="flex justify-center items-center py-4">
                             <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-600" />
-                            <span className="text-sm text-gray-600">Loading SERP features...</span>
+                            <span className="text-sm text-muted">Loading SERP features...</span>
                           </div>
                         ) : serpFeaturesList.length === 0 ? (
-                          <div className="text-sm text-gray-500 py-2 px-2 italic">
+                          <div className="text-sm text-muted py-2 px-2 italic">
                             No SERP features found
                           </div>
                         ) : (
                           serpFeaturesList.map(feature => (
                             <label
                               key={feature}
-                              className="flex items-center px-2 py-1 hover:bg-gray-100 rounded text-sm cursor-pointer transition-colors"
+                              className="flex items-center px-2 py-1 hover:bg-surface-muted rounded text-sm cursor-pointer transition-colors"
                             >
                               <input
                                 type="checkbox"
@@ -320,7 +341,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                         )}
                       </div>
                     </div>
-                    <div className="p-3 border-t border-gray-200 bg-gray-50 flex justify-between">
+                    <div className="p-3 border-t border-border bg-surface-muted flex justify-between">
                       <button
                         className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                         onClick={onSelectAllSerpFeatures}
@@ -340,32 +361,32 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   document.body
                 )}
               </th>
-              <th scope="col" className="w-10 px-2 py-1 text-center text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort('childCount')}>
+              <th scope="col" className="w-[40px] px-0.5 py-1 text-center text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort('childCount')}>
                 <div className="flex items-center justify-center">
-                  <span>Counts</span>
+                  <span title="Count">#</span>
                   {renderSortIcon('childCount')}
                 </div>
               </th>
-              <th scope="col" className="w-10 px-2 py-1 text-right text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort('length')}>
+              <th scope="col" className="w-[35px] px-0.5 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort('length')}>
                 <div className="flex items-center justify-end">
-                  <span>LEN</span>
+                  <span title="Length">L</span>
                   {renderSortIcon('length')}
                 </div>
               </th>
-              <th scope="col" className="w-10 px-2 py-1 text-right text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer" onClick={() => onSort('volume')}>
+              <th scope="col" className="w-[40px] px-0.5 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort('volume')}>
                 <div className="flex items-center justify-end">
-                  <span>Vol.</span>
+                  <span title="Volume">Vol</span>
                   {renderSortIcon('volume')}
                 </div>
               </th>
-              <th scope="col" className="w-10 px-2 py-1 text-right text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer hover:bg-gray-200" onClick={() => onSort('difficulty')}>
+              <th scope="col" className="w-[40px] px-0.5 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer hover:bg-surface-muted" onClick={() => onSort('difficulty')}>
                 <div className="flex items-center justify-end">
-                  <span>Diff.</span>
+                  <span title="Difficulty">KD</span>
                   {renderSortIcon('difficulty')}
                 </div>
               </th>
               {(currentView === 'ungrouped' || currentView === 'grouped') && (
-                <th scope="col" className="w-10 px-2 py-1 text-right text-[13px] font-light text-gray-800 uppercase tracking-wider cursor-pointer hover:bg-gray-200" onClick={() => onSort('rating')}>
+                <th scope="col" className="w-[35px] px-0.5 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer hover:bg-surface-muted" onClick={() => onSort('rating')}>
                   <div className="flex items-center justify-end">
                     <span>Rt</span>
                     {renderSortIcon('rating')}
@@ -376,17 +397,17 @@ const toggleSerpFeature = useCallback((feature: string) => {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {(loading || isTableLoading) ? (
-              <tr className="bg-white h-10">
+              <tr className="bg-table-row h-10">
                 <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="px-4 py-2 text-center">
-                  <div className="flex justify-center lg:mt-50 items-center flex-col text-gray-700">
+                  <div className="flex justify-center lg:mt-50 items-center flex-col text-muted">
                     <Loader2 className="animate-spin h-8 w-8 text-blue-600 mb-3" />
                     <p className="text-sm font-medium">{isTableLoading ? 'Processing...' : 'Loading...'}</p>
                   </div>
                 </td>
               </tr>
             ) : displayData.length === 0 ? (
-              <tr className="bg-white h-10">
-                <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="px-4 py-2 text-center text-sm text-gray-700 italic">
+              <tr className="bg-table-row h-10">
+                <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="px-4 py-2 text-center text-sm text-muted italic">
                   {filterState.serpFeatures.length > 0
                     ? 'No keywords match the selected filters.'
                     : `No ${currentView === 'grouped' ? 'groups' : 'keywords'} found.`}
@@ -437,8 +458,8 @@ const toggleSerpFeature = useCallback((feature: string) => {
                       />
                     ))}
                     {isParentExpanded && (!groupData.children || groupData.children.length === 0) && !isLoadingThisParentChildren && (parent.childCount ?? 0) > 0 && (
-                      <tr className={`${index % 2 === 0 ? 'bg-[#f4f4f4]' : 'bg-white'} h-10`}>
-                        <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="pl-6 px-2 py-2 text-xs text-gray-400 italic">
+                      <tr className={`${index % 2 === 0 ? 'bg-table-row-alt' : 'bg-table-row'} h-10`}>
+                        <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="pl-6 px-2 py-2 text-xs text-muted italic">
                           No children found or failed to load.
                         </td>
                       </tr>
@@ -448,8 +469,8 @@ const toggleSerpFeature = useCallback((feature: string) => {
               })
             )}
           </tbody>
-        </table>
-      </div>
+        </KeywordTableElement>
+      </TableScroller>
       <style jsx>{`
         table {
           table-layout: fixed;

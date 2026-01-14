@@ -16,6 +16,7 @@ class Project(Base):
     merge_operations = relationship("MergeOperation", cascade="all, delete-orphan")
     notes = relationship("Note", back_populates="project", cascade="all, delete-orphan")
     csv_uploads = relationship("CSVUpload", back_populates="project", cascade="all, delete-orphan")
+    activity_logs = relationship("ActivityLog", back_populates="project", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Project(id={self.id}, name='{self.name}')>"

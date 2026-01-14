@@ -4,7 +4,7 @@ import json
 import re
 import os
 import uuid
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile, File, BackgroundTasks, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text as sql_text
@@ -16,6 +16,7 @@ from app.schemas.csv_upload import CSVUploadResponse
 from app.services.merge_token import TokenMergeService
 from app.services.project import ProjectService
 from app.services.keyword import KeywordService
+from app.services.activity_log import ActivityLogService
 from app.schemas.keyword import (
     KeywordListResponse, GroupRequest, ProcessingStatus,
     BlockTokenRequest,  UnblockRequest, KeywordResponse,
@@ -36,7 +37,7 @@ async def get_processing_status(
     project_id: int,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     status = processing_tasks.get(project_id, "idle")
     result = processing_results.get(project_id, {
         "processed_count": 0,
@@ -96,7 +97,7 @@ async def upload_keywords(
     fileSize: int = Form(None),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     project = await ProjectService.get_by_id(db, project_id)
     if not project: 
         raise HTTPException(status_code=404, detail="Project not found")
@@ -105,6 +106,8 @@ async def upload_keywords(
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     if processing_tasks.get(project_id) == "processing" and (chunkIndex is None or int(chunkIndex) == 0):
         raise HTTPException(status_code=409, detail="A file is already being processed for this project.")
+
+    processing_tasks[project_id] = "uploading"
     
     is_chunked_upload = chunkIndex is not None and totalChunks is not None and originalFilename is not None
     
@@ -134,10 +137,11 @@ async def upload_keywords(
         if int(chunkIndex) < int(totalChunks) - 1:
             return {
                 "message": f"Chunk {int(chunkIndex) + 1} of {totalChunks} received.",
-                "status": "processing"
+                "status": "uploading"
             }
             
         try:
+            processing_tasks[project_id] = "combining"
             safe_filename = f"{project_id}_{re.sub(r'[^a-zA-Z0-9._-]', '_', originalFilename)}"
             final_path = os.path.join(settings.UPLOAD_DIR, safe_filename)
             
@@ -167,6 +171,19 @@ async def upload_keywords(
             csv_upload = CSVUpload(project_id=project_id, file_name=originalFilename)
             db.add(csv_upload)
             await db.commit()
+
+            await ActivityLogService.log_activity(
+                db,
+                project_id=project_id,
+                action="csv_upload",
+                details={
+                    "file_name": originalFilename,
+                    "chunked": True,
+                    "total_chunks": int(totalChunks),
+                    "file_size": fileSize,
+                },
+                user=current_user.get("username", "admin"),
+            )
             
             processing_tasks[project_id] = "queued"
             processing_results[project_id] = {
@@ -181,8 +198,8 @@ async def upload_keywords(
             background_tasks.add_task(process_csv_file, final_path, project_id)
             
             return {
-                "message": "CSV upload complete and processing started in background.",
-                "status": "processing",
+                "message": "Upload complete. Processing queued.",
+                "status": "queued",
                 "file_name": originalFilename
             }
         except Exception as e:
@@ -216,6 +233,18 @@ async def upload_keywords(
         csv_upload = CSVUpload(project_id=project_id, file_name=file.filename)
         db.add(csv_upload)
         await db.commit()
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="csv_upload",
+            details={
+                "file_name": file.filename,
+                "chunked": False,
+                "file_size": fileSize,
+            },
+            user=current_user.get("username", "admin"),
+        )
         
         processing_tasks[project_id] = "queued"
         processing_results[project_id] = {
@@ -230,8 +259,8 @@ async def upload_keywords(
         background_tasks.add_task(process_csv_file, file_path, project_id)
         
         return {
-            "message": "CSV upload received and processing started in background.",
-            "status": "processing",
+            "message": "Upload complete. Processing queued.",
+            "status": "queued",
             "file_name": file.filename
         }
     
@@ -240,11 +269,12 @@ async def get_csv_uploads(
     project_id: int,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> List[CSVUploadResponse]:
     """Get all CSV uploads for a project."""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
     result = await db.execute(
         select(CSVUpload).filter_by(project_id=project_id).order_by(CSVUpload.uploaded_at.desc())
     )
@@ -276,11 +306,51 @@ async def get_keywords(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     background_tasks: BackgroundTasks = None
-):
+) -> KeywordListResponse:
     """Get keywords with optimized server-side pagination, filtering, and sorting across full records."""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    if any(
+        [
+            tokens,
+            include,
+            exclude,
+            serpFeatures,
+            minVolume is not None,
+            maxVolume is not None,
+            minLength is not None,
+            maxLength is not None,
+            minDifficulty is not None,
+            maxDifficulty is not None,
+            minRating is not None,
+            maxRating is not None,
+        ]
+    ):
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="search",
+            details={
+                "status": status.value,
+                "tokens": tokens,
+                "include": include,
+                "exclude": exclude,
+                "include_match_type": includeMatchType,
+                "exclude_match_type": excludeMatchType,
+                "serp_features": serpFeatures,
+                "min_volume": minVolume,
+                "max_volume": maxVolume,
+                "min_length": minLength,
+                "max_length": maxLength,
+                "min_difficulty": minDifficulty,
+                "max_difficulty": maxDifficulty,
+                "min_rating": minRating,
+                "max_rating": maxRating,
+            },
+            user=current_user.get("username", "admin"),
+        )
 
     include_terms = []
     if include:
@@ -343,7 +413,7 @@ async def get_keywords(
             key = kw["group_id"] if kw.get("group_id") is not None else f"_noGroup_{kw['id']}"
             grouped.setdefault(key, []).append(kw)
 
-        def matches(kw):
+        def matches(kw: Dict[str, Any]) -> bool:
             keyword_lower = kw["keyword"].lower()
             search_text = keyword_lower
             if kw.get("group_name"):
@@ -521,7 +591,7 @@ async def get_project_initial_data(
     status: KeywordStatus = Query(KeywordStatus.ungrouped),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """Get initial data for a project including first page of data and stats."""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
@@ -596,7 +666,7 @@ async def get_keywords_for_cache(
     status: KeywordStatus = Query(KeywordStatus.ungrouped),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> KeywordsCacheResponse:
     """Get all keywords for client-side caching when filtering should happen on client."""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
@@ -617,7 +687,7 @@ async def get_keyword_children(
     group_id: str = Path(...),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> KeywordChildrenResponse:
     """Get children keywords with optimized query."""
     project = await ProjectService.get_by_id(db, project_id)
     if not project: 
@@ -633,7 +703,7 @@ async def group_keywords(
     group_request: GroupRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """
     Group selected keywords into a new group or add them to an existing group.
     """
@@ -794,6 +864,20 @@ async def group_keywords(
                 raise Exception(f"Verification failed for keyword {kw.keyword}")
         
         await db.commit()
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="group",
+            details={
+                "group_name": group_request.group_name,
+                "group_id": group_id,
+                "keyword_ids": group_request.keyword_ids,
+                "keyword_count": updated_count,
+                "added_to_existing": existing_group is not None,
+            },
+            user=current_user.get("username", "admin"),
+        )
         
         return {
             "message": f"Successfully {'added to existing' if existing_group else 'created new'} group with {updated_count} keywords",
@@ -817,7 +901,7 @@ async def regroup_keywords(
     group_request: GroupRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """Regroup selected keywords from multiple groups into a new or existing group."""
     if not group_request.keyword_ids:
         raise HTTPException(status_code=400, detail="No keywords selected")
@@ -955,7 +1039,7 @@ async def block_keywords_by_token(
     block_request: BlockTokenRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     if not block_request.token or not block_request.token.strip():
         raise HTTPException(status_code=400, detail="Token required")
     
@@ -1005,7 +1089,18 @@ async def block_keywords_by_token(
                 current_statuses=[KeywordStatus.ungrouped, KeywordStatus.grouped],
                 blocked_by="user"
             )
-            
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="block",
+            details={
+                "token": token_to_block,
+                "count": updated_count,
+            },
+            user=current_user.get("username", "admin"),
+        )
+
         await db.commit()
         return {"message": f"Blocked {updated_count} keywords containing token '{token_to_block}'", "count": updated_count}
     except Exception as e:
@@ -1021,7 +1116,7 @@ async def unblock_keywords(
     unblock_request: UnblockRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     if not unblock_request.keyword_ids:
         raise HTTPException(status_code=400, detail="No keywords selected")
     
@@ -1060,7 +1155,18 @@ async def unblock_keywords(
                 db, project_id, unblock_request.keyword_ids,
                 update_data, required_current_status=KeywordStatus.blocked
             )
-            
+
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="unblock",
+            details={
+                "keyword_ids": unblock_request.keyword_ids,
+                "count": updated_count,
+            },
+            user=current_user.get("username", "admin"),
+        )
+
         await db.commit()
         return {"message": f"Unblocked {updated_count} keywords", "count": updated_count}
     except Exception as e:
@@ -1076,7 +1182,7 @@ async def ungroup_keywords(
     unblock_request: UnblockRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """
     Ungroup only the specifically selected keywords and restore their original parent-child relationships, prioritizing merged_token over original tokens.
     """
@@ -1388,6 +1494,18 @@ async def ungroup_keywords(
         
         await db.commit()
 
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action="ungroup",
+            details={
+                "keyword_ids": unblock_request.keyword_ids,
+                "updated_count": updated_count,
+                "children_restored": children_restored,
+            },
+            user=current_user.get("username", "admin"),
+        )
+
         # Final verification
         final_keywords = await KeywordService.get_all_by_project(db, project_id)
         final_parents = [kw for kw in final_keywords if kw.is_parent and kw.status == KeywordStatus.ungrouped.value]
@@ -1417,7 +1535,7 @@ async def get_block_token_count(
     token: str = Query(..., description="The token to count keywords for"),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, int]:
     if not token or len(token.strip()) == 0:
         raise HTTPException(status_code=400, detail="Token required")
     
@@ -1435,7 +1553,7 @@ async def get_project_stats(
     project_id: int,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """Get stats for a single project."""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
@@ -1527,7 +1645,7 @@ async def export_keywords_csv(
     view: str = "grouped",
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> StreamingResponse:
     """Export grouped or confirmed keywords to CSV with server-side generation"""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
@@ -1621,7 +1739,7 @@ async def confirm_keywords(
     confirm_request: UnblockRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     if not confirm_request.keyword_ids:
         raise HTTPException(status_code=400, detail="No keywords selected")
     
@@ -1670,7 +1788,7 @@ async def unconfirm_keywords(
     unconfirm_request: UnblockRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     if not unconfirm_request.keyword_ids:
         raise HTTPException(status_code=400, detail="No keywords selected")
     
@@ -1717,7 +1835,7 @@ async def export_parent_keywords_csv(
     project_id: int,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> StreamingResponse:
     """Export parent keywords from ungrouped and grouped views to CSV"""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
@@ -1771,7 +1889,7 @@ async def import_parent_keywords_csv(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """Import parent keywords with ratings from CSV"""
     project = await ProjectService.get_by_id(db, project_id)
     if not project:

@@ -4,8 +4,6 @@ import { KeywordTable } from './KeywordTable';
 import Pagination from './Pagination';
 import { ActiveKeywordView, GroupedKeywordsDisplay, PaginationInfo, SortParams } from './types';
 import { debounce } from 'lodash';
-
-const TABLE_FIXED_HEIGHT_CLASS = "h-[47vh]";
 const LIMIT_OPTIONS = [100, 250, 500, 1000, 2500, 5000];
 
 interface MainContentProps {
@@ -22,6 +20,7 @@ interface MainContentProps {
   isAnySelected: boolean;
   projectIdStr: string;
   isTableLoading: boolean;
+  selectedParentKeywordCount: number;
   minVolume: string;
   maxVolume: string;
   minLength: string;
@@ -117,25 +116,25 @@ const VolumeInputs = memo(
     
     return (
       <div className="flex items-center">
-        <span className="text-[13px] text-gray-800 font-light mr-1">Vol:</span>
+        <span className="text-[13px] text-foreground font-light mr-1">Vol:</span>
         <input
           ref={minInputRef}
           type="number"
           placeholder="Min"
           value={localMinVolume}
           onChange={handleMinChange}
-          className="w-16 p-1 text-xs border border-[#d1d1d1] rounded-md text-[13px] bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none  hover:border-gray-400 "
+          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={8}
         />
-        <span className="mx-1 text-gray-400">-</span>
+        <span className="mx-1 text-muted">-</span>
         <input
           ref={maxInputRef}
           type="number"
           placeholder="Max"
           value={localMaxVolume}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-xs border border-[#d1d1d1] rounded-md text-[13px] bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none  hover:border-gray-400 "
+          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={8}
         />
@@ -197,25 +196,25 @@ const LengthInputs = memo(
 
     return (
       <div className="flex items-center ml-2">
-        <span className="text-[13px] text-gray-800 font-light mr-1">Len:</span>
+        <span className="text-[13px] text-foreground font-light mr-1">Len:</span>
         <input
           ref={minInputRef}
           type="number"
           placeholder="Min"
           value={localMinLength}
           onChange={handleMinChange}
-          className="w-16 p-1 text-xs border border-[#d1d1d1] rounded-md text-[13px] bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
-        <span className="mx-1 text-gray-400">-</span>
+        <span className="mx-1 text-muted">-</span>
         <input
           ref={maxInputRef}
           type="number"
           placeholder="Max"
           value={localMaxLength}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-xs border border-[#d1d1d1] rounded-md text-[13px] bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
@@ -281,7 +280,7 @@ const DifficultyInputs = memo(
    
     return (
       <div className="flex items-center ml-2 ">
-        <span className="text-[13px] text-gray-800 font-light mr-1">Diff:</span>
+        <span className="text-[13px] text-foreground font-light mr-1">Diff:</span>
         <input
           ref={minInputRef}
           type="number"
@@ -289,11 +288,11 @@ const DifficultyInputs = memo(
           placeholder="Min"
           value={localMinDifficulty}
           onChange={handleMinChange}
-          className="w-16 p-1 text-xs border border-[#d1d1d1] rounded-md text-[13px] bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none  hover:border-gray-400"
+          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={5}
         />
-        <span className="mx-1 text-gray-400">-</span>
+        <span className="mx-1 text-muted">-</span>
         <input
           ref={maxInputRef}
           type="number"
@@ -301,7 +300,7 @@ const DifficultyInputs = memo(
           placeholder="Max"
           value={localMaxDifficulty}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-xs border border-[#d1d1d1] rounded-md text-[13px] bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none  hover:border-gray-400 "
+          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={5}
         />
@@ -362,25 +361,25 @@ const RatingInputs = memo(
 
     return (
       <div className="flex items-center ml-2">
-        <span className="text-[13px] text-gray-800 font-light mr-1">Rt:</span>
+        <span className="text-[13px] text-foreground font-light mr-1">Rt:</span>
         <input
           ref={minInputRef}
           type="number"
           placeholder="Min"
           value={localMinRating}
           onChange={handleMinChange}
-          className="w-16 p-1 text-xs border border-[#d1d1d1] rounded-md text-[13px] bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
-        <span className="mx-1 text-gray-400">-</span>
+        <span className="mx-1 text-muted">-</span>
         <input
           ref={maxInputRef}
           type="number"
           placeholder="Max"
           value={localMaxRating}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-xs border border-[#d1d1d1] rounded-md text-[13px] bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
@@ -406,6 +405,7 @@ export const MainContent: React.FC<MainContentProps> = memo(({
   isAnySelected,
   projectIdStr,
   isTableLoading,
+  selectedParentKeywordCount,
   minVolume,
   maxVolume,
   minLength,
@@ -460,10 +460,19 @@ export const MainContent: React.FC<MainContentProps> = memo(({
   };
 
   const shouldShowPagination = pagination.pages >= 1;
+  const showSelectedParentCount = activeView === 'grouped' && selectedKeywordIds.size > 0;
 
   return (
     <>
-      <div className="flex flex-col justify-end mb-4 gap-3 shrink-0 bg-gray-50">
+      <div className="flex flex-col gap-1 pb-2 border-b border-border">
+        <h2 className="text-[15px] font-semibold text-foreground">Keyword Management</h2>
+        {showSelectedParentCount && (
+          <span className="text-xs text-muted">
+            Selected parent keywords: {selectedParentKeywordCount.toLocaleString()}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-col justify-end mb-4 gap-3 shrink-0 bg-surface-muted/40 rounded-lg p-2">
         <div className="flex items-center gap-2 w-full justify-end">
           <VolumeInputs
             minVolume={minVolume}
@@ -492,34 +501,34 @@ export const MainContent: React.FC<MainContentProps> = memo(({
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex border border-[#eaeaea] p-0.3 gap-2 rounded bg-gray-50 w-full sm:w-auto justify-center shrink-0">
+          <div className="flex border border-border p-0.5 gap-2 rounded bg-surface-muted w-full sm:w-auto justify-center shrink-0">
             <button
               onClick={() => handleViewChange('ungrouped')}
-              className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'ungrouped' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-800 hover:bg-gray-200'}`}
+              className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'ungrouped' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
             >
               {viewLabels.ungrouped}
             </button>
             <button
               onClick={() => handleViewChange('grouped')}
-              className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'grouped' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-800 hover:bg-gray-200'}`}
+              className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'grouped' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
             >
               {viewLabels.grouped}
             </button>
             <button
               onClick={() => handleViewChange('confirmed')}
-              className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'confirmed' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-800 hover:bg-gray-200'}`}
+              className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'confirmed' ? 'bg-green-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
             >
               {viewLabels.confirmed}
             </button>
             <button
               onClick={() => handleViewChange('blocked')}
-              className={`flex-1 sm:flex-none px-1 py-2 text-sm rounded transition-colors hover:cursor-pointer ${activeView === 'blocked' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-800 hover:bg-gray-200'}`}
+              className={`flex-1 sm:flex-none px-1 py-2 text-sm rounded transition-colors hover:cursor-pointer ${activeView === 'blocked' ? 'bg-red-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
             >
               {viewLabels.blocked}
             </button>
           </div>
 
-          <div className="flex items-center justify-center sm:justify-end gap-1 text-xs text-gray-800">
+          <div className="flex items-center justify-center sm:justify-end gap-1 text-xs text-foreground">
             <span className="flex-shrink-0">
               Showing <span className="inline-block min-w-[30px] text-center">{keywordsToDisplay.length.toLocaleString()}</span> | 
               Page <span className="inline-block min-w-[10px] text-center">{pagination.page}</span> /
@@ -531,7 +540,7 @@ export const MainContent: React.FC<MainContentProps> = memo(({
                 id="itemsPerPage"
                 value={pagination.limit}
                 onChange={handleLimitChange}
-                className="appearance-none bg-gray-50 border border-[#eaeaea] rounded text-sm py-1 pl-2 pr-6 focus:outline-none cursor-pointer"
+                className="appearance-none bg-white border border-border rounded text-sm py-1 pl-2 pr-6 focus:outline-none cursor-pointer"
                 aria-label="Items per page"
                 disabled={isLoadingData}
               >
@@ -539,7 +548,7 @@ export const MainContent: React.FC<MainContentProps> = memo(({
                   <option key={option} value={option}>{option}</option>
                 ))}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-gray-800">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-foreground">
                 <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
@@ -549,42 +558,44 @@ export const MainContent: React.FC<MainContentProps> = memo(({
         </div>
       </div>
 
-      <div className={`relative flex-grow overflow-hidden ${TABLE_FIXED_HEIGHT_CLASS}`}>
-        <KeywordTable
-          groupedKeywords={keywordsToDisplay}
-          loading={isLoadingData}
-          isTableLoading={isTableLoading}
-          loadingChildren={loadingChildren}
-          expandedGroups={expandedGroups}
-          toggleGroupExpansion={toggleGroupExpansion}
-          selectedKeywordIds={selectedKeywordIds}
-          toggleKeywordSelection={toggleKeywordSelection}
-          selectedTokens={selectedTokens}
-          toggleTokenSelection={toggleTokenSelection}
-          removeToken={removeToken}
-          projectId={projectIdStr}
-          currentView={activeView}
-          sortParams={sortParams}
-          onSort={handleSort}
-          isAllSelected={isAllSelected}
-          isAnySelected={isAnySelected}
-          handleSelectAllClick={handleSelectAllClick}
-          handleMiddleClickGroup={handleMiddleClickGroup}
-          onSerpFilterChange={handleSerpFilterChange}
-        />
-      </div>
-      {shouldShowPagination && (
-        <div className="shrink-0">
-          <Pagination
-            total={pagination.total}
-            page={pagination.page}
-            limit={pagination.limit}
-            pages={pagination.pages}
-            onPageChange={handlePageChange}
-            disabled={isLoadingData}
+      <div className="relative flex-1 min-h-0 overflow-hidden">
+        <div className="flex h-full flex-col min-h-0">
+          <KeywordTable
+            groupedKeywords={keywordsToDisplay}
+            loading={isLoadingData}
+            isTableLoading={isTableLoading}
+            loadingChildren={loadingChildren}
+            expandedGroups={expandedGroups}
+            toggleGroupExpansion={toggleGroupExpansion}
+            selectedKeywordIds={selectedKeywordIds}
+            toggleKeywordSelection={toggleKeywordSelection}
+            selectedTokens={selectedTokens}
+            toggleTokenSelection={toggleTokenSelection}
+            removeToken={removeToken}
+            projectId={projectIdStr}
+            currentView={activeView}
+            sortParams={sortParams}
+            onSort={handleSort}
+            isAllSelected={isAllSelected}
+            isAnySelected={isAnySelected}
+            handleSelectAllClick={handleSelectAllClick}
+            handleMiddleClickGroup={handleMiddleClickGroup}
+            onSerpFilterChange={handleSerpFilterChange}
           />
+          {shouldShowPagination && (
+            <div className="sticky bottom-0 bg-white border-t border-border px-2 py-2">
+              <Pagination
+                total={pagination.total}
+                page={pagination.page}
+                limit={pagination.limit}
+                pages={pagination.pages}
+                onPageChange={handlePageChange}
+                disabled={isLoadingData}
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </>
   );
 });

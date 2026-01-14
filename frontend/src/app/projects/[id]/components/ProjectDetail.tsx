@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store/store';
 import { setKeywordsForView, setChildrenForGroup, setProjectStats } from '@/store/projectSlice';
@@ -12,14 +12,17 @@ import { FiltersSection } from './FiltersSection';
 import { MainContent } from './MainContent';
 import { Snackbar } from './Snackbar';
 import { TokenManagement } from './token/TokenManagement';
+import { LogsTable } from './LogsTable';
 import {TextAreaInputs} from './TextAreaInputs'; 
+import FileUploader from './FileUploader';
+import CSVUploadDropdown from './CSVUploadDropdown';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
+import { Loader2 } from 'lucide-react';
 import {
   ProcessingStatus, ActiveKeywordView, SnackbarMessage, SortParams,
   Keyword, PaginationInfo
 } from './types';
-import CSVUploadDropdown from './CSVUploadDropdown';
 import { 
   selectUngroupedKeywordsForProject, 
   selectGroupedKeywordsForProject, 
@@ -121,7 +124,6 @@ class ApiCache {
 
 
 export default function ProjectDetail() {
-  const router = useRouter();
   const params = useParams();
   const projectIdNum = Number(params?.id);
   const projectIdStr = params?.id ? String(params.id) : '';
@@ -150,6 +152,7 @@ export default function ProjectDetail() {
 
   // Component state
   const [activeView, setActiveView] = useState<ActiveKeywordView>('ungrouped');
+  const [activeTab, setActiveTab] = useState<'overview' | 'group' | 'logs'>('group');
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
   const [includeFilter, setIncludeFilter] = useState('');
   const [excludeFilter, setExcludeFilter] = useState('');
@@ -163,6 +166,7 @@ export default function ProjectDetail() {
     groupedPages: 0,
     blockedCount: 0,
     totalKeywords: 0,
+    totalParentKeywords: 0,
   });
   const [sortParams, setSortParams] = useState<SortParams>({
     column: 'volume',
@@ -204,9 +208,22 @@ export default function ProjectDetail() {
   const [selectedSerpFeatures, setSelectedSerpFeatures] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
-  const addSnackbarMessage = useCallback((text: string, type: 'success' | 'error') => {
+  const addSnackbarMessage = useCallback((
+    text: string,
+    type: 'success' | 'error' | 'info',
+    options?: { description?: string; stage?: ProcessingStatus }
+  ) => {
     const id = Date.now();
-    setSnackbarMessages(prev => [...prev, { id, text, type }]);
+    setSnackbarMessages(prev => [
+      ...prev,
+      {
+        id,
+        text,
+        type,
+        description: options?.description,
+        stage: options?.stage
+      }
+    ]);
     setTimeout(() => {
       setSnackbarMessages(prev => prev.filter(msg => msg.id !== id));
     }, 3000);
@@ -289,6 +306,7 @@ const fetchProjectStats = useCallback(async () => {
       confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
       confirmedPages: statsData.confirmedPages || 0,               
       blockedCount: statsData.blockedCount || 0,
+      totalParentKeywords: statsData.totalParentKeywords || 0,
       totalKeywords: statsData.totalKeywords || 
         (statsData.ungroupedCount + statsData.groupedKeywordsCount + 
          statsData.confirmedKeywordsCount + statsData.blockedCount),
@@ -297,7 +315,7 @@ const fetchProjectStats = useCallback(async () => {
     console.error('Error fetching project stats:', error);
     addSnackbarMessage(`Error fetching stats: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
   }
-}, [projectIdStr, router, addSnackbarMessage]);
+}, [projectIdStr, addSnackbarMessage]);
   const calculateMaintainedPage = useCallback((
     currentPage: number,
     currentLimit: number,
@@ -630,7 +648,6 @@ const fetchProjectStats = useCallback(async () => {
     selectedSerpFeatures,
     projectIdNum, 
     dispatch, 
-    router, 
     addSnackbarMessage, 
     apiCache
   ]);
@@ -686,7 +703,7 @@ const fetchChildren = useCallback(async (groupId: string) => {
     } finally {
       setIsExporting(false);
     }
-  }, [activeView, projectIdStr, addSnackbarMessage, router]);
+  }, [activeView, projectIdStr, addSnackbarMessage]);
 
   const handleExportParentKeywords = useCallback(async () => {
 
@@ -711,7 +728,7 @@ const fetchChildren = useCallback(async (groupId: string) => {
     } finally {
       setIsExportingParent(false);
     }
-  }, [projectIdStr, addSnackbarMessage, router]);
+  }, [projectIdStr, addSnackbarMessage]);
   const handleImportParentKeywords = useCallback(async (file: File) => {
 
     setIsImportingParent(true);
@@ -744,7 +761,7 @@ const fetchChildren = useCallback(async (groupId: string) => {
     } finally {
       setIsImportingParent(false);
     }
-  }, [projectIdStr, addSnackbarMessage, router, fetchKeywords, pagination, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]);
+  }, [projectIdStr, addSnackbarMessage, fetchKeywords, pagination, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]);
 
 const handleViewChange = useCallback((newView: ActiveKeywordView) => {
   if (activeView !== newView) {
@@ -993,7 +1010,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     });
     return newSelected;
   });
-}, [filteredAndSortedKeywords, activeView, childrenCache, fetchChildren, dispatch, projectIdStr, groupName, addSnackbarMessage]);
+}, [filteredAndSortedKeywords, activeView, childrenCache, fetchChildren, dispatch, projectIdStr, addSnackbarMessage]);
 
   const handleSelectAllClick = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const isChecked = event.target.checked;
@@ -1027,7 +1044,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       
       return newTokens;
     });
-  }, [pagination.page, pagination.limit, apiCache, projectIdStr, activeView, fetchKeywords, sortParams, includeFilter, excludeFilter, minVolume, maxVolume, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]);
+  }, [pagination.page, pagination.limit, apiCache, projectIdStr, activeView, fetchKeywords, sortParams, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating]);
   
 
   const handleAdvancedTokenSelection = useCallback(async (token: string, event: React.MouseEvent) => {
@@ -1253,7 +1270,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         });
       }
     }
-  }, [projectIdStr, childrenCache, router, dispatch, addSnackbarMessage, expandedGroups, fetchChildren]);
+  }, [projectIdStr, childrenCache, dispatch, addSnackbarMessage, expandedGroups, fetchChildren]);
 
   const handleConfirmKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1314,7 +1331,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, router, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
 
   const handleUnconfirmKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1375,7 +1392,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, router, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, fetchProjectStats, calculateMaintainedPage]);
 
   const handleGroupKeywords = useCallback(async (overrideGroupName?: string) => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1466,6 +1483,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               confirmedPages: statsData.confirmedPages || 0,
               groupedPages: statsData.groupedPages || 0,
               blockedCount: statsData.blockedCount || 0,
+              totalParentKeywords: statsData.totalParentKeywords || 0,
               totalKeywords: statsData.totalKeywords ||
                 (statsData.ungroupedCount + statsData.groupedKeywordsCount + (statsData.confirmedKeywordsCount || 0) + statsData.blockedCount),
             });
@@ -1516,7 +1534,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, router, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating]);
+  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating]);
 
   useEffect(() => {
       const blurActiveCheckboxes = () => {
@@ -1690,7 +1708,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, router, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
 
   const handleUnblockKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -1737,7 +1755,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setIsProcessingAction(false);
       setIsTableLoading(false);
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, router, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, calculateMaintainedPage]);
     
     const handleMiddleClickGroup = useCallback(async (keywordIds: number[]) => {
     if (activeView !== 'ungrouped') {
@@ -1804,7 +1822,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     } finally {
       setIsProcessingAction(false);
     }
-  }, [activeView, groupName, projectIdStr, ungroupedKeywords, addSnackbarMessage, router, setGroupName,
+  }, [activeView, groupName, projectIdStr, ungroupedKeywords, addSnackbarMessage, setGroupName,
       fetchKeywords, pagination, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, fetchProjectStats, 
       setSelectedKeywordIds, setIsProcessingAction]);
       
@@ -1831,6 +1849,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         setIsUploading(false);
         setUploadSuccess(true);
         stopProcessingCheck();
+        addSnackbarMessage('Processing complete', 'success', {
+          stage: 'complete',
+          description: 'Your keywords are ready to review.'
+        });
         fetchKeywords(1, pagination.limit, activeView, sortParams, {
           tokens: selectedTokens,
           include: includeFilter,
@@ -1847,7 +1869,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }, true);
         
         fetchProjectStats();
-        addSnackbarMessage('File processed successfully', 'success');
         return;
       }
       if (data.status !== processingStatus) {
@@ -1861,6 +1882,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         } else if (data.status === 'idle') {
           setIsUploading(false);
           stopProcessingCheck();
+        } else if (data.status === 'uploading' || data.status === 'combining') {
+          setIsUploading(true);
+        } else if (data.status === 'queued' || data.status === 'processing') {
+          setIsUploading(false);
         }
       }
 
@@ -1921,14 +1946,19 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       setProcessingProgress(0);
     }
   }, [
-    projectIdStr, processingStatus, stopProcessingCheck, router, 
+    projectIdStr, processingStatus, stopProcessingCheck, 
     fetchKeywords, pagination.limit, activeView, sortParams, 
     selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, selectedSerpFeatures, minRating, maxRating, addSnackbarMessage, 
     dispatch, projectIdNum, fetchProjectStats
   ]);
 
   useEffect(() => {
-    if (processingStatus === 'queued' || processingStatus === 'processing') {
+    if (
+      processingStatus === 'uploading' ||
+      processingStatus === 'combining' ||
+      processingStatus === 'queued' ||
+      processingStatus === 'processing'
+    ) {
       if (!statusCheckIntervalRef.current) {
         checkProcessingStatus();
         statusCheckIntervalRef.current = setInterval(checkProcessingStatus, 1000);
@@ -1995,10 +2025,17 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         if (initialData.pagination) {
           setPagination(initialData.pagination);
         }
-        if (initialData.processingStatus?.status === 'processing') {
+        if (initialData.processingStatus?.status) {
           setProcessingStatus(initialData.processingStatus.status);
           setProcessingProgress(initialData.processingStatus.progress || 0);
-          startProcessingCheck();
+          if (
+            initialData.processingStatus.status === 'uploading' ||
+            initialData.processingStatus.status === 'combining' ||
+            initialData.processingStatus.status === 'queued' ||
+            initialData.processingStatus.status === 'processing'
+          ) {
+            startProcessingCheck();
+          }
         }
       }
     } catch (error) {
@@ -2022,11 +2059,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     } finally {
       setIsLoadingData(false);
     }
-  }, [projectIdStr, router, pagination.limit, activeView, dispatch, projectIdNum, startProcessingCheck, addSnackbarMessage, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter]);
+  }, [projectIdStr, pagination.limit, activeView, dispatch, projectIdNum, startProcessingCheck, addSnackbarMessage, fetchKeywords, sortParams, selectedTokens, includeFilter, excludeFilter]);
   
   const handleUploadStart = useCallback(() => {
     setIsUploading(true);
-    setProcessingStatus('queued');
+    setProcessingStatus('uploading');
     setProcessingProgress(0);
     startProcessingCheck();
   }, [startProcessingCheck]);  
@@ -2060,7 +2097,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }, 1500);
       } else if (status === 'queued' || status === 'processing') {
         startProcessingCheck();
-        if (message) addSnackbarMessage(message, 'success');
+        addSnackbarMessage('Upload complete', 'success', {
+          stage: 'queued',
+          description: message || (status === 'processing'
+            ? 'Processing has started.'
+            : 'Processing is queued and will begin shortly.')
+        });
       } else {
         setIsUploading(false);
         if (message) addSnackbarMessage(message, 'success');
@@ -2121,6 +2163,13 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     const anySelected = allFilteredIds.some(id => selectedKeywordIds.has(id));
     return { isAllSelected: allSelected, isAnySelected: anySelected };
   }, [filteredAndSortedKeywords, selectedKeywordIds]);
+  const selectedParentKeywordCount = useMemo(() => {
+    if (activeView !== 'grouped' || selectedKeywordIds.size === 0) return 0;
+    const parentIds = new Set(
+      filteredAndSortedKeywords.filter(keyword => keyword.isParent).map(keyword => keyword.id)
+    );
+    return Array.from(selectedKeywordIds).filter(id => parentIds.has(id)).length;
+  }, [activeView, filteredAndSortedKeywords, selectedKeywordIds]);
 
   const getTokensFromKeywords = useCallback(() => {
     const keywords = getCurrentViewData();
@@ -2336,7 +2385,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   
       debouncedFetch();
     },
-    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
+    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
   );
   
   const handleMaxLengthChange = useCallback(
@@ -2362,7 +2411,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   
       debouncedFetch();
     },
-    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, maxLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
+    [fetchKeywords, pagination.page, pagination.limit, activeView, sortParams, selectedTokens, includeFilter, excludeFilter, minVolume, maxVolume, minLength, minDifficulty, maxDifficulty, minRating, maxRating, selectedSerpFeatures]
   );
 
   const handleSerpFilterChange = useCallback((features: string[]) => {
@@ -2438,214 +2487,308 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     );
   }
 
+  const isProcessing = processingStatus === 'queued' || processingStatus === 'processing';
+  const showUploadLoader = isUploading || isProcessing;
+  const totalChildKeywords = Math.max(0, stats.totalKeywords - stats.totalParentKeywords);
+
   return (
-    <div className="min-h-screen flex flex-col bg-background relative">
-      <div className="flex flex-wrap gap-4 justify-between items-center p-4 bg-surface border-b border-border shadow-sm">
-        <Header projectName={project?.name} />
-        <CSVUploadDropdown projectId={projectIdStr} />
-        <Button
-          onClick={handleExportParentKeywords}
-          disabled={isExportingParent}
-        >
-          {isExportingParent ? (
-            <>
-              <Spinner size="sm" className="border-muted border-t-foreground" />
-              Exporting...
-            </>
-          ) : (
-            'Export Parent KWs'
-          )}
-        </Button>
-        <label className="inline-flex items-center">
-          <span className="sr-only">Import Parent KWs</span>
-          <Button disabled={isImportingParent}>
-            {isImportingParent ? (
+    <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden">
+      <Header projectName={project?.name} />
+      <div className="bg-surface border-b border-border">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-end gap-2">
+          <Button
+            onClick={handleExportParentKeywords}
+            disabled={isExportingParent}
+            size="sm"
+            className="px-2 py-1 text-[11px]"
+          >
+            {isExportingParent ? (
               <>
-                <Spinner size="sm" className="border-white/40 border-t-white" />
-                Importing...
+                <Spinner size="sm" className="border-muted border-t-foreground" />
+                Exporting...
               </>
             ) : (
-              'Import Parent KWs'
+              'Export Parent KWs'
             )}
           </Button>
-          <input
-            type="file"
-            accept=".csv"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                handleImportParentKeywords(file);
-                e.target.value = '';
-              }
-            }}
-            className="hidden"
-            disabled={isImportingParent}
-          />
-        </label>
-
-        <Button
-          onClick={handleExportCSV}
-          disabled={(activeView !== 'grouped' && activeView !== 'confirmed') || isExporting}
-          variant="secondary"
-        >
-          {isExporting ? (
-            <>
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-              Exporting...
-            </>
-          ) : (
-            'Export'
-          )}
-        </Button>
-      </div>
-      <div className="flex-1 flex flex-row justify-end overflow-hidden">
-        <aside className="w-1/5 min-w-[250px] flex flex-col">
-          <div className="bg-white shadow border border-gray-200 p-4 flex flex-col flex-grow h-full overflow-auto">
-            <TextAreaInputs projectId={projectIdStr} />
-          </div>
-        </aside>
-      <main className="flex-1 flex flex-col max-w-[1150px]">
-        <div className="bg-white  shadow border border-gray-200 p-4 sm:p-6 flex flex-col flex-grow h-full">
-          <FiltersSection
-            projectIdStr={projectIdStr}
-            isUploading={isUploading}
-            processingStatus={processingStatus}
-            processingProgress={displayProgress}
-            includeFilter={includeFilter}
-            excludeFilter={excludeFilter}
-            groupName={groupName}
-            activeView={activeView}
-            selectedKeywordIds={selectedKeywordIds}
-            isProcessingAction={isProcessingAction}
-            selectedTokens={selectedTokens}
-            handleUploadStart={handleUploadStart}
-            handleUploadSuccess={handleUploadSuccess}
-            handleUploadError={handleUploadError}
-            handleIncludeFilterChange={handleIncludeFilterChange}
-            handleExcludeFilterChange={handleExcludeFilterChange}
-            setGroupName={setGroupName}
-            handleGroupKeywords={handleGroupKeywords}
-            handleUngroupKeywords={handleUngroupKeywords}
-            handleUnblockKeywords={handleUnblockKeywords}
-            removeToken={removeToken}
-            handleClearAllFilters={clearAllFilters}
-            setIncludeMatchType={setIncludeMatchType}
-            setExcludeMatchType={setExcludeMatchType}
-            includeMatchType={includeMatchType}
-            excludeMatchType={excludeMatchType}
-            handleConfirmKeywords={handleConfirmKeywords}
-            handleUnconfirmKeywords={handleUnconfirmKeywords}
-          />
-          <MainContent
-            activeView={activeView}
-            isTableLoading={isTableLoading}
-            keywordsToDisplay={formatDataForDisplay}
-            pagination={pagination}
-            isLoadingData={isLoadingData}
-            loadingChildren={loadingChildren}
-            expandedGroups={expandedGroups}
-            selectedKeywordIds={selectedKeywordIds}
-            selectedTokens={selectedTokens}
-            sortParams={sortParams}
-            isAllSelected={isAllSelected}
-            isAnySelected={isAnySelected}
-            projectIdStr={projectIdStr}
-            minVolume={minVolume}
-            maxVolume={maxVolume}
-            minLength={minLength}
-            maxLength={maxLength}
-            minRating={minRating}
-            maxRating={maxRating}
-            minDifficulty={minDifficulty}
-            maxDifficulty={maxDifficulty}
-            handleViewChange={handleViewChange}
-            handlePageChange={handlePageChange}
-            handleLimitChange={handleLimitChange}
-            handleMinVolumeChange={handleMinVolumeChange}
-            handleMaxVolumeChange={handleMaxVolumeChange}
-            handleMinLengthChange={handleMinLengthChange}
-            handleMaxLengthChange={handleMaxLengthChange}
-            handleMinDifficultyChange={handleMinDifficultyChange}
-            handleMaxDifficultyChange={handleMaxDifficultyChange}
-            handleMinRatingChange={handleMinRatingChange}
-            handleMaxRatingChange={handleMaxRatingChange}
-            toggleGroupExpansion={toggleGroupExpansion}
-            toggleKeywordSelection={toggleKeywordSelection}
-            toggleTokenSelection={handleAdvancedTokenSelection}
-            removeToken={removeToken}
-            handleSort={handleSort}
-            handleSelectAllClick={handleSelectAllClick}
-            handleMiddleClickGroup={handleMiddleClickGroup}
-            stats={stats}
-            selectedSerpFeatures={selectedSerpFeatures}
-            handleSerpFilterChange={handleSerpFilterChange}
-          />
-        </div>
-      </main>
-      <aside className="w-1/3 flex flex-col min-w-[350px] max-w-[450px]">
-           <div className="bg-white  shadow border border-gray-200 p-4 flex flex-col flex-grow h-full overflow-hidden">
-           <TokenManagement
-              projectId={projectIdStr}
-              onBlockTokenSuccess={async () => {
-                await Promise.all([
-                  fetchKeywords(
-                    pagination.page,
-                    pagination.limit,
-                    activeView,
-                    sortParams,
-                    {
-                      tokens: selectedTokens,
-                      include: includeFilter,
-                      exclude: excludeFilter,
-                      minVolume: minVolume ? parseInt(minVolume) : "",
-                      maxVolume: maxVolume ? parseInt(maxVolume) : "",
-                      minLength: minLength ? parseInt(minLength) : "",
-                      maxLength: maxLength ? parseInt(maxLength) : "",
-                      minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-                      maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-                      serpFeatures: selectedSerpFeatures,
-                      minRating: minRating ? parseInt(minRating) : "",
-                      maxRating: maxRating ? parseInt(maxRating) : "",
-                    },
-                    true
-                  ),
-                  fetchProjectStats()
-                ]);
+          <label className="inline-flex items-center">
+            <span className="sr-only">Import Parent KWs</span>
+            <Button disabled={isImportingParent} size="sm" className="px-2 py-1 text-[11px]">
+              {isImportingParent ? (
+                <>
+                  <Spinner size="sm" className="border-white/40 border-t-white" />
+                  Importing...
+                </>
+                ) : (
+                  'Import Parent KWs'
+                )}
+            </Button>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  handleImportParentKeywords(file);
+                  e.target.value = '';
+                }
               }}
-              onUnblockTokenSuccess={async () => {
-                await Promise.all([
-                  fetchKeywords(
-                    pagination.page,
-                    pagination.limit,
-                    activeView,
-                    sortParams,
-                    {
-                      tokens: selectedTokens,
-                      include: includeFilter,
-                      exclude: excludeFilter,
-                      minVolume: minVolume ? parseInt(minVolume) : "",
-                      maxVolume: maxVolume ? parseInt(maxVolume) : "",
-                      minLength: minLength ? parseInt(minLength) : "",
-                      maxLength: maxLength ? parseInt(maxLength) : "",
-                      minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
-                      maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
-                      serpFeatures: selectedSerpFeatures,
-                      minRating: minRating ? parseInt(minRating) : "",
-                      maxRating: maxRating ? parseInt(maxRating) : "",
-                    },
-                    true
-                  ),
-                  fetchProjectStats()
-                ]);
-              }}
-              addSnackbarMessage={addSnackbarMessage}
-              onTokenDataChange={handleTokenDataChange}
-              activeViewKeywords={getTokensFromKeywords()}
-              toggleTokenSelection={toggleTokenSelection} 
-              activeView={activeView as "ungrouped" | "grouped" | "blocked"}
+              className="hidden"
+              disabled={isImportingParent}
             />
-           </div>
-        </aside>
+          </label>
+
+          <Button
+            onClick={handleExportCSV}
+            disabled={(activeView !== 'grouped' && activeView !== 'confirmed') || isExporting}
+            variant="secondary"
+          >
+            {isExporting ? (
+              <>
+                <Spinner size="sm" className="border-white/40 border-t-white" />
+                Exporting...
+              </>
+            ) : (
+              'Export'
+            )}
+          </Button>
+        </div>
+      </div>
+      <div className="flex-1 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col xl:flex-row gap-4">
+            <aside className="w-full xl:w-[220px] xl:flex-shrink-0 flex flex-col">
+              <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-auto">
+                <TextAreaInputs projectId={projectIdStr} />
+              </div>
+            </aside>
+            <main className="flex-1 min-w-0 flex flex-col">
+              <div className="bg-white shadow border border-border rounded-lg p-4 sm:p-6 flex flex-col flex-grow h-full">
+                <div className="flex flex-wrap gap-2 border border-border rounded-lg bg-surface-muted/40 p-1 mb-4 justify-center">
+                  {(['overview', 'group', 'logs'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors ${
+                        activeTab === tab
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-muted hover:text-foreground hover:bg-surface-muted'
+                      }`}
+                    >
+                      {tab === 'overview' ? 'Overview' : tab === 'group' ? 'Group' : 'Logs'}
+                    </button>
+                  ))}
+                </div>
+                {activeTab === 'overview' && (
+                  <div className="flex flex-col gap-4">
+                    <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="min-w-[220px] flex flex-col gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted">Upload CSVs</span>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="min-w-[180px] max-w-[220px]">
+                              <FileUploader
+                                projectId={projectIdStr}
+                                onUploadStart={handleUploadStart}
+                                onUploadSuccess={handleUploadSuccess}
+                                onUploadError={handleUploadError}
+                              />
+                            </div>
+                            <CSVUploadDropdown projectId={projectIdStr} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center h-6">
+                      {showUploadLoader ? (
+                        <div className="flex items-center text-blue-600">
+                          <Loader2 size={16} className="animate-spin mr-2" />
+                          <span className="text-xs">
+                            {isUploading ? "Uploading..." : "Processing..."}
+                          </span>
+                        </div>
+                      ) : processingStatus === 'error' && !isUploading && !isProcessing ? (
+                        <div className="text-red-600 text-xs">
+                          Processing failed. Try uploading again.
+                        </div>
+                      ) : (
+                        <span className="text-xs text-transparent">Status</span>
+                      )}
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total keywords uploaded</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.totalKeywords.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total parent keywords</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.totalParentKeywords.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total child keywords</p>
+                        <p className="text-lg font-semibold text-foreground">{totalChildKeywords.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Grouped pages</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.groupedPages.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Confirmed pages</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.confirmedPages.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Blocked parent keywords</p>
+                        <p className="text-lg font-semibold text-foreground">{stats.blockedCount.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {activeTab === 'group' && (
+                  <>
+                    <FiltersSection
+                      projectIdStr={projectIdStr}
+                      includeFilter={includeFilter}
+                      excludeFilter={excludeFilter}
+                      groupName={groupName}
+                      activeView={activeView}
+                      selectedKeywordIds={selectedKeywordIds}
+                      isProcessingAction={isProcessingAction}
+                      isUploading={isUploading}
+                      processingStatus={processingStatus}
+                      selectedTokens={selectedTokens}
+                      handleIncludeFilterChange={handleIncludeFilterChange}
+                      handleExcludeFilterChange={handleExcludeFilterChange}
+                      setGroupName={setGroupName}
+                      handleGroupKeywords={handleGroupKeywords}
+                      handleUngroupKeywords={handleUngroupKeywords}
+                      handleUnblockKeywords={handleUnblockKeywords}
+                      removeToken={removeToken}
+                      handleClearAllFilters={clearAllFilters}
+                      setIncludeMatchType={setIncludeMatchType}
+                      setExcludeMatchType={setExcludeMatchType}
+                      includeMatchType={includeMatchType}
+                      excludeMatchType={excludeMatchType}
+                      handleConfirmKeywords={handleConfirmKeywords}
+                      handleUnconfirmKeywords={handleUnconfirmKeywords}
+                    />
+                    <MainContent
+                      activeView={activeView}
+                      isTableLoading={isTableLoading}
+                      keywordsToDisplay={formatDataForDisplay}
+                      pagination={pagination}
+                      isLoadingData={isLoadingData}
+                      loadingChildren={loadingChildren}
+                      expandedGroups={expandedGroups}
+                      selectedKeywordIds={selectedKeywordIds}
+                      selectedTokens={selectedTokens}
+                      sortParams={sortParams}
+                      isAllSelected={isAllSelected}
+                      isAnySelected={isAnySelected}
+                      projectIdStr={projectIdStr}
+                      selectedParentKeywordCount={selectedParentKeywordCount}
+                      minVolume={minVolume}
+                      maxVolume={maxVolume}
+                      minLength={minLength}
+                      maxLength={maxLength}
+                      minRating={minRating}
+                      maxRating={maxRating}
+                      minDifficulty={minDifficulty}
+                      maxDifficulty={maxDifficulty}
+                      handleViewChange={handleViewChange}
+                      handlePageChange={handlePageChange}
+                      handleLimitChange={handleLimitChange}
+                      handleMinVolumeChange={handleMinVolumeChange}
+                      handleMaxVolumeChange={handleMaxVolumeChange}
+                      handleMinLengthChange={handleMinLengthChange}
+                      handleMaxLengthChange={handleMaxLengthChange}
+                      handleMinDifficultyChange={handleMinDifficultyChange}
+                      handleMaxDifficultyChange={handleMaxDifficultyChange}
+                      handleMinRatingChange={handleMinRatingChange}
+                      handleMaxRatingChange={handleMaxRatingChange}
+                      toggleGroupExpansion={toggleGroupExpansion}
+                      toggleKeywordSelection={toggleKeywordSelection}
+                      toggleTokenSelection={handleAdvancedTokenSelection}
+                      removeToken={removeToken}
+                      handleSort={handleSort}
+                      handleSelectAllClick={handleSelectAllClick}
+                      handleMiddleClickGroup={handleMiddleClickGroup}
+                      stats={stats}
+                      selectedSerpFeatures={selectedSerpFeatures}
+                      handleSerpFilterChange={handleSerpFilterChange}
+                    />
+                  </>
+                )}
+                {activeTab === 'logs' && (
+                  <LogsTable projectId={projectIdStr} />
+                )}
+              </div>
+            </main>
+            <aside className="w-full xl:w-[300px] xl:flex-shrink-0 flex flex-col">
+              <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-hidden">
+                <TokenManagement
+                  projectId={projectIdStr}
+                  onBlockTokenSuccess={async () => {
+                    await Promise.all([
+                      fetchKeywords(
+                        pagination.page,
+                        pagination.limit,
+                        activeView,
+                        sortParams,
+                        {
+                          tokens: selectedTokens,
+                          include: includeFilter,
+                          exclude: excludeFilter,
+                          minVolume: minVolume ? parseInt(minVolume) : "",
+                          maxVolume: maxVolume ? parseInt(maxVolume) : "",
+                          minLength: minLength ? parseInt(minLength) : "",
+                          maxLength: maxLength ? parseInt(maxLength) : "",
+                          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
+                          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
+                          serpFeatures: selectedSerpFeatures,
+                          minRating: minRating ? parseInt(minRating) : "",
+                          maxRating: maxRating ? parseInt(maxRating) : "",
+                        },
+                        true
+                      ),
+                      fetchProjectStats()
+                    ]);
+                  }}
+                  onUnblockTokenSuccess={async () => {
+                    await Promise.all([
+                      fetchKeywords(
+                        pagination.page,
+                        pagination.limit,
+                        activeView,
+                        sortParams,
+                        {
+                          tokens: selectedTokens,
+                          include: includeFilter,
+                          exclude: excludeFilter,
+                          minVolume: minVolume ? parseInt(minVolume) : "",
+                          maxVolume: maxVolume ? parseInt(maxVolume) : "",
+                          minLength: minLength ? parseInt(minLength) : "",
+                          maxLength: maxLength ? parseInt(maxLength) : "",
+                          minDifficulty: minDifficulty ? parseFloat(minDifficulty) : "",
+                          maxDifficulty: maxDifficulty ? parseFloat(maxDifficulty) : "",
+                          serpFeatures: selectedSerpFeatures,
+                          minRating: minRating ? parseInt(minRating) : "",
+                          maxRating: maxRating ? parseInt(maxRating) : "",
+                        },
+                        true
+                      ),
+                      fetchProjectStats()
+                    ]);
+                  }}
+                  addSnackbarMessage={addSnackbarMessage}
+                  onTokenDataChange={handleTokenDataChange}
+                  activeViewKeywords={getTokensFromKeywords()}
+                  toggleTokenSelection={toggleTokenSelection}
+                  activeView={activeView as "ungrouped" | "grouped" | "blocked"}
+                />
+              </div>
+            </aside>
+          </div>
+        </div>
       </div>
       <Snackbar messages={snackbarMessages} onClose={removeSnackbarMessage} />      
     </div>

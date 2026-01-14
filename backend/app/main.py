@@ -1,10 +1,19 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from app.config import settings
 from app.database import init_db
+from app.routes import (
+    activity_logs,
+    auth,
+    keyword_routes,
+    keyword_tokens,
+    notes,
+    projects,
+)
 from app.routes import auth, keyword_tokens, notes, projects, keyword_routes
+from app.utils.compound_normalization import load_compound_variants
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -23,6 +32,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_db_client():
     await init_db()
+    load_compound_variants()
 
 # Include routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)
@@ -30,9 +40,12 @@ app.include_router(projects.router, prefix=settings.API_V1_STR)
 app.include_router(keyword_routes.router, prefix=settings.API_V1_STR)
 app.include_router(keyword_tokens.router, prefix=settings.API_V1_STR)
 app.include_router(notes.router, prefix=settings.API_V1_STR)
+app.include_router(activity_logs.router, prefix=settings.API_V1_STR)
 @app.get("/")
 async def root():
-    return {"message": "Welcome to SEO Project Manager API. See /docs for API documentation."}
+    return {
+        "message": "Welcome to SEO Project Manager API. See /docs for API documentation."
+    }
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -34,7 +34,7 @@ export function TokenPagination({
   const pageNumbers = getPageNumbers();
   if (total === 0) {
     return (
-      <div className="mt-2 flex items-center justify-between text-[13px] text-gray-800">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-foreground">
         <div>No results found</div>
       </div>
     );
@@ -42,7 +42,7 @@ export function TokenPagination({
   
   if (totalPages <= 1) {
     return (
-      <div className="mt-2 flex items-center justify-between text-[13px] text-gray-800">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-foreground">
         <div>
           Showing {total.toLocaleString()} {total === 1 ? 'result' : 'results'}
         </div>
@@ -51,15 +51,15 @@ export function TokenPagination({
   }
 
   return (
-    <div className="mt-10 flex items-center justify-between text-[13px] text-gray-800">
+    <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-foreground">
       <div>
         Showing page {currentPage} of {totalPages} ({total.toLocaleString()} total)
       </div>
-      <div className="flex items-center gap-2 cursor-pointer">
+      <div className="flex flex-wrap items-center gap-2 cursor-pointer">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1 || isLoading}
-          className="px-2 py-1 border border-gray-300 cursor-pointer rounded-md text-gray-800 hover:bg-gray-300 disabled:opacity-50"
+          className="px-2 py-1 border border-border cursor-pointer rounded-md text-foreground hover:bg-surface-muted disabled:opacity-50"
           aria-label="Previous page"
         >
           ‹
@@ -73,7 +73,7 @@ export function TokenPagination({
             className={`px-2 py-1 border rounded-md ${
               page === currentPage
                 ? 'bg-blue-600 text-white border-blue-600 cursor-pointer'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-300 cursor-pointer'
+                : 'border-border text-muted hover:bg-surface-muted cursor-pointer'
             } disabled:opacity-50`}
             aria-label={`Page ${page}`}
             aria-current={page === currentPage ? 'page' : undefined}
@@ -85,7 +85,7 @@ export function TokenPagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages || isLoading}
-          className="px-2 py-1 border border-gray-300 cursor-pointer rounded-md text-gray-600 hover:bg-gray-300 disabled:opacity-50"
+          className="px-2 py-1 border border-border cursor-pointer rounded-md text-muted hover:bg-surface-muted disabled:opacity-50"
           aria-label="Next page"
         >
           ›

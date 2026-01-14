@@ -67,6 +67,29 @@ seo-project-manager/
    uvicorn app.main:app --reload
    ```
 
+## Linting
+
+Run the backend linters from the repository root:
+
+```
+ruff check backend/app backend/alembic
+black --check backend/app backend/alembic
+```
+
+## Backfill: Compound Normalization Tokens
+
+When the compound normalization/tokenization pipeline changes, re-run the backfill to regenerate
+`keywords.tokens`, apply existing merge mappings, and regroup affected keywords:
+
+```
+cd backend
+python -m app.scripts.backfill_compounds --project-id <project_id>
+```
+
+Tips:
+- Add `--dry-run` to preview changes without writing updates.
+- Use `--batch-size 1000` (or larger) for bigger projects.
+
 ## API Endpoints
 
 The application provides the following API endpoints:

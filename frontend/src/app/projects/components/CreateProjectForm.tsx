@@ -2,7 +2,6 @@
 import React from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 
 interface CreateProjectFormProps {
@@ -23,9 +22,9 @@ export default function CreateProjectForm({
   setError,
 }: CreateProjectFormProps) {
   return (
-    <div className="mb-8">
+    <div className="flex flex-col gap-4">
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 p-4 mb-6 rounded-lg">
+        <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-300" viewBox="0 0 20 20" fill="currentColor">
@@ -51,40 +50,40 @@ export default function CreateProjectForm({
           </div>
         </div>
       )}
-      <Card className="mb-8 p-6">
-        <CardTitle className="mb-4">Create New Project</CardTitle>
-        <CardContent>
-          <form onSubmit={handleCreateProject} className="flex flex-col sm:flex-row gap-4">
-            <Input
-              id="newProjectName"
-              type="text"
-              value={newProjectName}
-              onChange={(e) => setNewProjectName(e.target.value)}
-              placeholder="Enter project name"
-              className="w-full sm:w-64"
-              required
-              disabled={isCreating}
-            />
-            <Button
-              type="submit"
-              disabled={isCreating || !newProjectName.trim()}
-              className="w-full sm:w-auto"
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Project
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <form onSubmit={handleCreateProject} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <label htmlFor="newProjectName" className="text-[13px] font-medium text-foreground">
+            Create New Project
+          </label>
+          <Input
+            id="newProjectName"
+            type="text"
+            value={newProjectName}
+            onChange={(e) => setNewProjectName(e.target.value)}
+            placeholder="Enter project name"
+            className="mt-2 w-full"
+            required
+            disabled={isCreating}
+          />
+        </div>
+        <Button
+          type="submit"
+          disabled={isCreating || !newProjectName.trim()}
+          className="w-full sm:w-auto"
+        >
+          {isCreating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Project
+            </>
+          )}
+        </Button>
+      </form>
     </div>
   );
 }

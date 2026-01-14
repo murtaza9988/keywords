@@ -33,7 +33,7 @@ interface TokenManagementProps {
   onBlockTokenSuccess: () => void;
   onUnblockTokenSuccess: () => void;
   onTokenDataChange: () => void;
-  addSnackbarMessage: (text: string, type: 'success' | 'error') => void;
+  addSnackbarMessage: (text: string, type: 'success' | 'error' | 'info') => void;
   activeViewKeywords: TokenData[];
   toggleTokenSelection: (token: string) => void;
   activeView: 'ungrouped' | 'grouped' | 'blocked';
@@ -70,6 +70,7 @@ export function TokenManagement({
   const [showCreateToken, setShowCreateToken] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
   const [isCreatingToken, setIsCreatingToken] = useState(false);
+  const tokenCacheRef = useRef<Map<string, { tokens: TokenData[]; pagination: PaginationInfo }>>(new Map());
   
   const ungroupedKeywords = useSelector((state: RootState) => selectUngroupedKeywordsForProject(state, projectId));
   const groupedKeywords = useSelector((state: RootState) => selectGroupedKeywordsForProject(state, projectId));
@@ -132,9 +133,28 @@ export function TokenManagement({
   const fetchTokens = useCallback(
     async (view: TokenActiveView, page: number, limit: number, search: string) => {
       if (!projectId) return;
-      
+
+      const cacheKey = [
+        view,
+        page,
+        limit,
+        search,
+        sortParams.column,
+        sortParams.direction,
+        activeView,
+      ].join('|');
+      const cached = tokenCacheRef.current.get(cacheKey);
+      if (cached) {
+        setTokens(cached.tokens);
+        setPagination(cached.pagination);
+      }
+
+      const shouldShowLoading = !cached;
+
       if (view === 'current') {
-        setIsLoading(true);
+        if (shouldShowLoading) {
+          setIsLoading(true);
+        }
         try {
           let currentTokens = activeViewKeywords.map(kw => ({
             tokenName: kw.tokenName,
@@ -189,13 +209,16 @@ export function TokenManagement({
             paginatedTokens = currentTokens.slice(start, Math.min(start + limit, currentTokens.length));
           }
 
-          setTokens(paginatedTokens);
-          setPagination({
+          const nextPagination = {
             total,
             page: currentPage,
             limit,
             pages,
-          });
+          };
+
+          setTokens(paginatedTokens);
+          setPagination(nextPagination);
+          tokenCacheRef.current.set(cacheKey, { tokens: paginatedTokens, pagination: nextPagination });
           
           return;
         } catch (err) {
@@ -204,8 +227,10 @@ export function TokenManagement({
           setIsLoading(false);
         }
       }
-      
-      setIsLoading(true);
+
+      if (shouldShowLoading) {
+        setIsLoading(true);
+      }
 
       try {
         const searchTerms = search.split(',').map(term => term.trim()).filter(term => term.length > 0);
@@ -243,12 +268,14 @@ export function TokenManagement({
           const adjustedPage = Math.min(page, pages || 1);
 
           setTokens(mergedTokens);
-          setPagination({
+          const nextPagination = {
             total,
             page: adjustedPage,
             limit,
             pages,
-          });
+          };
+          setPagination(nextPagination);
+          tokenCacheRef.current.set(cacheKey, { tokens: mergedTokens, pagination: nextPagination });
         } else {
           const queryParams = new URLSearchParams({
             view,
@@ -301,27 +328,26 @@ export function TokenManagement({
           const adjustedPage = Math.min(page, pages || 1);
 
           setTokens(tokensWithCount);
-          setPagination({
+          const nextPagination = {
             total,
             page: adjustedPage,
             limit,
             pages,
-          });
+          };
+          setPagination(nextPagination);
+          tokenCacheRef.current.set(cacheKey, { tokens: tokensWithCount, pagination: nextPagination });
         }
-        setSelectedTokenNames(new Set());
       } catch (error) {
         console.error('Error fetching tokens:', error);
         addSnackbarMessage(
           `Error loading tokens: ${isError(error) ? error.message : 'Unknown error'}`,
           'error'
         );
-        setTokens([]);
-        setPagination({ total: 0, page, limit, pages: 0 });
       } finally {
         setIsLoading(false);
       }
     },
-    [projectId, sortParams, addSnackbarMessage, activeViewKeywords]
+    [projectId, sortParams, addSnackbarMessage, activeViewKeywords, activeView]
   );
 
   useEffect(() => {
@@ -388,6 +414,7 @@ export function TokenManagement({
     if (activeTokenView !== newView) {
       setActiveTokenView(newView);
       setPagination(prev => ({ ...prev, page: 1 }));
+      setSelectedTokenNames(new Set());
       setFetchTrigger(prev => prev + 1);
     }
   };
@@ -651,8 +678,8 @@ export function TokenManagement({
   const showMinimumCharInfo = searchTerm.length > 0 && searchTerm.length < MINIMUM_SEARCH_LENGTH;
 
   return (
-    <div className="flex flex-col bg-gray-50 lg:h-[calc(130vh-400px)]">
-      <h2 className="text-lg font-semibold mb-5 text-gray-800">Token Management</h2>
+    <div className="flex flex-col h-full">
+      <h2 className="text-[15px] font-semibold mb-4 text-foreground">Token Management</h2>
 
       <div className="relative">
         <TokenSearchBar 
@@ -663,7 +690,7 @@ export function TokenManagement({
         />
         
         {showMinimumCharInfo && (
-          <div className="text-xs text-gray-500 mt-1 absolute top-full left-0">
+          <div className="text-xs text-muted mt-1 absolute top-full left-0">
             Type at least {MINIMUM_SEARCH_LENGTH} characters to search...
           </div>
         )}
@@ -686,45 +713,49 @@ export function TokenManagement({
         onLimitChange={handleLimitChange} 
       />
 
-      <div className="flex-grow overflow-y-auto overflow-x-hidden border border-gray-200 rounded-md relative min-h-[400px]">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-full w-full bg-white absolute inset-0 z-20">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          </div>
-        ) : tokens.length > 0 ? (
-          <TokenTable
-            tokens={tokens}
-            selectedTokenNames={selectedTokenNames}
-            expandedTokens={expandedTokens}
-            onSelectAll={handleSelectAllClick}
-            onToggleSelection={toggleLocalTokenSelection}
-            onToggleExpansion={toggleTokenExpansion}
-            onTokenClick={handleTokenClick}
-            onBlockToken={handleBlockSingleToken}
-            onUnblockToken={handleUnblockSingleToken}
-            onUnmergeToken={handleUnmergeToken}
-            onUnmergeIndividualToken={handleUnmergeIndividualToken}
-            isLoading={false}
-            isProcessingAction={isProcessingAction}
-            sortParams={sortParams}
-            onSort={handleSort}
-            getTopKeywords={getTopKeywords}
-            onTokenHover={setHoveredToken}
-            hoveredToken={hoveredToken}
-            activeTokenView={activeTokenView}
-          />
-        ) : (
-          <div className="flex justify-center items-center h-full">
-            <p className="text-gray-500">No tokens found</p>
-          </div>
-        )}
-      </div>
+      <div className="flex flex-col flex-1 min-h-0 border border-border rounded-md bg-white overflow-hidden">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden relative">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-full w-full bg-white absolute inset-0 z-20">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : tokens.length > 0 ? (
+            <TokenTable
+              tokens={tokens}
+              selectedTokenNames={selectedTokenNames}
+              expandedTokens={expandedTokens}
+              onSelectAll={handleSelectAllClick}
+              onToggleSelection={toggleLocalTokenSelection}
+              onToggleExpansion={toggleTokenExpansion}
+              onTokenClick={handleTokenClick}
+              onBlockToken={handleBlockSingleToken}
+              onUnblockToken={handleUnblockSingleToken}
+              onUnmergeToken={handleUnmergeToken}
+              onUnmergeIndividualToken={handleUnmergeIndividualToken}
+              isLoading={false}
+              isProcessingAction={isProcessingAction}
+              sortParams={sortParams}
+              onSort={handleSort}
+              getTopKeywords={getTopKeywords}
+              onTokenHover={setHoveredToken}
+              hoveredToken={hoveredToken}
+              activeTokenView={activeTokenView}
+            />
+          ) : (
+            <div className="flex justify-center items-center h-full">
+              <p className="text-muted">No tokens found</p>
+            </div>
+          )}
+        </div>
 
-      <TokenPagination
-        pagination={pagination}
-        onPageChange={handlePageChange}
-        isLoading={isLoading}
-      />
+        <div className="sticky bottom-0 border-t border-border bg-white px-2 py-2">
+          <TokenPagination
+            pagination={pagination}
+            onPageChange={handlePageChange}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
 
       {showCreateToken && (
         <CreateTokenModal

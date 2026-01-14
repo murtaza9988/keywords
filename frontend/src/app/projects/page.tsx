@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Header from './components/Header';
 import CreateProjectForm from './components/CreateProjectForm';
 import ProjectsTable from './components/ProjectsTable';
@@ -10,6 +11,8 @@ import apiClient from '../../lib/apiClient';
 import authService from '../../lib/authService';
 import { addProject, removeProject, setProjects, updateProject } from '../../store/projectSlice';
 import { Project } from '@/lib/types';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 
 function isError(error: unknown): error is Error {
   return error instanceof Error;
@@ -44,6 +47,9 @@ export default function Projects() {
   const [sortConfig, setSortConfig] = useState<{ key: string; order: 'asc' | 'desc' }>({ key: 'created_at', order: 'desc' });
   const router = useRouter();
   const dispatch: AppDispatch = useDispatch();
+  const filteredProjectCount = projects.filter((project) =>
+    project.name.toLowerCase().includes(searchTerm.toLowerCase())
+  ).length;
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -152,36 +158,67 @@ export default function Projects() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-[1570px] mx-auto px-4 py-8">
-        <CreateProjectForm
-          newProjectName={newProjectName}
-          setNewProjectName={setNewProjectName}
-          isCreating={isCreating}
-          handleCreateProject={handleCreateProject}
-          error={error}
-          setError={setError}
-        />
-        <ProjectsTable
-          projects={projects}
-          isLoadingProjects={isLoadingProjects}
-          editingProject={editingProject}
-          editProjectName={editProjectName}
-          setEditProjectName={setEditProjectName}
-          isEditing={isEditing}
-          handleEditClick={handleEditClick}
-          handleEditSubmit={handleEditSubmit}
-          handleDeleteClick={handleDeleteClick}
-          showDeleteModal={showDeleteModal}
-          projectToDelete={projectToDelete}
-          isDeleting={isDeleting}
-          handleDeleteConfirm={handleDeleteConfirm}
-          setShowDeleteModal={setShowDeleteModal}
-          setEditingProject={setEditingProject}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          sortConfig={sortConfig}
-          setSortConfig={setSortConfig}
-        />
+      <main className="max-w-[1100px] mx-auto px-4 py-4">
+        <Card className="p-6">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-3">
+              <nav aria-label="Breadcrumb" className="text-xs text-muted">
+                <ol className="flex items-center gap-2">
+                  <li>
+                    <Link href="/" className="transition-colors hover:text-foreground">
+                      Home
+                    </Link>
+                  </li>
+                  <li className="text-muted">/</li>
+                  <li className="text-foreground">Projects</li>
+                </ol>
+              </nav>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Projects</h2>
+                  <p className="text-[13px] text-muted mt-1">
+                    Manage your [{filteredProjectCount}] SEO keyword projects
+                  </p>
+                </div>
+                <Input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search projects..."
+                  className="w-full lg:w-64 text-[13px]"
+                />
+              </div>
+              <CreateProjectForm
+                newProjectName={newProjectName}
+                setNewProjectName={setNewProjectName}
+                isCreating={isCreating}
+                handleCreateProject={handleCreateProject}
+                error={error}
+                setError={setError}
+              />
+            </div>
+            <ProjectsTable
+              projects={projects}
+              isLoadingProjects={isLoadingProjects}
+              editingProject={editingProject}
+              editProjectName={editProjectName}
+              setEditProjectName={setEditProjectName}
+              isEditing={isEditing}
+              handleEditClick={handleEditClick}
+              handleEditSubmit={handleEditSubmit}
+              handleDeleteClick={handleDeleteClick}
+              showDeleteModal={showDeleteModal}
+              projectToDelete={projectToDelete}
+              isDeleting={isDeleting}
+              handleDeleteConfirm={handleDeleteConfirm}
+              setShowDeleteModal={setShowDeleteModal}
+              setEditingProject={setEditingProject}
+              searchTerm={searchTerm}
+              sortConfig={sortConfig}
+              setSortConfig={setSortConfig}
+            />
+          </div>
+        </Card>
       </main>
     </div>
   );

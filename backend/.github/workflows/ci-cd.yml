@@ -11,6 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Check frontend formatting
+        run: npm run format:check -w frontend
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -22,6 +33,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-asyncio pytest-cov nltk
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
           
       - name: Download NLTK resources
         run: |
@@ -30,6 +42,10 @@ jobs:
       - name: Run tests with coverage
         run: |
           python -m pytest --cov=app tests/ --cov-report=xml
+
+      - name: Run mypy
+        run: |
+          mypy backend/app
           
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
