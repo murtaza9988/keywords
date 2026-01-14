@@ -436,6 +436,12 @@ async def upload_keywords(
 
             if duplicate_info:
                 duplicate_files.append(upload_file.filename)
+                duplicate_size = None
+                if os.path.exists(file_path):
+                    try:
+                        duplicate_size = os.path.getsize(file_path)
+                    except Exception:
+                        duplicate_size = None
                 try:
                     if os.path.exists(file_path):
                         os.remove(file_path)
@@ -450,7 +456,7 @@ async def upload_keywords(
                         "file_name": upload_file.filename,
                         "existing_upload_id": duplicate_info[0],
                         "chunked": False,
-                        "file_size": os.path.getsize(file_path) if os.path.exists(file_path) else None,
+                        "file_size": duplicate_size,
                     },
                     user=current_user.get("username", "admin"),
                 )
