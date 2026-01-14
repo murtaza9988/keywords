@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { TokenData, TokenSortParams, TokenActiveView, TokenKeywordSummary } from '../types';
+import { TokenActiveView, TokenData, TokenKeywordSummary, TokenSortParams } from './types';
 import { ArrowUp, ArrowDown, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { TokenKeywordPopover } from './TokenKeywordPopover';
 

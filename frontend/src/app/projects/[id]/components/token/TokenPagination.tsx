@@ -1,5 +1,5 @@
 import React from 'react';
-import { PaginationInfo } from '../types';
+import { PaginationInfo } from './types';
 
 interface TokenPaginationProps {
   pagination: PaginationInfo;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { TokenData, TokenKeywordSummary } from '../types';
+import { TokenData, TokenKeywordSummary } from './types';
 
 interface TokenKeywordPopoverProps {
   token: TokenData;

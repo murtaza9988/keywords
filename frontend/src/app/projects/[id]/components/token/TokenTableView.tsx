@@ -1,5 +1,5 @@
 import React from 'react';
-import { TokenActiveView } from '../types';
+import { TokenActiveView } from './types';
 
 interface TokenViewTabsProps {
   activeView: TokenActiveView;
