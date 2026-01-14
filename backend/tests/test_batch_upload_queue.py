@@ -3,6 +3,87 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.services.project import ProjectService
+from app.services.processing_queue import processing_queue_service
+
+
+def test_mark_error_marks_file_as_processed():
+    """
+    Regression test: mark_error should mark the file as processed to avoid
+    validation errors where processed_count < uploaded_count.
+    """
+    project_id = 999
+    # Clean up any existing state
+    processing_queue_service.cleanup(project_id)
+    
+    # Register an upload
+    processing_queue_service.register_upload(project_id, "test.csv")
+    
+    # Simulate error during processing
+    processing_queue_service.mark_error(
+        project_id,
+        message="Test error",
+        file_name="test.csv",
+    )
+    
+    # Check that the file was marked as processed
+    result = processing_queue_service.get_result(project_id)
+    assert "test.csv" in result.get("processed_files", [])
+    
+    # Cleanup
+    processing_queue_service.cleanup(project_id)
+
+
+def test_mark_error_marks_multiple_files_as_processed():
+    """
+    Test that mark_error can mark multiple files as processed via file_names.
+    """
+    project_id = 998
+    processing_queue_service.cleanup(project_id)
+    
+    # Register uploads
+    processing_queue_service.register_upload(project_id, "a.csv")
+    processing_queue_service.register_upload(project_id, "b.csv")
+    
+    # Simulate combined file error
+    processing_queue_service.mark_error(
+        project_id,
+        message="Test error",
+        file_names=["a.csv", "b.csv"],
+    )
+    
+    result = processing_queue_service.get_result(project_id)
+    assert "a.csv" in result.get("processed_files", [])
+    assert "b.csv" in result.get("processed_files", [])
+    
+    processing_queue_service.cleanup(project_id)
+
+
+def test_validation_passes_when_all_files_processed():
+    """
+    Test that the validation check passes when all uploaded files are processed.
+    """
+    project_id = 997
+    processing_queue_service.cleanup(project_id)
+    
+    # Register 3 uploads
+    processing_queue_service.register_upload(project_id, "a.csv")
+    processing_queue_service.register_upload(project_id, "b.csv")
+    processing_queue_service.register_upload(project_id, "c.csv")
+    
+    # Mark all as processed
+    processing_queue_service.mark_file_processed(project_id, "a.csv")
+    processing_queue_service.mark_file_processed(project_id, "b.csv")
+    processing_queue_service.mark_file_processed(project_id, "c.csv")
+    
+    result = processing_queue_service.get_result(project_id)
+    uploaded_count = len(result.get("uploaded_files", []))
+    processed_count = len(result.get("processed_files", []))
+    
+    assert uploaded_count == 3
+    assert processed_count == 3
+    assert uploaded_count == processed_count
+    
+    processing_queue_service.cleanup(project_id)
 
 
 def test_upload_keywords_batch_enqueues_all_files(
