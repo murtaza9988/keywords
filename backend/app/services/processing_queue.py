@@ -5,21 +5,31 @@ from typing import Any, Deque, Dict, List, Optional
 class ProcessingQueueService:
     def __init__(self) -> None:
         self.processing_tasks: Dict[int, str] = {}
-        self.processing_queue: Dict[int, Deque[Dict[str, str]]] = {}
+        self.processing_queue: Dict[int, Deque[Dict[str, Any]]] = {}
         self.processing_results: Dict[int, Dict[str, Any]] = {}
-        self.processing_current_files: Dict[int, Dict[str, str]] = {}
+        self.processing_current_files: Dict[int, Dict[str, Any]] = {}
         self.batch_uploads: Dict[int, Dict[str, Dict[str, Any]]] = {}
 
-    def enqueue(self, project_id: int, file_path: str, file_name: str) -> None:
+    def enqueue(
+        self,
+        project_id: int,
+        file_path: str,
+        file_name: str,
+        *,
+        file_names: Optional[List[str]] = None,
+    ) -> None:
         queue = self.processing_queue.setdefault(project_id, deque())
-        queue.append({
-            "file_path": file_path,
-            "file_name": file_name,
-        })
+        queue.append(
+            {
+                "file_path": file_path,
+                "file_name": file_name,
+                "file_names": list(file_names) if file_names else None,
+            }
+        )
         if self.processing_tasks.get(project_id) not in {"processing", "uploading", "combining"}:
             self.processing_tasks[project_id] = "queued"
 
-    def start_next(self, project_id: int) -> Optional[Dict[str, str]]:
+    def start_next(self, project_id: int) -> Optional[Dict[str, Any]]:
         if self.processing_tasks.get(project_id) == "processing":
             return None
         queue = self.processing_queue.get(project_id)
@@ -40,11 +50,11 @@ class ProcessingQueueService:
     def get_result(self, project_id: int) -> Dict[str, Any]:
         return self.processing_results.get(project_id, self._default_result())
 
-    def get_queue(self, project_id: int) -> List[Dict[str, str]]:
+    def get_queue(self, project_id: int) -> List[Dict[str, Any]]:
         queue = self.processing_queue.get(project_id)
         return list(queue) if queue else []
 
-    def get_current_file(self, project_id: int) -> Optional[Dict[str, str]]:
+    def get_current_file(self, project_id: int) -> Optional[Dict[str, Any]]:
         return self.processing_current_files.get(project_id)
 
     def reset_results(self, project_id: int) -> None:
@@ -70,13 +80,21 @@ class ProcessingQueueService:
         if file_name not in uploaded_files:
             uploaded_files.append(file_name)
 
-    def mark_file_processed(self, project_id: int, file_name: Optional[str] = None) -> None:
-        if not file_name:
+    def mark_file_processed(
+        self, project_id: int, file_name: Optional[str] = None, file_names: Optional[List[str]] = None
+    ) -> None:
+        target_names = []
+        if file_names:
+            target_names.extend(file_names)
+        elif file_name:
+            target_names.append(file_name)
+        if not target_names:
             return
         result = self.processing_results.setdefault(project_id, self._default_result())
         processed_files = result.setdefault("processed_files", [])
-        if file_name not in processed_files:
-            processed_files.append(file_name)
+        for name in target_names:
+            if name not in processed_files:
+                processed_files.append(name)
 
     def update_progress(
         self,
@@ -108,11 +126,12 @@ class ProcessingQueueService:
         *,
         message: str,
         file_name: Optional[str] = None,
+        file_names: Optional[List[str]] = None,
         has_more_in_queue: bool = False,
         keywords: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         result = self.processing_results.setdefault(project_id, self._default_result())
-        self.mark_file_processed(project_id, file_name)
+        self.mark_file_processed(project_id, file_name, file_names)
         result["complete"] = not has_more_in_queue
         result["progress"] = 100.0 if not has_more_in_queue else result.get("progress", 0.0)
         result["message"] = message
@@ -167,7 +186,7 @@ class ProcessingQueueService:
                 "received": set(),
             },
         )
-        key = file_index if file_index is not None else file_name
+        key = file_index if file_index is not None else file_path
         if key in batch_info["received"]:
             return batch_info
         batch_info["files"][key] = {
