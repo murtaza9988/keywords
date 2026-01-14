@@ -234,15 +234,6 @@ export default function ProjectDetail(): React.ReactElement {
   const prevActiveViewRef = useRef(activeView);
   const targetProgressRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
-  const [minVolume, setMinVolume] = useState<string>('');
-  const [maxVolume, setMaxVolume] = useState<string>('');
-  const [minLength, setMinLength] = useState<string>('');
-  const [maxLength, setMaxLength] = useState<string>('');
-  const [minDifficulty, setMinDifficulty] = useState<string>('');
-  const [maxDifficulty, setMaxDifficulty] = useState<string>('');
-  const [minRating, setMinRating] = useState<string>('');
-  const [maxRating, setMaxRating] = useState<string>('');
-  const [selectedSerpFeatures, setSelectedSerpFeatures] = useState<string[]>([]);
   const displayProgressRef = useRef(displayProgress);
   const filterParams = useMemo(() => ({
     tokens: selectedTokens,
@@ -403,23 +394,26 @@ export default function ProjectDetail(): React.ReactElement {
     if (!projectIdStr) return;
     try {
       const statsData = await fetchProjectStatsApi(projectIdStr);
-      setStats({
-      const statsData = await apiClient.fetchSingleProjectStats(projectIdStr);
       detailDispatch({
         type: 'setStats',
         payload: {
-        ungroupedCount: statsData.ungroupedCount || 0,
-        groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
-        groupedPages: statsData.groupedPages || 0,
-        confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
-        confirmedPages: statsData.confirmedPages || 0,
-        blockedCount: statsData.blockedCount || 0,
-        totalParentKeywords: statsData.totalParentKeywords || 0,
-        totalKeywords: statsData.totalKeywords ||
-          (statsData.ungroupedCount + statsData.groupedKeywordsCount +
-            (statsData.confirmedKeywordsCount ?? 0) + statsData.blockedCount),
+          ungroupedCount: statsData.ungroupedCount || 0,
+          groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
+          groupedPages: statsData.groupedPages || 0,
+          confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
+          confirmedPages: statsData.confirmedPages || 0,
+          blockedCount: statsData.blockedCount || 0,
+          totalParentKeywords: statsData.totalParentKeywords || 0,
+          totalKeywords: statsData.totalKeywords ||
+            (statsData.ungroupedCount + statsData.groupedKeywordsCount +
+              (statsData.confirmedKeywordsCount ?? 0) + statsData.blockedCount),
         },
       });
+
+      dispatch(setProjectStats({
+        projectId: projectIdStr,
+        stats: statsData,
+      }));
     } catch (error) {
       console.error('Error fetching project stats:', error);
       addSnackbarMessage(
@@ -839,7 +833,6 @@ export default function ProjectDetail(): React.ReactElement {
   }, [activeView, projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
 
   const handleExportParentKeywords = useCallback(async () => {
-
     detailDispatch({
       type: 'updateProcessing',
       payload: { isExportingParent: true },
@@ -865,9 +858,6 @@ export default function ProjectDetail(): React.ReactElement {
         'Error exporting parent keywords: ' + (isError(error) ? error.message : 'Unknown error'),
         'error'
       );
-    }
-  }, [projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
-  const handleImportParentKeywords = useCallback(async (file: File) => {
     } finally {
       detailDispatch({
         type: 'updateProcessing',
@@ -875,8 +865,8 @@ export default function ProjectDetail(): React.ReactElement {
       });
     }
   }, [projectIdStr, addSnackbarMessage, bumpLogsRefresh]);
-  const handleImportParentKeywords = useCallback(async (file: File) => {
 
+  const handleImportParentKeywords = useCallback(async (file: File) => {
     detailDispatch({
       type: 'updateProcessing',
       payload: { isImportingParent: true },
@@ -886,10 +876,10 @@ export default function ProjectDetail(): React.ReactElement {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       await importParentKeywords(projectIdStr, formData);
       addSnackbarMessage('Parent keywords imported successfully', 'success');
-      
+
       await fetchKeywords(
         pagination.page,
         pagination.limit,
@@ -913,7 +903,7 @@ export default function ProjectDetail(): React.ReactElement {
     }
   }, [projectIdStr, addSnackbarMessage, fetchKeywords, pagination, activeView, sortParams, filterParams, bumpLogsRefresh]);
 
-const handleViewChange = useCallback((newView: ActiveKeywordView) => {
+  const handleViewChange = useCallback((newView: ActiveKeywordView) => {
   if (activeView !== newView) {
     detailDispatch({
       type: 'updateView',
