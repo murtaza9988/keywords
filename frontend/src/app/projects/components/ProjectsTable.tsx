@@ -6,7 +6,6 @@ import { Project, ProjectWithStats } from '@/lib/types';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
-import { useState } from 'react';
 
 interface ProjectsTableProps {
   projects: ProjectWithStats[];
@@ -128,11 +127,18 @@ export default function ProjectsTable({
     router.push(`/projects/${project.id}`);
   };
 
+  const areAllFilteredSelected = filteredProjects.length > 0 && filteredProjects.every(p => selectedIds.includes(p.id));
+
   const handleSelectAll = () => {
-    if (selectedIds.length === filteredProjects.length && filteredProjects.length > 0) {
-      setSelectedIds([]);
+    if (areAllFilteredSelected) {
+      // Deselect currently visible/filtered projects
+      const visibleIds = new Set(filteredProjects.map(p => p.id));
+      setSelectedIds(selectedIds.filter(id => !visibleIds.has(id)));
     } else {
-      setSelectedIds(filteredProjects.map(p => p.id));
+      // Select currently visible/filtered projects (merge with existing)
+      const visibleIds = filteredProjects.map(p => p.id);
+      const newSelection = Array.from(new Set([...selectedIds, ...visibleIds]));
+      setSelectedIds(newSelection);
     }
   };
 
@@ -186,7 +192,7 @@ export default function ProjectsTable({
                 <th className="px-4 py-4 w-[50px] text-center">
                   <input
                     type="checkbox"
-                    checked={filteredProjects.length > 0 && selectedIds.length === filteredProjects.length}
+                    checked={areAllFilteredSelected}
                     onChange={handleSelectAll}
                     className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
                   />
