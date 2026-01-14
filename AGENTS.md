@@ -22,3 +22,4 @@
 
 ## Incident log
 - 2026-01-14: Vercel build failed due to duplicate React state declaration (`activeTab`) in `ProjectDetail.tsx`, triggering a client component SSR error. Prevention: enable `react/jsx-no-duplicate-props` lint rule, review for duplicate declarations/props during edits, and keep lint/typecheck required before commits.
+- 2026-01-14: Multi-CSV uploads failed because the backend rejected new uploads while processing and the UI surfaced only a generic error. Prevention: queue uploads per project, expose queue metadata in processing status, and show step-by-step progress with detailed error messages.

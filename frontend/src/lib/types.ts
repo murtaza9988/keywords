@@ -65,7 +65,7 @@ export interface LoginResponse {
 export type CreateProjectResponse = Project;
 
 export interface ProcessingStatusResponse {
-  message: string;
+  message?: string;
   status: ProcessingStatus;
   keywordCount: number;
   processedCount?: number;
@@ -74,6 +74,9 @@ export interface ProcessingStatusResponse {
   complete?: boolean;
   totalRows?: number; 
   progress?: number; 
+  currentFileName?: string | null;
+  queuedFiles?: string[];
+  queueLength?: number;
 }
 export interface ProcessingKeyword {
   id?: number;

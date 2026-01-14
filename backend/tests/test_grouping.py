@@ -52,7 +52,7 @@ class ExecuteRecorder:
     def __init__(self):
         self.calls = []
 
-    async def __call__(self, statement, params=None):
+    def __call__(self, statement, params=None):
         self.calls.append((statement, params))
         statement_text = str(statement)
         if "SELECT keyword, status, group_id, group_name, original_state" in statement_text:
