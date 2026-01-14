@@ -80,9 +80,13 @@ describe('ProjectDetail', () => {
       stats: {
         ungroupedCount: 1,
         groupedKeywordsCount: 0,
-        confirmedKeywordsCount: 0,
+        groupedPages: 0,
         blockedCount: 0,
         totalKeywords: 1,
+        ungroupedPercent: 100,
+        groupedPercent: 0,
+        blockedPercent: 0,
+        confirmedKeywordsCount: 0,
       },
       currentView: {
         keywords: [
@@ -101,9 +105,16 @@ describe('ProjectDetail', () => {
     mockApiClient.fetchSingleProjectStats.mockResolvedValue({
       ungroupedCount: 1,
       groupedKeywordsCount: 0,
+      groupedPages: 0,
+      confirmedPages: 0,
       confirmedKeywordsCount: 0,
       blockedCount: 0,
       totalKeywords: 1,
+      totalParentKeywords: 1,
+      ungroupedPercent: 100,
+      groupedPercent: 0,
+      confirmedPercent: 0,
+      blockedPercent: 0,
     });
   });
 

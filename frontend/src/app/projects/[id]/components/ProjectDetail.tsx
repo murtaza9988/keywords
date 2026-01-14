@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
@@ -37,11 +36,24 @@ interface CacheEntry<T> {
   expires: number;
 }
 
+type SerpFeatureValue = string[] | string | null | undefined;
+type SerpFeatureCarrier = { serpFeatures?: SerpFeatureValue };
+
 function isError(error: unknown): error is Error {
   return error instanceof Error;
 }
 
-function debounce<T extends (...args: any[]) => any>(
+function normalizeKeywordStatus(
+  status: string | null | undefined,
+  fallback: ActiveKeywordView
+): Keyword['status'] {
+  if (status === 'ungrouped' || status === 'grouped' || status === 'confirmed' || status === 'blocked') {
+    return status;
+  }
+  return fallback;
+}
+
+function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number,
   options: { immediate?: boolean } = {}
@@ -50,7 +62,7 @@ function debounce<T extends (...args: any[]) => any>(
   let lastArgs: Parameters<T> | null = null;
   let lastCallTime: number | null = null;
   
-  return function(this: any, ...args: Parameters<T>): void {
+  return function(this: unknown, ...args: Parameters<T>): void {
     const time = Date.now();
     lastArgs = args;
     lastCallTime = time;
@@ -73,7 +85,7 @@ function debounce<T extends (...args: any[]) => any>(
   };
 }
 class ApiCache {
-  private cache: Map<string, CacheEntry<any>> = new Map();
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
   private defaultTTLMs: number;
 
   constructor(defaultTTLMs = 30000) {
@@ -90,7 +102,7 @@ class ApiCache {
       return null;
     }
 
-    return entry.data;
+    return entry.data as T;
   }
 
   set<T>(key: string, data: T, ttlMs?: number): void {
@@ -256,7 +268,7 @@ export default function ProjectDetail() {
   }, [processingProgress, displayProgress]);
 
   const getCurrentViewData = useCallback(() => {
-    let data: any[] = [];
+    let data: Keyword[] = [];
     
     switch (activeView) {
       case 'ungrouped': 
@@ -276,15 +288,15 @@ export default function ProjectDetail() {
     }
     
     if ((activeView === 'grouped' || activeView === 'confirmed') && (includeFilter || excludeFilter)) {
-      const groupsMap = new Map();
+      const groupsMap = new Map<string, Keyword>();
       
-      data.forEach(keyword => {
+      data.forEach((keyword) => {
         if (keyword.isParent && keyword.groupId) {
           groupsMap.set(keyword.groupId, keyword);
         }
       });
       
-      data.forEach(keyword => {
+      data.forEach((keyword) => {
         if (keyword.groupId && !groupsMap.has(keyword.groupId)) {
           groupsMap.set(keyword.groupId, {...keyword, isParent: true});
         }
@@ -299,18 +311,18 @@ const fetchProjectStats = useCallback(async () => {
   if (!projectIdStr) return;
   try {
     const statsData = await apiClient.fetchSingleProjectStats(projectIdStr);
-    setStats({
-      ungroupedCount: statsData.ungroupedCount || 0,
-      groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
-      groupedPages: statsData.groupedPages || 0,
-      confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
-      confirmedPages: statsData.confirmedPages || 0,               
-      blockedCount: statsData.blockedCount || 0,
-      totalParentKeywords: statsData.totalParentKeywords || 0,
-      totalKeywords: statsData.totalKeywords || 
-        (statsData.ungroupedCount + statsData.groupedKeywordsCount + 
-         statsData.confirmedKeywordsCount + statsData.blockedCount),
-    });
+      setStats({
+        ungroupedCount: statsData.ungroupedCount || 0,
+        groupedKeywordsCount: statsData.groupedKeywordsCount || 0,
+        groupedPages: statsData.groupedPages || 0,
+        confirmedKeywordsCount: statsData.confirmedKeywordsCount || 0,
+        confirmedPages: statsData.confirmedPages || 0,               
+        blockedCount: statsData.blockedCount || 0,
+        totalParentKeywords: statsData.totalParentKeywords || 0,
+        totalKeywords: statsData.totalKeywords || 
+        (statsData.ungroupedCount + statsData.groupedKeywordsCount +
+         (statsData.confirmedKeywordsCount ?? 0) + statsData.blockedCount),
+      });
   } catch (error) {
     console.error('Error fetching project stats:', error);
     addSnackbarMessage(`Error fetching stats: ${isError(error) ? error.message : 'Unknown error'}`, 'error');
@@ -652,7 +664,7 @@ const fetchProjectStats = useCallback(async () => {
     apiCache
   ]);
 
-const getSerpFeatures = (keyword: any): string[] => {
+const getSerpFeatures = (keyword: SerpFeatureCarrier | null | undefined): string[] => {
   if (!keyword || !keyword.serpFeatures) return [];
   if (Array.isArray(keyword.serpFeatures)) return keyword.serpFeatures;
   if (typeof keyword.serpFeatures === 'string') {
@@ -862,7 +874,7 @@ const formatDataForDisplay = useMemo(() => {
   const keywords = getCurrentViewData();
   
   return keywords.map(parent => {
-    let children: any[] = [];
+    let children: Keyword[] = [];
     
     if (parent.groupId && expandedGroups.has(parent.groupId)) {
       children = childrenCache[parent.groupId] || [];
@@ -1563,8 +1575,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if ((window as any).__handlingShiftPress) return;
-        (window as any).__handlingShiftPress = true;
+        const windowWithHandling = window as Window & { __handlingShiftPress?: boolean };
+        if (windowWithHandling.__handlingShiftPress) return;
+        windowWithHandling.__handlingShiftPress = true;
 
         try {
           blurActiveCheckboxes();
@@ -1600,7 +1613,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           }
         } finally {
           setTimeout(() => {
-            (window as any).__handlingShiftPress = false;
+            windowWithHandling.__handlingShiftPress = false;
           }, 300);
         }
       }
@@ -1615,8 +1628,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if ((window as any).__handlingCtrlPress) return;
-        (window as any).__handlingCtrlPress = true;
+        const windowWithHandling = window as Window & { __handlingCtrlPress?: boolean };
+        if (windowWithHandling.__handlingCtrlPress) return;
+        windowWithHandling.__handlingCtrlPress = true;
 
         try {
           blurActiveCheckboxes();
@@ -1628,7 +1642,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           }
         } finally {
           setTimeout(() => {
-            (window as any).__handlingCtrlPress = false;
+            windowWithHandling.__handlingCtrlPress = false;
           }, 300);
         }
       }
@@ -1891,7 +1905,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
 
       if ((data.status === 'queued' || data.status === 'processing') && 
           data.keywords && data.keywords.length > 0) {
-        const keywords = data.keywords.map(kw => {
+        const keywords = data.keywords.map((kw) => {
           let parsedTokens = [];
           try {
             if (typeof kw.tokens === 'string') {
@@ -1906,6 +1920,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             }
           }
           
+          const serpFeatures = Array.isArray(kw.serp_features) ? kw.serp_features : [];
+
           return {
             id: kw.id || Date.now() + Math.random(),
             project_id: projectIdNum,
@@ -1915,26 +1931,27 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             difficulty: kw.difficulty || 0,
             isParent: kw.is_parent || false,
             groupId: kw.group_id || null,
-            status: kw.status || 'ungrouped',
+            groupName: kw.group_name || null,
+            status: normalizeKeywordStatus(kw.status, 'ungrouped'),
             childCount: kw.child_count || 0,
             original_volume: kw.original_volume || kw.volume || 0,
-            serpFeatures: kw.serpFeatures || {},
+            serpFeatures,
             length: (kw.keyword || '').length
           };
         });
         
         dispatch(setKeywordsForView({
-          projectId: projectIdStr,
-          view: 'ungrouped',
-          keywords: keywords.map(kw => ({
-            ...kw,
-            original_volume: kw.volume || 0,
-            project_id: projectIdNum,
-            status: 'ungrouped',
-            groupName: kw.keyword || '',
-            serpFeatures: kw.serpFeatures || {},
-            length: (kw.keyword || '').length
-          })),
+            projectId: projectIdStr,
+            view: 'ungrouped',
+            keywords: keywords.map(kw => ({
+              ...kw,
+              original_volume: kw.volume || 0,
+              project_id: projectIdNum,
+              status: 'ungrouped',
+              groupName: kw.keyword || '',
+              serpFeatures: kw.serpFeatures ?? [],
+              length: (kw.keyword || '').length
+            })),
         }));
       }
     } catch (error) {
@@ -2007,12 +2024,22 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         }
         
         if (initialData.currentView?.keywords) {
-          const transformedKeywords = initialData.currentView.keywords.map((kw: { original_volume: any; volume: any; status: any; keyword: any; }) => ({
-            ...kw,
-            original_volume: kw.original_volume || kw.volume || 0,
+          const transformedKeywords = initialData.currentView.keywords.map((kw) => ({
+            id: kw.id,
             project_id: projectIdNum,
-            status: kw.status || activeView,
-            length: (kw.keyword || '').length
+            keyword: kw.keyword ?? '',
+            tokens: Array.isArray(kw.tokens) ? kw.tokens : [],
+            volume: typeof kw.volume === 'number' ? kw.volume : 0,
+            length: typeof kw.length === 'number' ? kw.length : (kw.keyword ?? '').length,
+            difficulty: typeof kw.difficulty === 'number' ? kw.difficulty : 0,
+            rating: typeof kw.rating === 'number' ? kw.rating : undefined,
+            isParent: !!kw.isParent,
+            groupId: typeof kw.groupId === 'string' ? kw.groupId : null,
+            groupName: typeof kw.groupName === 'string' ? kw.groupName : null,
+            status: normalizeKeywordStatus(kw.status, activeView),
+            childCount: typeof kw.childCount === 'number' ? kw.childCount : 0,
+            original_volume: typeof kw.original_volume === 'number' ? kw.original_volume : (typeof kw.volume === 'number' ? kw.volume : 0),
+            serpFeatures: Array.isArray(kw.serpFeatures) ? kw.serpFeatures : [],
           }));
           
           dispatch(setKeywordsForView({

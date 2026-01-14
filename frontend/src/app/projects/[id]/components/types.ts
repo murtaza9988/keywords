@@ -25,6 +25,12 @@ export interface TokenData {
   merged_token?: string;
 }
 
+export interface TokenKeywordSummary {
+  tokenName: string;
+  volume?: number;
+  difficulty?: number;
+}
+
 export type ActiveKeywordView = 'ungrouped' | 'grouped' | 'confirmed' | 'blocked';
 
 export type TokenActiveView = 'current' | 'blocked' | 'all' | 'merged';

@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo } from 'react';
-import { TokenData, TokenSortParams, TokenActiveView } from '../types';
+import { TokenData, TokenSortParams, TokenActiveView, TokenKeywordSummary } from '../types';
 import { ArrowUp, ArrowDown, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { TokenKeywordPopover } from './TokenKeywordPopover';
 
@@ -21,7 +20,7 @@ interface TokenTableProps {
   isProcessingAction: boolean;
   sortParams: TokenSortParams;
   onSort: (column: string) => void;
-  getTopKeywords: (token: TokenData) => any[];
+  getTopKeywords: (token: TokenData) => TokenKeywordSummary[];
   activeTokenView: TokenActiveView;
   onUnmergeIndividualToken: (parentToken: string, childToken: string) => void;
 }

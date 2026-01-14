@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Project, Keyword, ActiveKeywordView, ProjectState } from '../lib/types';
+import { Project, Keyword, ActiveKeywordView, ProjectMetadata, ProjectState } from '../lib/types';
 import { createSelector } from 'reselect';
 
 const initialState: ProjectState = {
@@ -297,7 +296,7 @@ const projectSlice = createSlice({
     
     setProjectMetadata: (state, action: PayloadAction<{
       projectId: string;
-      metadata: Record<string, any>;
+      metadata: ProjectMetadata;
     }>) => {
       const { projectId, metadata } = action.payload;
       

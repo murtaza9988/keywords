@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { memo, useRef } from 'react';
 import { Loader2, ChevronDown, ChevronRight, Layers } from 'lucide-react';
 import { Keyword,  ActiveKeywordView } from './types';
@@ -100,8 +99,9 @@ export const KeywordRow: React.FC<{
         e.preventDefault();
         e.stopPropagation();
         
-        if ((window as any).__handlingMiddleClick) return;
-        (window as any).__handlingMiddleClick = true;
+        const windowWithHandling = window as Window & { __handlingMiddleClick?: boolean };
+        if (windowWithHandling.__handlingMiddleClick) return;
+        windowWithHandling.__handlingMiddleClick = true;
         
         try {
           if (currentView === 'ungrouped') {
@@ -114,7 +114,7 @@ export const KeywordRow: React.FC<{
           }
         } finally {
           setTimeout(() => {
-            (window as any).__handlingMiddleClick = false;
+            windowWithHandling.__handlingMiddleClick = false;
           }, 300);
         }
       }

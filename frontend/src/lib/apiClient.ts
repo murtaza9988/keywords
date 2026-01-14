@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import {
   Project,
@@ -26,9 +25,133 @@ function isError(error: unknown): error is Error {
   return error instanceof Error;
 }
 
-const mapKeyword = (keywordData: any): Keyword => ({
+interface ApiKeyword {
+  id: number;
+  project_id?: number;
+  keyword?: string | null;
+  tokens?: string[] | null;
+  volume?: number | null;
+  length?: number | null;
+  difficulty?: number | null;
+  rating?: number | null;
+  isParent?: boolean | null;
+  groupId?: string | null;
+  groupName?: string | null;
+  status?: 'ungrouped' | 'grouped' | 'confirmed' | 'blocked' | string | null;
+  childCount?: number | null;
+  original_volume?: number | null;
+  serpFeatures?: string[] | null;
+}
+
+interface ApiProject {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApiProjectStats {
+  ungroupedCount: number;
+  groupedKeywordsCount: number;
+  groupedPages: number;
+  confirmedKeywordsCount: number;
+  confirmedPages: number;
+  blockedCount: number;
+  totalKeywords: number;
+  totalParentKeywords: number;
+  ungroupedPercent: number;
+  groupedPercent: number;
+  confirmedPercent: number;
+  blockedPercent: number;
+}
+
+interface ApiProjectWithStats extends ApiProject {
+  stats?: ApiProjectStats;
+}
+
+interface ProjectsWithStatsResponse {
+  projects: ApiProjectWithStats[];
+}
+
+interface ApiKeywordListResponse {
+  ungroupedKeywords?: ApiKeyword[];
+  groupedKeywords?: ApiKeyword[];
+  confirmedKeywords?: ApiKeyword[];
+  blockedKeywords?: ApiKeyword[];
+  pagination?: PaginationInfo;
+}
+
+interface ApiKeywordChildrenResponse {
+  children?: ApiKeyword[];
+}
+
+interface ApiInitialDataResponse {
+  keywords?: Record<string, ApiKeyword[]>;
+  stats?: ApiInitialProjectStats;
+  pagination?: PaginationInfo;
+  currentView?: {
+    status?: string;
+    keywords?: ApiKeyword[];
+  };
+  processingStatus?: {
+    status?: ProcessingStatus;
+    progress?: number;
+    complete?: boolean;
+  };
+}
+
+interface ApiInitialProjectStats {
+  ungroupedCount: number;
+  groupedKeywordsCount: number;
+  groupedPages: number;
+  blockedCount: number;
+  totalKeywords: number;
+  ungroupedPercent: number;
+  groupedPercent: number;
+  blockedPercent: number;
+  confirmedKeywordsCount?: number;
+  confirmedPages?: number;
+  confirmedPercent?: number;
+  totalParentKeywords?: number;
+}
+
+interface ApiConfirmationResponse {
+  message: string;
+  count: number;
+}
+
+interface ApiTokenOperationResponse {
+  message: string;
+  affected_keywords?: number;
+}
+
+interface ApiCreateTokenResponse extends ApiTokenOperationResponse {
+  affected_keywords: number;
+}
+
+interface ApiActivityLog {
+  id: number;
+  projectId?: number;
+  project_id?: number;
+  user: string;
+  action: string;
+  details?: Record<string, unknown> | null;
+  createdAt?: string;
+  created_at?: string;
+}
+
+const mapKeyword = (keywordData: ApiKeyword): Keyword => {
+  const normalizedStatus: Keyword['status'] =
+    keywordData.status === 'ungrouped' ||
+    keywordData.status === 'grouped' ||
+    keywordData.status === 'blocked' ||
+    keywordData.status === 'confirmed'
+      ? keywordData.status
+      : 'ungrouped';
+
+  return {
   id: keywordData.id,
-  project_id: keywordData.project_id,
+  project_id: keywordData.project_id ?? 0,
   keyword: keywordData.keyword ?? '',
   tokens: Array.isArray(keywordData.tokens) ? keywordData.tokens : [],
   volume: typeof keywordData.volume === 'number' ? keywordData.volume : 0,
@@ -38,13 +161,14 @@ const mapKeyword = (keywordData: any): Keyword => ({
   isParent: !!keywordData.isParent,
   groupId: typeof keywordData.groupId === 'string' ? keywordData.groupId : null,
   groupName: typeof keywordData.groupName === 'string' ? keywordData.groupName : null,
-  status: ['ungrouped', 'grouped', 'blocked'].includes(keywordData.status) ? keywordData.status : 'ungrouped',
+  status: normalizedStatus,
   childCount: typeof keywordData.childCount === 'number' ? keywordData.childCount : 0,
   original_volume: typeof keywordData.original_volume === 'number' ? keywordData.original_volume : 0,
   serpFeatures: Array.isArray(keywordData.serpFeatures) ? keywordData.serpFeatures : []
-});
+  };
+};
 
-const mapProject = (projectData: any): Project => ({
+const mapProject = (projectData: ApiProject): Project => ({
   id: projectData.id,
   name: projectData.name ?? 'Unnamed Project',
   created_at: projectData.created_at ?? new Date().toISOString(),
@@ -58,7 +182,7 @@ interface CacheEntry<T> {
 }
 
 class ApiCache {
-  private cache: Map<string, CacheEntry<any>> = new Map();
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
   private defaultTTLMs: number;
   
   constructor(defaultTTLMs = 30000) {
@@ -75,7 +199,7 @@ class ApiCache {
       return null;
     }
     
-    return entry.data;
+    return entry.data as T;
   }
   
   set<T>(key: string, data: T, ttlMs?: number): void {
@@ -156,7 +280,7 @@ class ApiClient {
     private async request<T>(
       method: 'get' | 'post' | 'delete' | 'put',
       url: string,
-      data?: any,
+      data?: unknown,
       token?: string,
       useCache = false
     ): Promise<T> {
@@ -175,12 +299,20 @@ class ApiClient {
           // Use provided token or get from auth service
           const authToken = token || authService.getAccessToken();
           
-          const config = {
-            method,
-            url,
-            ...(data && { data }),
-            ...(authToken && { headers: { Authorization: `Bearer ${authToken}` } }),
-          };
+          const config: {
+            method: typeof method;
+            url: string;
+            data?: unknown;
+            headers?: { Authorization: string };
+          } = { method, url };
+
+          if (data !== undefined) {
+            config.data = data;
+          }
+
+          if (authToken) {
+            config.headers = { Authorization: `Bearer ${authToken}` };
+          }
     
           const response: AxiosResponse<T> = await this.axiosInstance.request(config);
           const responseData = response.status === 204 ? ({} as T) : response.data;
@@ -211,17 +343,17 @@ class ApiClient {
   }
 
   async fetchProjects(): Promise<Project[]> {
-    const data = await this.request<any[]>('get', '/api/projects', undefined, undefined, true);
+    const data = await this.request<ApiProject[]>('get', '/api/projects', undefined, undefined, true);
     return data.map(mapProject);
   }
 
-  async fetchProjectsWithStats(): Promise<{ projects: any[] }> {
-    const data = await this.request<{ projects: any[] }>('get', '/api/projects/with-stats', undefined, undefined, true);
+  async fetchProjectsWithStats(): Promise<ProjectsWithStatsResponse> {
+    const data = await this.request<ProjectsWithStatsResponse>('get', '/api/projects/with-stats', undefined, undefined, true);
     return data;
   }
 
   async fetchProjectLogs(projectId: string): Promise<ActivityLog[]> {
-    const data = await this.request<ActivityLog[]>(
+    const data = await this.request<ApiActivityLog[]>(
       'get',
       `/api/projects/${projectId}/logs`,
       undefined,
@@ -230,14 +362,14 @@ class ApiClient {
     );
     return data.map((log) => ({
       ...log,
-      projectId: log.projectId ?? (log as any).project_id ?? Number(projectId),
-      createdAt: log.createdAt ?? (log as any).created_at ?? new Date().toISOString(),
+      projectId: log.projectId ?? log.project_id ?? Number(projectId),
+      createdAt: log.createdAt ?? log.created_at ?? new Date().toISOString(),
       details: log.details ?? null,
     }));
   }
 
-  async fetchSingleProjectStats(projectId: string): Promise<any> {
-    const data = await this.request<any>('get', `/api/projects/${projectId}/stats`, undefined, undefined, true);
+  async fetchSingleProjectStats(projectId: string): Promise<ApiProjectStats> {
+    const data = await this.request<ApiProjectStats>('get', `/api/projects/${projectId}/stats`, undefined, undefined, true);
     return data;
   }
 
@@ -270,7 +402,7 @@ class ApiClient {
     useCache: boolean = false
   ): Promise<FetchKeywordsResponse> {
     const url = `/api/projects/${projectId}/keywords?${queryParams.toString()}`;
-    const data = await this.request<any>('get', url, undefined, undefined, useCache);
+    const data = await this.request<ApiKeywordListResponse>('get', url, undefined, undefined, useCache);
     
     const ungroupedKeywords = (data?.ungroupedKeywords || []).map(mapKeyword);
     const groupedKeywords = (data?.groupedKeywords || []).map(mapKeyword);
@@ -302,9 +434,9 @@ class ApiClient {
     }
   }
 
-  async fetchInitialData(projectId: string): Promise<any> {
+  async fetchInitialData(projectId: string): Promise<ApiInitialDataResponse> {
     const url = `/api/projects/${projectId}/initial-data`;
-    const data = await this.request<any>('get', url, undefined, undefined, true);
+    const data = await this.request<ApiInitialDataResponse>('get', url, undefined, undefined, true);
     
     if (data?.keywords) {
       for (const viewKey in data.keywords) {
@@ -324,7 +456,7 @@ class ApiClient {
     }
     
     const timestamp = Date.now();
-    const data = await this.request<{ children?: any[] }>(
+    const data = await this.request<ApiKeywordChildrenResponse>(
       'get',
       `/api/projects/${projectId}/groups/${groupId}/children?_t=${timestamp}`,
       undefined,
@@ -521,8 +653,8 @@ class ApiClient {
     return data;
   }
 
-  async mergeTokens(projectId: string, parentToken: string, childTokens: string[]): Promise<any> {
-    const data = await this.request<any>(
+  async mergeTokens(projectId: string, parentToken: string, childTokens: string[]): Promise<ApiTokenOperationResponse> {
+    const data = await this.request<ApiTokenOperationResponse>(
       'post',
       `/api/projects/${projectId}/merge-tokens`,
       {
@@ -539,8 +671,8 @@ class ApiClient {
     return data;
   }
 
-  async unmergeToken(projectId: string, tokenName: string): Promise<any> {
-    const data = await this.request<any>(
+  async unmergeToken(projectId: string, tokenName: string): Promise<ApiTokenOperationResponse> {
+    const data = await this.request<ApiTokenOperationResponse>(
       'post',
       `/api/projects/${projectId}/unmerge-token`,
       {
@@ -556,8 +688,8 @@ class ApiClient {
     return data;
   }
 
-  async createToken(projectId: string, searchTerm: string, tokenName: string): Promise<any> {
-    const data = await this.request<any>(
+  async createToken(projectId: string, searchTerm: string, tokenName: string): Promise<ApiCreateTokenResponse> {
+    const data = await this.request<ApiCreateTokenResponse>(
       'post',
       `/api/projects/${projectId}/create-token`,
       {
@@ -617,8 +749,8 @@ class ApiClient {
     }
   }
   
-  async unmergeIndividualToken(projectId: string, parentToken: string, childToken: string): Promise<any> {
-    const data = await this.request<any>(
+  async unmergeIndividualToken(projectId: string, parentToken: string, childToken: string): Promise<ApiTokenOperationResponse> {
+    const data = await this.request<ApiTokenOperationResponse>(
       'post',
       `/api/projects/${projectId}/unmerge-individual-token?parent_token=${encodeURIComponent(parentToken)}&child_token=${encodeURIComponent(childToken)}`,
       undefined,
@@ -673,7 +805,7 @@ class ApiClient {
     }
   }
 
-  async importParentKeywords(projectId: string, formData: FormData): Promise<any> {
+  async importParentKeywords(projectId: string, formData: FormData): Promise<unknown> {
     try {
       const authToken = authService.getAccessToken();
       const response = await this.axiosInstance.post(
@@ -694,8 +826,8 @@ class ApiClient {
     }
   }
   
-  async confirmKeywords(projectId: string, keywordIds: number[]): Promise<any> {
-    const data = await this.request<any>(
+  async confirmKeywords(projectId: string, keywordIds: number[]): Promise<ApiConfirmationResponse> {
+    const data = await this.request<ApiConfirmationResponse>(
       'post',
       `/api/projects/${projectId}/confirm`,
       { keywordIds }
@@ -707,8 +839,8 @@ class ApiClient {
     return data;
   }
 
-  async unconfirmKeywords(projectId: string, keywordIds: number[]): Promise<any> {
-    const data = await this.request<any>(
+  async unconfirmKeywords(projectId: string, keywordIds: number[]): Promise<ApiConfirmationResponse> {
+    const data = await this.request<ApiConfirmationResponse>(
       'post',
       `/api/projects/${projectId}/unconfirm`,
       { keywordIds }
