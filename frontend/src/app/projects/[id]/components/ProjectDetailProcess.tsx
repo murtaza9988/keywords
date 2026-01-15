@@ -3,8 +3,104 @@
 import React from 'react';
 
 export function ProjectDetailProcess(): React.ReactElement {
+  const pipelineSteps = [
+    {
+      title: 'Upload CSV(s)',
+      detail: 'Chunked upload (1MB chunks, 2MB when file > 20MB).',
+      badge: 'Uploading',
+    },
+    {
+      title: 'Combine chunks',
+      detail: 'Server assembles the file, records upload, and de-dupes identical files.',
+      badge: 'Combining',
+    },
+    {
+      title: 'Queue processing',
+      detail: 'Non-duplicate files enter the DB-backed queue (sequential runner).',
+      badge: 'Queued',
+    },
+    {
+      title: 'Import rows',
+      detail: 'Validate → normalize → tokenize → dedupe rows.',
+      badge: 'Processing',
+    },
+    {
+      title: 'Persist keywords',
+      detail: 'Idempotent upsert into the database.',
+      badge: 'Processing',
+    },
+    {
+      title: 'Final grouping pass',
+      detail: 'Runs once after all queued jobs finish.',
+      badge: 'Processing',
+    },
+    {
+      title: 'Complete',
+      detail: 'All files processed and grouping finalized.',
+      badge: 'Complete',
+    },
+  ];
+
+  const statusLegend = [
+    { label: 'Idle', color: 'bg-gray-400', description: 'Ready for uploads' },
+    { label: 'Uploading', color: 'bg-blue-400', description: 'Receiving file chunks' },
+    { label: 'Combining', color: 'bg-indigo-400', description: 'Assembling chunks' },
+    { label: 'Queued', color: 'bg-yellow-400', description: 'Waiting to process' },
+    { label: 'Processing', color: 'bg-orange-400', description: 'Import + persist + group stages' },
+    { label: 'Complete', color: 'bg-green-400', description: 'All files processed' },
+    { label: 'Error', color: 'bg-red-400', description: 'Processing failed (use Reset)' },
+  ];
+
+  const stageLegend = [
+    { stage: 'db_prepare', description: 'Prepare DB / temp tables' },
+    { stage: 'read_csv', description: 'Read CSV rows' },
+    { stage: 'count_rows', description: 'Count rows for progress' },
+    { stage: 'import_rows', description: 'Normalize, tokenize, and dedupe rows' },
+    { stage: 'persist', description: 'Persist keywords' },
+    { stage: 'group', description: 'Final grouping pass' },
+    { stage: 'complete', description: 'Processing finished' },
+  ];
+
+  const fileLegend = [
+    { icon: '✅', label: 'Processed', detail: 'In processedFiles' },
+    { icon: '⏳', label: 'Processing', detail: 'Matches currentFileName' },
+    { icon: '🕒', label: 'Queued', detail: 'In queuedFiles' },
+    { icon: '⚠️', label: 'Error', detail: 'In fileErrors' },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Pipeline Overview */}
+      <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold text-foreground">🧭 Processing Pipeline (UI-aligned)</h3>
+          <p className="text-xs text-muted">
+            Matches the progress bar steps, backend stages, and queue behavior shown in the app.
+          </p>
+        </div>
+        <ol className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {pipelineSteps.map((step, index) => (
+            <li key={step.title} className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
+              <div className="flex items-start gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[11px] font-semibold text-white">
+                  {index + 1}
+                </span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-semibold text-foreground">{step.title}</span>
+                  <span className="text-[11px] text-muted">{step.detail}</span>
+                </div>
+              </div>
+              <span className="mt-2 inline-flex w-fit items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
+                {step.badge}
+              </span>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          🔒 Grouping is read-only while processing is queued or running. The UI disables controls and the API returns 409 until processing completes.
+        </div>
+      </div>
+
       {/* Upload Flow */}
       <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
@@ -23,13 +119,13 @@ export function ProjectDetailProcess(): React.ReactElement {
           <li className="flex gap-2">
             <span className="font-semibold text-blue-600">2.</span>
             <div>
-              <span className="font-medium">Chunk Assembly:</span> When the final chunk arrives, the backend assembles the file, records the upload for download, and skips it if an identical CSV was already uploaded.
+              <span className="font-medium">Chunk Assembly:</span> When the final chunk arrives, the backend assembles the file, records the upload for download, and de-dupes identical CSV content.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-blue-600">3.</span>
             <div>
-              <span className="font-medium">Queue Management:</span> Non-duplicate files are queued for sequential processing, with the progress bar showing the current file and any queued files.
+              <span className="font-medium">Queue Management:</span> Non-duplicate files are queued for sequential processing, with the progress bar showing the current file and queued files.
             </div>
           </li>
         </ol>
@@ -95,37 +191,37 @@ export function ProjectDetailProcess(): React.ReactElement {
           <li className="flex gap-2">
             <span className="font-semibold text-purple-600">1.</span>
             <div>
-              <span className="font-medium">Token Matching:</span> Keywords with IDENTICAL token sets are grouped. Example: &quot;sba loans&quot; and &quot;loans sba&quot; both have tokens [&quot;loan&quot;, &quot;sba&quot;] → grouped together.
+              <span className="font-medium">Post-Import Only:</span> Grouping does not run during import. It runs once after all queued jobs finish.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-purple-600">2.</span>
             <div>
-              <span className="font-medium">Cross-File Clustering:</span> During import, new keywords are checked against existing groups. If tokens match an existing group, the keyword joins that group.
+              <span className="font-medium">Token Matching:</span> Keywords with IDENTICAL token sets are grouped. Example: &quot;sba loans&quot; and &quot;loans sba&quot; both have tokens [&quot;loan&quot;, &quot;sba&quot;] → grouped together.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-purple-600">3.</span>
             <div>
-              <span className="font-medium">Parent Selection:</span> Within each group, the keyword with highest volume becomes the parent. If volumes are equal, lowest difficulty wins.
+              <span className="font-medium">Cross-File Clustering:</span> The final pass compares newly imported keywords against existing groups for deterministic results.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-purple-600">4.</span>
             <div>
-              <span className="font-medium">Volume Aggregation:</span> The parent keyword&apos;s volume = sum of all child volumes. This represents total search demand for the topic.
+              <span className="font-medium">Parent Selection:</span> Within each group, the keyword with highest volume becomes the parent. If volumes are equal, lowest difficulty wins.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-purple-600">5.</span>
             <div>
-              <span className="font-medium">Difficulty Averaging:</span> The parent keyword&apos;s difficulty = average of all child difficulties. This represents overall competition level.
+              <span className="font-medium">Volume Aggregation:</span> The parent keyword&apos;s volume = sum of all child volumes. This represents total search demand for the topic.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-purple-600">6.</span>
             <div>
-              <span className="font-medium">Final Pass:</span> After import, a final grouping pass catches any remaining ungrouped keywords with identical tokens. This ensures no duplicates are missed.
+              <span className="font-medium">Difficulty Averaging:</span> The parent keyword&apos;s difficulty = average of all child difficulties. This represents overall competition level.
             </div>
           </li>
         </ol>
@@ -134,40 +230,57 @@ export function ProjectDetailProcess(): React.ReactElement {
       {/* Processing States */}
       <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">⚙️ Processing States</h3>
+          <h3 className="text-sm font-semibold text-foreground">⚙️ Status & Stage Mapping</h3>
           <p className="text-xs text-muted">
-            The different states during CSV processing.
+            Status badges shown in the progress bar, plus backend stages used while status is &quot;Processing&quot;.
           </p>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-gray-400"></span>
-            <span><span className="font-medium">Idle:</span> Ready for uploads</span>
+        <div className="mt-3 grid gap-4 lg:grid-cols-2 text-xs">
+          <div className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">Status badges</div>
+            <ul className="mt-2 space-y-2">
+              {statusLegend.map((item) => (
+                <li key={item.label} className="flex items-center gap-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
+                  <span>
+                    <span className="font-medium">{item.label}:</span> {item.description}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-blue-400"></span>
-            <span><span className="font-medium">Uploading:</span> Receiving file chunks</span>
+          <div className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">Processing stages</div>
+            <ul className="mt-2 space-y-2">
+              {stageLegend.map((item) => (
+                <li key={item.stage} className="flex items-center justify-between gap-2">
+                  <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
+                    {item.stage}
+                  </span>
+                  <span className="text-muted">{item.description}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-indigo-400"></span>
-            <span><span className="font-medium">Combining:</span> Assembling chunks</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-yellow-400"></span>
-            <span><span className="font-medium">Queued:</span> Waiting to process</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-orange-400"></span>
-            <span><span className="font-medium">Processing:</span> Reading rows, importing batches, and grouping</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-green-400"></span>
-            <span><span className="font-medium">Complete:</span> All files processed</span>
-          </div>
-          <div className="flex items-center gap-2 col-span-2">
-            <span className="h-2 w-2 rounded-full bg-red-400"></span>
-            <span><span className="font-medium">Error:</span> Processing failed (use Reset to recover)</span>
-          </div>
+        </div>
+      </div>
+
+      {/* Per-File Status */}
+      <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold text-foreground">📁 Per-File Status (Uploads)</h3>
+          <p className="text-xs text-muted">
+            Each uploaded CSV gets its own status in the progress bar summary.
+          </p>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+          {fileLegend.map((item) => (
+            <div key={item.label} className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
+              <div className="text-lg">{item.icon}</div>
+              <div className="mt-1 text-xs font-semibold text-foreground">{item.label}</div>
+              <div className="text-[11px] text-muted">{item.detail}</div>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -551,6 +551,45 @@ The ProcessingProgressBar should display **per-file** status for each uploaded C
 If any of the indicators are missing in the UI, treat it as a regression and re-audit
 the component against the per-file UX rules in **11.0.1**.
 
+### 11.2.1) Process Tab UI (Project Detail → Process)
+
+**Goal:** The Process subtab must mirror the exact pipeline, statuses, and stage codes used by the backend and the ProcessingProgressBar UI.
+
+**Pipeline steps (UI-aligned):**
+1. **Upload CSV(s)** — chunked upload (1MB; 2MB when file > 20MB)
+2. **Combine chunks** — assemble file, record upload, de-dupe identical content
+3. **Queue processing** — DB-backed queue (sequential runner)
+4. **Import rows** — validate → normalize → tokenize → dedupe
+5. **Persist keywords** — idempotent upsert to DB
+6. **Final grouping pass** — runs once after all queued jobs finish
+7. **Complete** — all files processed
+
+**Status badges (UI):**
+- **Idle**: Ready for uploads
+- **Uploading**: Receiving file chunks
+- **Combining**: Assembling chunks
+- **Queued**: Waiting to process
+- **Processing**: Import + persist + group stages
+- **Complete**: All files processed
+- **Error**: Processing failed (use Reset to recover)
+
+**Processing stages (backend → UI):**
+- `db_prepare` — Prepare DB / temp tables
+- `read_csv` — Read CSV rows
+- `count_rows` — Count rows for progress
+- `import_rows` — Normalize, tokenize, and dedupe rows
+- `persist` — Persist keywords
+- `group` — Final grouping pass
+- `complete` — Processing finished
+
+**Per-file status legend (Uploads section):**
+- ✅ **Processed** → file appears in `processedFiles`
+- ⏳ **Processing** → matches `currentFileName`
+- 🕒 **Queued** → file appears in `queuedFiles`
+- ⚠️ **Error** → file appears in `fileErrors`
+
+**Locking note:** Grouping controls are read-only while status is queued/processing. UI disables actions and API returns 409 until processing completes.
+
 ### 11.3) Remaining Frontend Tasks
 
 * [x] Add checkmark indicators for processed CSVs in ProcessingProgressBar (verify UI)
