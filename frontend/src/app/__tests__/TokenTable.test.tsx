@@ -66,9 +66,9 @@ describe('TokenTable Layout', () => {
     expect(cols).toHaveLength(6);
     expect(cols[0]).toHaveClass('w-[36px]'); // Checkbox
     expect(cols[1]).toHaveClass('w-auto');   // Token
-    expect(cols[2]).toHaveClass('w-[52px]'); // Count
-    expect(cols[3]).toHaveClass('w-[64px]'); // Vol
-    expect(cols[4]).toHaveClass('w-[52px]'); // Diff
-    expect(cols[5]).toHaveClass('w-[56px]'); // Action
+    expect(cols[2]).toHaveClass('w-[40px]'); // Count
+    expect(cols[3]).toHaveClass('w-[56px]'); // Vol
+    expect(cols[4]).toHaveClass('w-[40px]'); // Diff
+    expect(cols[5]).toHaveClass('w-[48px]'); // Action
   });
 });

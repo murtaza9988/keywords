@@ -107,10 +107,10 @@ export function TokenTable({
           <colgroup>
             <col className="w-[36px]" />
             <col className="w-auto" />
-            <col className="w-[52px]" />
-            <col className="w-[64px]" />
-            <col className="w-[52px]" />
+            <col className="w-[40px]" />
             <col className="w-[56px]" />
+            <col className="w-[40px]" />
+            <col className="w-[48px]" />
           </colgroup>
           <thead className="bg-surface-muted sticky top-0 z-5">
             <tr>
