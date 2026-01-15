@@ -275,7 +275,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
               </th>
               <th
                 scope="col"
-                className="w-[52%] py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer sticky left-[44px] z-10 bg-surface-muted"
+                className="w-[46%] py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer sticky left-[44px] z-10 bg-surface-muted"
                 onClick={() => onSort(keywordColumnKey)}
               >
                 <div className="flex items-center">
@@ -283,7 +283,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   {renderSortIcon(keywordColumnKey)}
                 </div>
               </th>
-              <th scope="col" className="w-[28%] px-2 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">Tokens</th>
+              <th scope="col" className="w-[34%] px-2 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">Tokens</th>
               <th scope="col" className="w-[40px] px-0.5 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1 justify-center">
