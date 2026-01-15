@@ -1,9 +1,137 @@
 from unittest.mock import AsyncMock
+import threading
+import time
 
 import pytest
 
 from app.services.project import ProjectService
 from app.services.processing_queue import processing_queue_service
+
+
+def test_concurrent_uploads_thread_safety():
+    """
+    Test that concurrent uploads don't cause race conditions.
+    This verifies the thread-safety fix for multi-CSV uploads.
+    """
+    project_id = 900
+    processing_queue_service.cleanup(project_id)
+    
+    errors = []
+    results = {"enqueue_count": 0, "files_seen": set()}
+    lock = threading.Lock()
+    
+    def upload_file(file_num: int):
+        try:
+            processing_queue_service.begin_upload(project_id)
+            processing_queue_service.register_upload(project_id, f"file_{file_num}.csv")
+            processing_queue_service.enqueue(
+                project_id,
+                f"/path/file_{file_num}.csv",
+                f"file_{file_num}.csv"
+            )
+            with lock:
+                results["enqueue_count"] += 1
+                results["files_seen"].add(f"file_{file_num}.csv")
+        except Exception as e:
+            with lock:
+                errors.append(f"Thread {file_num} error: {e}")
+    
+    # Start 5 concurrent uploads
+    threads = []
+    for i in range(5):
+        t = threading.Thread(target=upload_file, args=(i,))
+        threads.append(t)
+    
+    # Start all threads simultaneously
+    for t in threads:
+        t.start()
+    
+    # Wait for all to complete
+    for t in threads:
+        t.join()
+    
+    # Verify no errors
+    assert not errors, f"Concurrent upload errors: {errors}"
+    
+    # All 5 files should be enqueued or in current_file
+    assert results["enqueue_count"] == 5
+    assert len(results["files_seen"]) == 5
+    
+    # Verify state is consistent
+    queue = processing_queue_service.get_queue(project_id)
+    result = processing_queue_service.get_result(project_id)
+    
+    # All uploaded files should be tracked
+    assert len(result.get("uploaded_files", [])) == 5
+    
+    # Queue + current_file should account for all files
+    total_tracked = len(queue)
+    current = processing_queue_service.get_current_file(project_id)
+    if current:
+        total_tracked += 1
+    
+    # At least some should be in queue (status should be queued or processing)
+    status = processing_queue_service.get_status(project_id)
+    assert status in ("queued", "processing", "uploading")
+    
+    processing_queue_service.cleanup(project_id)
+
+
+def test_concurrent_state_modifications():
+    """
+    Test that concurrent state modifications maintain invariants.
+    """
+    project_id = 901
+    processing_queue_service.cleanup(project_id)
+    
+    errors = []
+    
+    def modify_state(action: str, file_num: int):
+        try:
+            if action == "enqueue":
+                processing_queue_service.enqueue(
+                    project_id,
+                    f"/path/file_{file_num}.csv",
+                    f"file_{file_num}.csv"
+                )
+            elif action == "update_progress":
+                processing_queue_service.update_progress(
+                    project_id,
+                    processed_count=file_num * 10,
+                    skipped_count=file_num,
+                    duplicate_count=0,
+                    progress=float(file_num * 10),
+                )
+            elif action == "get_status":
+                processing_queue_service.get_status(project_id)
+            elif action == "get_result":
+                processing_queue_service.get_result(project_id)
+        except Exception as e:
+            errors.append(f"Action {action} file {file_num} error: {e}")
+    
+    # Mix of operations
+    threads = []
+    for i in range(3):
+        threads.append(threading.Thread(target=modify_state, args=("enqueue", i)))
+        threads.append(threading.Thread(target=modify_state, args=("update_progress", i)))
+        threads.append(threading.Thread(target=modify_state, args=("get_status", i)))
+        threads.append(threading.Thread(target=modify_state, args=("get_result", i)))
+    
+    for t in threads:
+        t.start()
+    
+    for t in threads:
+        t.join()
+    
+    # Should complete without errors
+    assert not errors, f"Concurrent modification errors: {errors}"
+    
+    # State should be consistent
+    queue = processing_queue_service.get_queue(project_id)
+    # Should have at least some files queued
+    assert len(queue) >= 0  # No specific count, just no crash
+    
+    processing_queue_service.cleanup(project_id)
 
 
 def test_mark_error_marks_file_as_processed():

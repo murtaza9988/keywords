@@ -18,10 +18,15 @@ INVARIANTS:
 SINGLE SOURCE OF TRUTH:
 All state for a project is stored in ONE ProjectState object, not spread across
 multiple dictionaries. This prevents state from getting out of sync.
+
+THREAD SAFETY:
+All public methods that modify state acquire a per-project lock to prevent
+race conditions when multiple requests arrive simultaneously.
 """
 
 import json
 import os
+import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -285,10 +290,23 @@ class ProcessingQueueService:
     2. Clear state transitions - only valid transitions allowed
     3. Fail-safe - any error leads to a recoverable state
     4. Idempotent reset - reset always brings system to clean state
+    5. Thread-safe - per-project locks prevent race conditions
     """
     
     def __init__(self) -> None:
         self._projects: Dict[int, ProjectState] = {}
+        # Per-project locks to prevent race conditions when multiple requests
+        # arrive simultaneously (e.g., multiple CSV uploads at the same time)
+        self._locks: Dict[int, threading.Lock] = {}
+        # Global lock for creating per-project locks
+        self._locks_lock = threading.Lock()
+    
+    def _get_lock(self, project_id: int) -> threading.Lock:
+        """Get or create a lock for a specific project."""
+        with self._locks_lock:
+            if project_id not in self._locks:
+                self._locks[project_id] = threading.Lock()
+            return self._locks[project_id]
 
     def _state_dir(self) -> Path:
         state_dir = Path(settings.UPLOAD_DIR) / "processing_state"
@@ -357,29 +375,33 @@ class ProcessingQueueService:
         """
         Signal that an upload is starting.
         If there's stale state from a previous failed upload, clear it.
-        """
-        state = self._get_or_create(project_id)
         
-        # If we're in a terminal/error state, reset for the new upload.
-        # IMPORTANT: Do NOT clobber an active processing/queued state, otherwise
-        # we can accidentally start multiple processing tasks concurrently.
-        if state.status in ("error", "idle", "complete", "not_started"):
-            self._full_reset(project_id)
+        Thread-safe: Uses per-project lock to prevent race conditions.
+        """
+        with self._get_lock(project_id):
             state = self._get_or_create(project_id)
+            
+            # If we're in a terminal/error state, reset for the new upload.
+            # IMPORTANT: Do NOT clobber an active processing/queued state, otherwise
+            # we can accidentally start multiple processing tasks concurrently.
+            if state.status in ("error", "idle", "complete", "not_started"):
+                self._full_reset(project_id)
+                state = self._get_or_create(project_id)
 
-        # Only transition to uploading if we are not already in an active state.
-        if state.status not in ("processing", "queued"):
-            state.status = "uploading"
-        state.touch()
-        self._save_state_to_disk(project_id)
+            # Only transition to uploading if we are not already in an active state.
+            if state.status not in ("processing", "queued"):
+                state.status = "uploading"
+            state.touch()
+            self._save_state_to_disk(project_id)
     
     def register_upload(self, project_id: int, file_name: str) -> None:
         """Register that a file has been uploaded (for validation tracking)."""
-        state = self._get_or_create(project_id)
-        if file_name and file_name not in state.uploaded_files:
-            state.uploaded_files.append(file_name)
-        state.touch()
-        self._save_state_to_disk(project_id)
+        with self._get_lock(project_id):
+            state = self._get_or_create(project_id)
+            if file_name and file_name not in state.uploaded_files:
+                state.uploaded_files.append(file_name)
+            state.touch()
+            self._save_state_to_disk(project_id)
     
     def enqueue(
         self,
@@ -389,23 +411,24 @@ class ProcessingQueueService:
         *,
         file_names: Optional[List[str]] = None,
     ) -> None:
-        """Add a file to the processing queue."""
-        state = self._get_or_create(project_id)
-        
-        file_info = FileInfo(
-            file_path=file_path,
-            file_name=file_name,
-            file_names=list(file_names) if file_names else None,
-        )
-        state.queue.append(file_info)
-        
-        # Update status if not actively processing
-        if state.status not in ("processing",):
-            state.status = "queued"
-        
-        state.touch()
-        self._ensure_invariants(project_id)
-        self._save_state_to_disk(project_id)
+        """Add a file to the processing queue. Thread-safe."""
+        with self._get_lock(project_id):
+            state = self._get_or_create(project_id)
+            
+            file_info = FileInfo(
+                file_path=file_path,
+                file_name=file_name,
+                file_names=list(file_names) if file_names else None,
+            )
+            state.queue.append(file_info)
+            
+            # Update status if not actively processing
+            if state.status not in ("processing",):
+                state.status = "queued"
+            
+            state.touch()
+            self._ensure_invariants(project_id)
+            self._save_state_to_disk(project_id)
     
     # =========================================================================
     # PUBLIC API - Batch Upload Support
@@ -414,14 +437,15 @@ class ProcessingQueueService:
     def register_batch_upload(
         self, project_id: int, batch_id: str, total_files: int
     ) -> None:
-        """Register a new batch upload."""
-        state = self._get_or_create(project_id)
-        if batch_id not in state.batches:
-            state.batches[batch_id] = BatchInfo(total_files=total_files)
-        else:
-            state.batches[batch_id].total_files = total_files
-        state.touch()
-        self._save_state_to_disk(project_id)
+        """Register a new batch upload. Thread-safe."""
+        with self._get_lock(project_id):
+            state = self._get_or_create(project_id)
+            if batch_id not in state.batches:
+                state.batches[batch_id] = BatchInfo(total_files=total_files)
+            else:
+                state.batches[batch_id].total_files = total_files
+            state.touch()
+            self._save_state_to_disk(project_id)
     
     def add_batch_file(
         self,
@@ -433,54 +457,56 @@ class ProcessingQueueService:
         file_index: Optional[int] = None,
         is_duplicate: bool = False,
     ) -> Dict[str, Any]:
-        """Add a file to a batch. Returns batch info."""
-        state = self._get_or_create(project_id)
-        
-        if batch_id not in state.batches:
-            state.batches[batch_id] = BatchInfo()
-        
-        batch = state.batches[batch_id]
-        key = file_index if file_index is not None else file_path
-        
-        if key not in batch.received_keys:
-            batch.files[key] = FileInfo(
-                file_path=file_path,
-                file_name=file_name,
-                is_duplicate=is_duplicate,
-            )
-            batch.received_keys.add(key)
-        
-        state.touch()
-        self._save_state_to_disk(project_id)
-        # Return dict format for compatibility
-        return {
-            "total_files": batch.total_files,
-            "files": {k: {"file_name": v.file_name, "file_path": v.file_path, 
-                         "file_index": k if isinstance(k, int) else None,
-                         "is_duplicate": bool(v.is_duplicate)}
-                     for k, v in batch.files.items()},
-            "received": batch.received_keys,
-        }
+        """Add a file to a batch. Returns batch info. Thread-safe."""
+        with self._get_lock(project_id):
+            state = self._get_or_create(project_id)
+            
+            if batch_id not in state.batches:
+                state.batches[batch_id] = BatchInfo()
+            
+            batch = state.batches[batch_id]
+            key = file_index if file_index is not None else file_path
+            
+            if key not in batch.received_keys:
+                batch.files[key] = FileInfo(
+                    file_path=file_path,
+                    file_name=file_name,
+                    is_duplicate=is_duplicate,
+                )
+                batch.received_keys.add(key)
+            
+            state.touch()
+            self._save_state_to_disk(project_id)
+            # Return dict format for compatibility
+            return {
+                "total_files": batch.total_files,
+                "files": {k: {"file_name": v.file_name, "file_path": v.file_path, 
+                             "file_index": k if isinstance(k, int) else None,
+                             "is_duplicate": bool(v.is_duplicate)}
+                         for k, v in batch.files.items()},
+                "received": batch.received_keys,
+            }
     
     def pop_batch(
         self, project_id: int, batch_id: str
     ) -> Optional[Dict[str, Any]]:
-        """Remove and return a batch. Returns None if not found."""
-        state = self._load_state_from_disk(project_id)
-        if not state or batch_id not in state.batches:
-            return None
-        
-        batch = state.batches.pop(batch_id)
-        self._save_state_to_disk(project_id)
-        
-        return {
-            "total_files": batch.total_files,
-            "files": {k: {"file_name": v.file_name, "file_path": v.file_path,
-                         "file_index": k if isinstance(k, int) else None,
-                         "is_duplicate": bool(v.is_duplicate)}
-                     for k, v in batch.files.items()},
-            "received": batch.received_keys,
-        }
+        """Remove and return a batch. Returns None if not found. Thread-safe."""
+        with self._get_lock(project_id):
+            state = self._load_state_from_disk(project_id)
+            if not state or batch_id not in state.batches:
+                return None
+            
+            batch = state.batches.pop(batch_id)
+            self._save_state_to_disk(project_id)
+            
+            return {
+                "total_files": batch.total_files,
+                "files": {k: {"file_name": v.file_name, "file_path": v.file_path,
+                             "file_index": k if isinstance(k, int) else None,
+                             "is_duplicate": bool(v.is_duplicate)}
+                         for k, v in batch.files.items()},
+                "received": batch.received_keys,
+            }
     
     # =========================================================================
     # PUBLIC API - Processing Phase
@@ -492,57 +518,60 @@ class ProcessingQueueService:
         Returns the file info dict, or None if nothing to process.
         
         This is the KEY state transition: queued/error -> processing
+        Thread-safe: Uses per-project lock to prevent concurrent processing.
         """
-        state = self._get_or_create(project_id)
-        
-        # If already processing AND has a current file, don't interrupt
-        # (unless the processing is stale/stuck)
-        if state.status == "processing" and state.current_file is not None:
-            if not state.is_stale():
-                return None  # Actually busy processing, don't interrupt
-        
-        # Reset status if we were "processing" but current_file was cleared
-        # This happens after mark_complete() clears current_file
-        if state.status == "processing" and state.current_file is None:
-            state.status = "queued"
-        
-        # Try to get next file from queue
-        if not state.queue:
-            # Nothing to process
-            if state.status not in ("complete", "error"):
-                state.status = "idle"
-            state.current_file = None
+        with self._get_lock(project_id):
+            state = self._get_or_create(project_id)
+            
+            # If already processing AND has a current file, don't interrupt
+            # (unless the processing is stale/stuck)
+            if state.status == "processing" and state.current_file is not None:
+                if not state.is_stale():
+                    return None  # Actually busy processing, don't interrupt
+            
+            # Reset status if we were "processing" but current_file was cleared
+            # This happens after mark_complete() clears current_file
+            if state.status == "processing" and state.current_file is None:
+                state.status = "queued"
+            
+            # Try to get next file from queue
+            if not state.queue:
+                # Nothing to process
+                if state.status not in ("complete", "error"):
+                    state.status = "idle"
+                state.current_file = None
+                self._save_state_to_disk(project_id)
+                return None
+            
+            # Dequeue and start processing
+            file_info = state.queue.popleft()
+            state.current_file = file_info
+            state.status = "processing"
+            state.touch()
+            
+            self._ensure_invariants(project_id)
             self._save_state_to_disk(project_id)
-            return None
-        
-        # Dequeue and start processing
-        file_info = state.queue.popleft()
-        state.current_file = file_info
-        state.status = "processing"
-        state.touch()
-        
-        self._ensure_invariants(project_id)
-        self._save_state_to_disk(project_id)
-        
-        return {
-            "file_path": file_info.file_path,
-            "file_name": file_info.file_name,
-            "file_names": file_info.file_names,
-        }
+            
+            return {
+                "file_path": file_info.file_path,
+                "file_name": file_info.file_name,
+                "file_names": file_info.file_names,
+            }
     
     def start_file_processing(
         self, project_id: int, *, message: Optional[str] = None
     ) -> None:
-        """Signal that processing of the current file has started."""
-        state = self._get_or_create(project_id)
-        state.status = "processing"
-        state.reset_results()
-        # Preserve file tracking
-        if message:
-            state.message = message
-        state.stage = "start"
-        state.touch()
-        self._save_state_to_disk(project_id)
+        """Signal that processing of the current file has started. Thread-safe."""
+        with self._get_lock(project_id):
+            state = self._get_or_create(project_id)
+            state.status = "processing"
+            state.reset_results()
+            # Preserve file tracking
+            if message:
+                state.message = message
+            state.stage = "start"
+            state.touch()
+            self._save_state_to_disk(project_id)
     
     def update_progress(
         self,
@@ -558,32 +587,33 @@ class ProcessingQueueService:
         stage: Optional[str] = None,
         stage_detail: Optional[str] = None,
     ) -> None:
-        """Update processing progress."""
-        state = self._get_or_create(project_id)
-        state.processed_count = processed_count
-        state.skipped_count = skipped_count
-        state.duplicate_count = duplicate_count
-        state.progress = progress
-        if total_rows is not None:
-            state.total_rows = total_rows
-        if keywords is not None:
-            state.keywords = keywords
-        if message is not None:
-            state.message = message
-        if stage is not None:
-            state.stage = stage
-        if stage_detail is not None:
-            state.stage_detail = stage_detail
-        state.touch()
-        self._save_state_to_disk(project_id)
+        """Update processing progress. Thread-safe."""
+        with self._get_lock(project_id):
+            state = self._get_or_create(project_id)
+            state.processed_count = processed_count
+            state.skipped_count = skipped_count
+            state.duplicate_count = duplicate_count
+            state.progress = progress
+            if total_rows is not None:
+                state.total_rows = total_rows
+            if keywords is not None:
+                state.keywords = keywords
+            if message is not None:
+                state.message = message
+            if stage is not None:
+                state.stage = stage
+            if stage_detail is not None:
+                state.stage_detail = stage_detail
+            state.touch()
+            self._save_state_to_disk(project_id)
     
-    def mark_file_processed(
+    def _mark_file_processed_unlocked(
         self,
         project_id: int,
         file_name: Optional[str] = None,
         file_names: Optional[List[str]] = None,
     ) -> None:
-        """Mark file(s) as processed for validation tracking."""
+        """Internal: Mark file(s) as processed. Caller must hold lock."""
         state = self._get_or_create(project_id)
         
         names_to_add = []
@@ -597,6 +627,16 @@ class ProcessingQueueService:
                 state.processed_files.append(name)
         self._save_state_to_disk(project_id)
     
+    def mark_file_processed(
+        self,
+        project_id: int,
+        file_name: Optional[str] = None,
+        file_names: Optional[List[str]] = None,
+    ) -> None:
+        """Mark file(s) as processed for validation tracking. Thread-safe."""
+        with self._get_lock(project_id):
+            self._mark_file_processed_unlocked(project_id, file_name, file_names)
+    
     def mark_complete(
         self,
         project_id: int,
@@ -608,36 +648,35 @@ class ProcessingQueueService:
         keywords: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         """
-        Mark current file as complete.
+        Mark current file as complete. Thread-safe.
         If has_more_in_queue, transition to queued. Otherwise, complete.
         """
-        state = self._get_or_create(project_id)
-        
-        # Mark file(s) as processed
-        self.mark_file_processed(project_id, file_name, file_names)
-        state = self._get_or_create(project_id)
-        
-        # Update results
-        state.message = message
-        state.stage = "complete"
-        state.stage_detail = None
-        if keywords is not None:
-            state.keywords = keywords
-        
-        if has_more_in_queue:
-            state.status = "queued"
-            state.complete = False
-        else:
-            state.status = "complete"
-            state.complete = True
-            state.progress = 100.0
-        
-        # CRITICAL: Clear current file so next file can be processed
-        state.current_file = None
-        state.touch()
-        
-        self._ensure_invariants(project_id)
-        self._save_state_to_disk(project_id)
+        with self._get_lock(project_id):
+            # Mark file(s) as processed (using unlocked version since we hold the lock)
+            self._mark_file_processed_unlocked(project_id, file_name, file_names)
+            state = self._get_or_create(project_id)
+            
+            # Update results
+            state.message = message
+            state.stage = "complete"
+            state.stage_detail = None
+            if keywords is not None:
+                state.keywords = keywords
+            
+            if has_more_in_queue:
+                state.status = "queued"
+                state.complete = False
+            else:
+                state.status = "complete"
+                state.complete = True
+                state.progress = 100.0
+            
+            # CRITICAL: Clear current file so next file can be processed
+            state.current_file = None
+            state.touch()
+            
+            self._ensure_invariants(project_id)
+            self._save_state_to_disk(project_id)
     
     def mark_error(
         self,
@@ -648,13 +687,98 @@ class ProcessingQueueService:
         file_names: Optional[List[str]] = None,
     ) -> None:
         """
-        Mark current processing as failed.
+        Mark current processing as failed. Thread-safe.
         The error state allows new uploads to reset and try again.
         """
-        state = self._get_or_create(project_id)
-        
-        # Mark file as processed (even though it failed) for count matching
-        self.mark_file_processed(project_id, file_name, file_names)
+        with self._get_lock(project_id):
+            # Mark file as processed (even though it failed) for count matching
+            self._mark_file_processed_unlocked(project_id, file_name, file_names)
+            state = self._get_or_create(project_id)
+            
+            names = []
+            if file_names:
+                names.extend([name for name in file_names if name])
+            elif file_name:
+                names.append(file_name)
+            elif state.current_file and state.current_file.file_name:
+                names.append(state.current_file.file_name)
+
+            if names:
+                existing_keys = {
+                    (
+                        entry.get("file_name"),
+                        entry.get("message"),
+                        entry.get("stage"),
+                        entry.get("stage_detail"),
+                    )
+                    for entry in state.file_errors
+                    if isinstance(entry, dict)
+                }
+                for name in names:
+                    error_entry = {
+                        "file_name": name,
+                        "message": message,
+                        "stage": state.stage,
+                        "stage_detail": state.stage_detail,
+                    }
+                    entry_key = (
+                        error_entry["file_name"],
+                        error_entry["message"],
+                        error_entry["stage"],
+                        error_entry["stage_detail"],
+                    )
+                    if entry_key not in existing_keys:
+                        state.file_errors.append(error_entry)
+                        existing_keys.add(entry_key)
+
+            state.status = "error"
+            state.message = message
+            state.stage = "error"
+            state.complete = True
+            state.progress = 0.0
+            
+            # CRITICAL: Clear current file
+            state.current_file = None
+            state.touch()
+            
+            self._ensure_invariants(project_id)
+            self._save_state_to_disk(project_id)
+    
+    # =========================================================================
+    # PUBLIC API - Status & Results
+    # =========================================================================
+    
+    def get_status(self, project_id: int) -> str:
+        """
+        Get current status, with automatic stuck detection. Thread-safe.
+        """
+        with self._get_lock(project_id):
+            state = self._load_state_from_disk(project_id)
+            if not state:
+                return "not_started"
+            
+            # Auto-detect stuck processing
+            if state.status in ("processing", "uploading", "queued"):
+                if state.is_stale():
+                    # Use internal method to avoid deadlock (we already hold the lock)
+                    self._mark_error_unlocked(
+                        project_id,
+                        message="Processing timed out. Please try uploading again."
+                    )
+                    return "error"
+            
+            return state.status
+    
+    def _mark_error_unlocked(
+        self,
+        project_id: int,
+        *,
+        message: str,
+        file_name: Optional[str] = None,
+        file_names: Optional[List[str]] = None,
+    ) -> None:
+        """Internal: Mark error without acquiring lock. Caller must hold lock."""
+        self._mark_file_processed_unlocked(project_id, file_name, file_names)
         state = self._get_or_create(project_id)
         
         names = []
@@ -698,131 +822,118 @@ class ProcessingQueueService:
         state.stage = "error"
         state.complete = True
         state.progress = 0.0
-        
-        # CRITICAL: Clear current file
         state.current_file = None
         state.touch()
-        
         self._ensure_invariants(project_id)
         self._save_state_to_disk(project_id)
     
-    # =========================================================================
-    # PUBLIC API - Status & Results
-    # =========================================================================
-    
-    def get_status(self, project_id: int) -> str:
-        """
-        Get current status, with automatic stuck detection.
-        """
-        state = self._load_state_from_disk(project_id)
-        if not state:
-            return "not_started"
-        
-        # Auto-detect stuck processing
-        if state.status in ("processing", "uploading", "queued"):
-            if state.is_stale():
-                self.mark_error(
-                    project_id,
-                    message="Processing timed out. Please try uploading again."
-                )
-                return "error"
-        
-        return state.status
-    
     def get_result(self, project_id: int) -> Dict[str, Any]:
-        """Get processing results as a dictionary."""
-        state = self._load_state_from_disk(project_id)
-        if not state:
-            return self._default_result()
-        return state.to_result_dict()
+        """Get processing results as a dictionary. Thread-safe for reads."""
+        with self._get_lock(project_id):
+            state = self._load_state_from_disk(project_id)
+            if not state:
+                return self._default_result()
+            return state.to_result_dict()
     
     def get_queue(self, project_id: int) -> List[Dict[str, Any]]:
-        """Get list of queued files."""
-        state = self._load_state_from_disk(project_id)
-        if not state:
-            return []
-        return [
-            {"file_path": f.file_path, "file_name": f.file_name, 
-             "file_names": f.file_names}
-            for f in state.queue
-        ]
+        """Get list of queued files. Thread-safe for reads."""
+        with self._get_lock(project_id):
+            state = self._load_state_from_disk(project_id)
+            if not state:
+                return []
+            return [
+                {"file_path": f.file_path, "file_name": f.file_name, 
+                 "file_names": f.file_names}
+                for f in state.queue
+            ]
     
     def get_current_file(self, project_id: int) -> Optional[Dict[str, Any]]:
-        """Get the currently processing file."""
-        state = self._load_state_from_disk(project_id)
-        if not state or not state.current_file:
-            return None
-        f = state.current_file
-        return {
-            "file_path": f.file_path,
-            "file_name": f.file_name,
-            "file_names": f.file_names,
-        }
+        """Get the currently processing file. Thread-safe for reads."""
+        with self._get_lock(project_id):
+            state = self._load_state_from_disk(project_id)
+            if not state or not state.current_file:
+                return None
+            f = state.current_file
+            return {
+                "file_path": f.file_path,
+                "file_name": f.file_name,
+                "file_names": f.file_names,
+            }
     
     def get_last_update_time(self, project_id: int) -> float:
-        """Get last update timestamp."""
-        state = self._load_state_from_disk(project_id)
-        return state.last_update if state else 0
+        """Get last update timestamp. Thread-safe for reads."""
+        with self._get_lock(project_id):
+            state = self._load_state_from_disk(project_id)
+            return state.last_update if state else 0
     
     def is_stale(self, project_id: int) -> bool:
-        """Check if processing appears stuck."""
-        state = self._load_state_from_disk(project_id)
-        return state.is_stale() if state else False
+        """Check if processing appears stuck. Thread-safe for reads."""
+        with self._get_lock(project_id):
+            state = self._load_state_from_disk(project_id)
+            return state.is_stale() if state else False
     
     # =========================================================================
     # PUBLIC API - Reset & Cleanup
     # =========================================================================
     
     def set_status(self, project_id: int, status: str) -> None:
-        """Set status directly (for uploading/combining phases)."""
-        state = self._get_or_create(project_id)
-        state.status = status
-        state.touch()
-        self._save_state_to_disk(project_id)
+        """Set status directly (for uploading/combining phases). Thread-safe."""
+        with self._get_lock(project_id):
+            state = self._get_or_create(project_id)
+            state.status = status
+            state.touch()
+            self._save_state_to_disk(project_id)
     
     def reset_results(self, project_id: int) -> None:
-        """Reset just the results (keep queue and file tracking)."""
-        state = self._load_state_from_disk(project_id)
-        if state:
-            state.reset_results()
-            self._save_state_to_disk(project_id)
+        """Reset just the results (keep queue and file tracking). Thread-safe."""
+        with self._get_lock(project_id):
+            state = self._load_state_from_disk(project_id)
+            if state:
+                state.reset_results()
+                self._save_state_to_disk(project_id)
     
     def reset_for_new_batch(self, project_id: int) -> None:
         """
-        FULL RESET for a new batch upload.
+        FULL RESET for a new batch upload. Thread-safe.
         This clears EVERYTHING and starts fresh.
         """
-        self._full_reset(project_id)
+        with self._get_lock(project_id):
+            self._full_reset(project_id)
     
     def _full_reset(self, project_id: int) -> None:
-        """Internal full reset implementation."""
+        """Internal full reset implementation. Caller must hold lock."""
         # Simply create a new fresh state
         self._projects[project_id] = ProjectState()
         self._save_state_to_disk(project_id)
     
     def reset_processing(self, project_id: int) -> Dict[str, Any]:
         """
-        Reset stuck processing state.
+        Reset stuck processing state. Thread-safe.
         Returns info about what was cleared.
         """
-        state = self._load_state_from_disk(project_id)
-        
-        cleared_info = {
-            "had_status": state.status if state else None,
-            "had_queue": len(state.queue) if state else 0,
-            "had_current_file": state.current_file is not None if state else False,
-        }
-        
-        self._full_reset(project_id)
-        
-        return cleared_info
+        with self._get_lock(project_id):
+            state = self._load_state_from_disk(project_id)
+            
+            cleared_info = {
+                "had_status": state.status if state else None,
+                "had_queue": len(state.queue) if state else 0,
+                "had_current_file": state.current_file is not None if state else False,
+            }
+            
+            self._full_reset(project_id)
+            
+            return cleared_info
     
     def cleanup(self, project_id: int) -> None:
-        """Remove all state for a project."""
-        self._projects.pop(project_id, None)
-        path = self._state_path(project_id)
-        if path.exists():
-            path.unlink()
+        """Remove all state for a project. Thread-safe."""
+        with self._get_lock(project_id):
+            self._projects.pop(project_id, None)
+            path = self._state_path(project_id)
+            if path.exists():
+                path.unlink()
+        # Also clean up the lock itself
+        with self._locks_lock:
+            self._locks.pop(project_id, None)
     
     # =========================================================================
     # Compatibility Methods (for existing code)
