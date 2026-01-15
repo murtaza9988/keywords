@@ -192,6 +192,9 @@ export function ProjectDetailProcess(): React.ReactElement {
           <li>
             <span className="font-medium">Duplicate uploads?</span> If an uploaded CSV matches a previously uploaded file (same name + content), it will be skipped.
           </li>
+          <li>
+            <span className="font-medium">UI not updating after processing?</span> The UI should auto-refresh when processing completes. If keywords don&apos;t appear, try switching tabs or refreshing the page. Check the Overview tab for the CSV Files progress breakdown.
+          </li>
         </ul>
       </div>
     </div>
