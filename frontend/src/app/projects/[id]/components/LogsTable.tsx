@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronsUpDown, Loader2 } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { ActivityLog } from '@/lib/types';
@@ -38,12 +38,18 @@ export function LogsTable({
   const [sortColumn, setSortColumn] = useState<SortColumn>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const pageSize = 200;
+  const pollingIntervalMs = 10000;
+  const isFetchingRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
+    let poller: ReturnType<typeof setInterval> | null = null;
+
     const fetchLogs = async () => {
       if (!isActive) return;
       if (scope === 'project' && !projectId) return;
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
       setIsLoading(true);
       setErrorMessage('');
       try {
@@ -87,14 +93,21 @@ export function LogsTable({
         if (isMounted) {
           setIsLoading(false);
         }
+        isFetchingRef.current = false;
       }
     };
 
     fetchLogs();
+    if (isActive) {
+      poller = setInterval(fetchLogs, pollingIntervalMs);
+    }
     return () => {
       isMounted = false;
+      if (poller) {
+        clearInterval(poller);
+      }
     };
-  }, [projectId, isActive, refreshKey, scope]);
+  }, [projectId, isActive, refreshKey, scope, pageSize]);
 
   const actionOptions = useMemo(() => {
     const uniqueActions = new Set(logs.map((log) => log.action));
