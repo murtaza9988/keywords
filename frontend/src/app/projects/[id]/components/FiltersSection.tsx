@@ -14,6 +14,7 @@ interface FiltersSectionProps {
   selectedKeywordIds: Set<number>;
   isProcessingAction: boolean;
   isUploading: boolean;
+  processingLocked: boolean;
   processingStatus: ProcessingStatus;
   processingMessage?: string;
   selectedTokens: string[];
@@ -42,6 +43,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
   selectedKeywordIds,
   isProcessingAction,
   isUploading,
+  processingLocked,
   processingStatus,
   processingMessage,
   selectedTokens,
@@ -90,6 +92,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
     processingStatus === 'queued' ||
     processingStatus === 'processing';
   const showLoader = isUploading || isProcessing;
+  const groupingLocked = processingLocked || isProcessingAction;
 
   const getStageLabel = (status: ProcessingStatus) => {
     switch (status) {
@@ -300,7 +303,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                         setShowSuggestions(true);
                       }
                     }}
-                    disabled={selectedKeywordIds.size === 0 || isProcessingAction}
+                    disabled={selectedKeywordIds.size === 0 || groupingLocked}
                     className="w-full p-2 border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
                   />
                   {showSuggestions && (
@@ -332,7 +335,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                 {isGroupButtonVisible && (
                   <button
                     onClick={handleGroupKeywords}
-                    disabled={selectedKeywordIds.size === 0 || !groupName.trim() || isProcessingAction}
+                    disabled={selectedKeywordIds.size === 0 || !groupName.trim() || groupingLocked}
                     className="bg-blue-600 cursor-pointer text-white px-3 py-1.5 border border-transparent rounded-md text-[13px] shadow-sm hover:bg-blue-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
                   >
                     Group
@@ -341,7 +344,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                 {isConfirmButtonVisible && (
                   <button
                     onClick={handleConfirmKeywords}
-                    disabled={selectedKeywordIds.size === 0 || isProcessingAction}
+                    disabled={selectedKeywordIds.size === 0 || groupingLocked}
                     className="bg-green-600 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-green-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
                   >
                     Confirm
@@ -357,7 +360,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                           ? handleUnblockKeywords
                           : undefined
                   }
-                  disabled={(!isUngroupButtonVisible && !isUnconfirmButtonVisible && !isUnblockButtonVisible) || selectedKeywordIds.size === 0 || isProcessingAction}
+                  disabled={(!isUngroupButtonVisible && !isUnconfirmButtonVisible && !isUnblockButtonVisible) || selectedKeywordIds.size === 0 || groupingLocked}
                   className="bg-yellow-500 cursor-pointer text-white px-3 py-1.5 rounded-md text-[13px] shadow-sm hover:bg-yellow-600 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
                 >
                   {isProcessingAction && (isUngroupButtonVisible || isUnconfirmButtonVisible || isUnblockButtonVisible) ? (
@@ -373,6 +376,11 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                   )}
                 </button>
               </div>
+              {processingLocked && (
+                <div className="mt-2 text-xs text-amber-600">
+                  🔒 Processing in progress. Grouping actions are temporarily disabled.
+                </div>
+              )}
             </div>
           </div>
         </div>

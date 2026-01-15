@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, Index
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from app.database import Base
 from sqlalchemy.orm import relationship
@@ -47,6 +47,7 @@ class Keyword(Base):
         Index('idx_keywords_tokens_gin', tokens, postgresql_using='gin'),
         Index('idx_keywords_project_volume', 'project_id', 'volume'),
         Index('idx_keywords_project_rating', 'project_id', 'rating'),
+        UniqueConstraint('project_id', 'keyword', name='uq_keywords_project_keyword'),
     )
 
     def to_dict(self):

@@ -28,7 +28,9 @@ from app.services.keyword_processing import (
     tokenize,
 )
 from app.models.keyword import KeywordStatus
+from app.services.csv_processing_job import CsvProcessingJobService
 from app.services.processing_queue import processing_queue_service
+from app.services.project_csv_runner import ProjectCsvRunnerService
 
 REQUIRED_NLTK_RESOURCES = {
     "punkt": "tokenizers/punkt",
@@ -129,12 +131,15 @@ def process_keyword(row_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
         print(f"Error processing keyword row '{row_dict.get('Keyword')}': {e}")
         return None, False
 
-def enqueue_processing_file(
+async def enqueue_processing_file(
+    db: AsyncSession,
     project_id: int,
     file_path: str,
     file_name: str,
     *,
     file_names: Optional[List[str]] = None,
+    csv_upload_id: Optional[int] = None,
+    idempotency_key: Optional[str] = None,
 ) -> None:
     processing_queue_service.enqueue(
         project_id,
@@ -142,28 +147,34 @@ def enqueue_processing_file(
         file_name,
         file_names=file_names,
     )
+    if idempotency_key and os.getenv("TESTING") != "True":
+        await CsvProcessingJobService.enqueue_upload(
+            db,
+            project_id=project_id,
+            csv_upload_id=csv_upload_id,
+            storage_path=file_path,
+            source_filename=file_name,
+            idempotency_key=idempotency_key,
+        )
 
 async def start_next_processing(project_id: int) -> None:
     """Start processing the next file in the queue for the given project."""
-    # Small delay to ensure previous state changes are fully persisted to disk
-    # This prevents race conditions where the new task sees stale state
     await asyncio.sleep(0.05)
-    
-    next_item = processing_queue_service.start_next(project_id)
-    if not next_item:
-        # No more items in queue - processing is complete or queue is empty
-        return
-    
-    # Start the async processing task
-    # Note: process_csv_file will call start_file_processing internally
-    asyncio.create_task(
-        process_csv_file(
-            next_item["file_path"],
-            project_id,
-            next_item.get("file_name"),
-            file_names=next_item.get("file_names"),
+    if os.getenv("TESTING") == "True":
+        next_item = processing_queue_service.start_next(project_id)
+        if not next_item:
+            return
+        asyncio.create_task(
+            process_csv_file(
+                next_item["file_path"],
+                project_id,
+                next_item.get("file_name"),
+                file_names=next_item.get("file_names"),
+            )
         )
-    )
+        return
+    runner = ProjectCsvRunnerService()
+    await runner.kick(project_id)
 
 async def process_csv_file(
     file_path: str,
@@ -171,12 +182,14 @@ async def process_csv_file(
     file_name: Optional[str] = None,
     *,
     file_names: Optional[List[str]] = None,
+    run_grouping: bool = True,
+    finalize_project: bool = True,
 ) -> None:
     """
     Process a CSV file with FIRST PRINCIPLES approach:
-    
+
     1. ALWAYS complete - even if errors occur, we process what we can
-    2. ALWAYS group - clustering happens during AND after import
+    2. ALWAYS group (optional) - clustering happens after import if enabled
     3. NEVER get stuck - proper state transitions and error recovery
     4. CLEAR progress - accurate progress reporting throughout
     """
@@ -574,26 +587,37 @@ async def process_csv_file(
                         
                         current_chunk = []
             
-            print(f"[PROCESS] Import complete. Created: {keywords_created}, Skipped: {keywords_skipped}, Duplicates: {keywords_duplicated}")
-            print(f"[PROCESS] Found {len(intra_file_token_groups)} unique token groups in this file")
-            
-            # CRITICAL: Final grouping pass for any remaining ungrouped keywords (global clustering)
-            # This is where the magic happens - group keywords with identical tokens
-            print(f"[PROCESS] Starting final grouping pass...")
-            current_stage = "group"
-            processing_queue_service.update_progress(
-                project_id,
-                processed_count=processed_count,
-                skipped_count=skipped_count,
-                duplicate_count=duplicate_count,
-                progress=max(0.0, min(99.0, (processed_count + skipped_count + duplicate_count) / max(total_rows, 1) * 100)),
-                total_rows=total_rows,
-                message="Final grouping pass (cluster identical token sets)...",
-                stage=current_stage,
+            print(
+                "[PROCESS] Import complete. Created: "
+                f"{keywords_created}, Skipped: {keywords_skipped}, "
+                f"Duplicates: {keywords_duplicated}"
             )
-            await group_remaining_ungrouped_keywords(db, project_id)
-            grouping_completed = True
-            print(f"[PROCESS] Grouping completed successfully")
+            print(f"[PROCESS] Found {len(intra_file_token_groups)} unique token groups in this file")
+
+            if run_grouping:
+                print("[PROCESS] Starting final grouping pass...")
+                current_stage = "group"
+                processing_queue_service.update_progress(
+                    project_id,
+                    processed_count=processed_count,
+                    skipped_count=skipped_count,
+                    duplicate_count=duplicate_count,
+                    progress=max(
+                        0.0,
+                        min(
+                            99.0,
+                            (processed_count + skipped_count + duplicate_count)
+                            / max(total_rows, 1)
+                            * 100,
+                        ),
+                    ),
+                    total_rows=total_rows,
+                    message="Final grouping pass (cluster identical token sets)...",
+                    stage=current_stage,
+                )
+                await group_remaining_ungrouped_keywords(db, project_id)
+                grouping_completed = True
+                print("[PROCESS] Grouping completed successfully")
 
             # Clean up temporary index
             try:
@@ -603,14 +627,16 @@ async def process_csv_file(
             except Exception as idx_err:
                 print(f"[PROCESS] Warning: Could not drop temp index: {idx_err}")
 
-            # Mark processing as complete after final grouping and cleanup
-            remaining_queue = processing_queue_service.get_queue(project_id)
             processing_queue_service.mark_complete(
                 project_id,
-                message=f"Completed processing {file_name}. Created {keywords_created} keywords, grouped successfully." if file_name else f"Processing complete. Created {keywords_created} keywords.",
+                message=(
+                    f"Completed processing {file_name}. Created {keywords_created} keywords."
+                    if file_name
+                    else f"Processing complete. Created {keywords_created} keywords."
+                ),
                 file_name=file_name,
                 file_names=file_names,
-                has_more_in_queue=len(remaining_queue) > 0,
+                has_more_in_queue=not finalize_project,
             )
             print(f"[PROCESS] Processing complete for {file_name}")
 
@@ -619,13 +645,12 @@ async def process_csv_file(
         import traceback
         traceback.print_exc()
         
-        # Try to run grouping even if import partially failed
-        if not grouping_completed and keywords_created > 0:
-            print(f"[PROCESS] Attempting grouping after partial import failure...")
+        if run_grouping and not grouping_completed and keywords_created > 0:
+            print("[PROCESS] Attempting grouping after partial import failure...")
             try:
                 async with get_db_context() as db:
                     await group_remaining_ungrouped_keywords(db, project_id)
-                    print(f"[PROCESS] Grouping completed after partial failure")
+                    print("[PROCESS] Grouping completed after partial failure")
             except Exception as group_err:
                 print(f"[PROCESS] Grouping after failure also failed: {group_err}")
         

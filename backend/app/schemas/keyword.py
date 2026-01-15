@@ -133,6 +133,7 @@ class UnblockRequest(BaseModel):
 
 class ProcessingStatus(BaseModel):
     status: str
+    locked: bool = Field(False, alias="locked")
     keyword_count: int = Field(0, alias="keywordCount")
     processed_count: int = Field(0, alias="processedCount")
     skipped_count: int = Field(0, alias="skippedCount")
@@ -150,6 +151,10 @@ class ProcessingStatus(BaseModel):
     processed_files: List[str] = Field([], alias="processedFiles")
     uploaded_file_count: int = Field(0, alias="uploadedFileCount")
     processed_file_count: int = Field(0, alias="processedFileCount")
+    queued_jobs: int = Field(0, alias="queuedJobs")
+    running_jobs: int = Field(0, alias="runningJobs")
+    succeeded_jobs: int = Field(0, alias="succeededJobs")
+    failed_jobs: int = Field(0, alias="failedJobs")
     validation_error: Optional[str] = Field(None, alias="validationError")
     file_errors: List[Dict[str, Any]] = Field([], alias="fileErrors")
     
