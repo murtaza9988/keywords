@@ -141,20 +141,37 @@ async def enqueue_processing_file(
     csv_upload_id: Optional[int] = None,
     idempotency_key: Optional[str] = None,
 ) -> None:
-    processing_queue_service.enqueue(
-        project_id,
-        file_path,
-        file_name,
-        file_names=file_names,
-    )
-    if idempotency_key and os.getenv("TESTING") != "True":
-        await CsvProcessingJobService.enqueue_upload(
+    if os.getenv("TESTING") == "True":
+        processing_queue_service.enqueue(
+            project_id,
+            file_path,
+            file_name,
+            file_names=file_names,
+        )
+        return
+
+    created = True
+    if idempotency_key:
+        _, created = await CsvProcessingJobService.enqueue_upload(
             db,
             project_id=project_id,
             csv_upload_id=csv_upload_id,
             storage_path=file_path,
             source_filename=file_name,
             idempotency_key=idempotency_key,
+        )
+    if created:
+        processing_queue_service.enqueue(
+            project_id,
+            file_path,
+            file_name,
+            file_names=file_names,
+        )
+    else:
+        processing_queue_service.mark_file_processed(
+            project_id,
+            file_name=file_name,
+            file_names=file_names,
         )
 
 async def start_next_processing(project_id: int) -> None:
