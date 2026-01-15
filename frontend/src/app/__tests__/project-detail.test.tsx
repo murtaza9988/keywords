@@ -143,6 +143,19 @@ describe('ProjectDetail', () => {
       </Provider>
     );
 
+    const main = screen.getByRole('main');
+    const aside = screen.getByTestId('token-management').closest('aside');
+
+    expect(main).toHaveClass('xl:basis-4/5', 'xl:flex-[4]');
+    expect(aside).not.toBeNull();
+    const asideElement = aside as HTMLElement;
+    expect(asideElement).toHaveClass(
+      'xl:basis-1/5',
+      'xl:flex-[1]',
+      'xl:min-w-[320px]',
+      'xl:max-w-[420px]'
+    );
+
     await waitFor(() => {
       expect(mockKeywordsApi.fetchInitialData).toHaveBeenCalled();
     });
