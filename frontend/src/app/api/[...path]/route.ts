@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 const RAW_BACKEND_ORIGIN = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const BACKEND_ORIGIN = RAW_BACKEND_ORIGIN.replace(/\/api\/?$/, '');
 
+type RouteContext = {
+  // In newer Next.js versions, dynamic route params are provided as a Promise.
+  params: Promise<{ path?: string[] }>;
+};
+
 function buildBackendUrl(request: NextRequest, pathParts: string[]): string {
   const backendPath = pathParts.length ? `/${pathParts.join('/')}` : '';
   return `${BACKEND_ORIGIN}/api${backendPath}${request.nextUrl.search}`;
@@ -34,22 +39,27 @@ async function proxy(request: NextRequest, pathParts: string[]): Promise<NextRes
   });
 }
 
-export async function GET(request: NextRequest, context: { params: { path: string[] } }) {
-  return proxy(request, context.params.path);
+export async function GET(request: NextRequest, context: RouteContext) {
+  const { path = [] } = await context.params;
+  return proxy(request, path);
 }
 
-export async function POST(request: NextRequest, context: { params: { path: string[] } }) {
-  return proxy(request, context.params.path);
+export async function POST(request: NextRequest, context: RouteContext) {
+  const { path = [] } = await context.params;
+  return proxy(request, path);
 }
 
-export async function PUT(request: NextRequest, context: { params: { path: string[] } }) {
-  return proxy(request, context.params.path);
+export async function PUT(request: NextRequest, context: RouteContext) {
+  const { path = [] } = await context.params;
+  return proxy(request, path);
 }
 
-export async function PATCH(request: NextRequest, context: { params: { path: string[] } }) {
-  return proxy(request, context.params.path);
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const { path = [] } = await context.params;
+  return proxy(request, path);
 }
 
-export async function DELETE(request: NextRequest, context: { params: { path: string[] } }) {
-  return proxy(request, context.params.path);
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const { path = [] } = await context.params;
+  return proxy(request, path);
 }
