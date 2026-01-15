@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const RAW_BACKEND_ORIGIN = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const BACKEND_ORIGIN = RAW_BACKEND_ORIGIN.replace(/\/api\/?$/, '');
+const RAW_BACKEND_BASE = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const BACKEND_BASE = RAW_BACKEND_BASE.replace(/\/$/, '');
 
 type RouteContext = {
   // In newer Next.js versions, dynamic route params are provided as a Promise.
@@ -10,7 +10,9 @@ type RouteContext = {
 
 function buildBackendUrl(request: NextRequest, pathParts: string[]): string {
   const backendPath = pathParts.length ? `/${pathParts.join('/')}` : '';
-  return `${BACKEND_ORIGIN}/api${backendPath}${request.nextUrl.search}`;
+  const baseHasApi = BACKEND_BASE.endsWith('/api');
+  const prefix = baseHasApi ? '' : '/api';
+  return `${BACKEND_BASE}${prefix}${backendPath}${request.nextUrl.search}`;
 }
 
 async function proxy(request: NextRequest, pathParts: string[]): Promise<NextResponse> {
