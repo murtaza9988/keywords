@@ -135,6 +135,13 @@ def _sha256_file(path: str) -> str:
     return hasher.hexdigest()
 
 
+def _build_idempotency_key(path: str, file_name: Optional[str]) -> str:
+    """Generate a stable idempotency key that is unique per uploaded file."""
+    content_hash = _sha256_file(path)
+    combined = f"{content_hash}:{file_name or ''}"
+    return hashlib.sha256(combined.encode("utf-8")).hexdigest()
+
+
 async def _find_duplicate_csv_upload(
     db: AsyncSession,
     *,
@@ -326,7 +333,20 @@ async def get_processing_status(
         formatted_file_errors = _format_file_errors(
             await CsvProcessingJobService.list_failed_jobs(db, project_id)
         )
-    uploaded_files = result.get("uploaded_files", [])
+    if testing_mode:
+        uploaded_files = result.get("uploaded_files", [])
+    else:
+        uploaded_files = await CsvProcessingJobService.list_file_names_by_status(
+            db,
+            project_id,
+            statuses=[
+                CsvProcessingJobStatus.queued,
+                CsvProcessingJobStatus.running,
+                CsvProcessingJobStatus.succeeded,
+                CsvProcessingJobStatus.failed,
+            ],
+        )
+
     uploaded_count = len(uploaded_files)
     processed_count = len(processed_files)
     validation_error = None
@@ -342,16 +362,19 @@ async def get_processing_status(
             else:
                 status = "idle"
 
-    if (
-        status in {"complete", "idle"}
-        and uploaded_count > 0
-        and processed_count < uploaded_count
-        and not queued_files
-        and not current_file
-    ):
-        missing_count = uploaded_count - processed_count
-        validation_error = f"{missing_count} CSV file(s) did not finish processing."
-        status = "error"
+    # In production, the DB job table is authoritative; do not declare a
+    # "missing files" validation error based on ephemeral in-memory state.
+    if testing_mode:
+        if (
+            status in {"complete", "idle"}
+            and uploaded_count > 0
+            and processed_count < uploaded_count
+            and not queued_files
+            and not current_file
+        ):
+            missing_count = uploaded_count - processed_count
+            validation_error = f"{missing_count} CSV file(s) did not finish processing."
+            status = "error"
 
     if validation_error:
         return {
@@ -584,7 +607,11 @@ async def upload_keywords(
             await db.commit()
 
             processing_queue_service.register_upload(project_id, upload_file.filename)
-            idempotency_key = _sha256_file(file_path) if os.path.exists(file_path) else None
+            idempotency_key = (
+                _build_idempotency_key(file_path, upload_file.filename)
+                if os.path.exists(file_path)
+                else None
+            )
             processable_entries.append(
                 {
                     "file_path": file_path,
@@ -829,7 +856,11 @@ async def upload_keywords(
                 # Enqueue each file separately to ensure sequential processing.
                 for entry in processable_entries:
                     entry_path = entry["file_path"]
-                    idempotency_key = _sha256_file(entry_path) if os.path.exists(entry_path) else None
+                    idempotency_key = (
+                        _build_idempotency_key(entry_path, entry.get("file_name"))
+                        if os.path.exists(entry_path)
+                        else None
+                    )
                     await enqueue_processing_file(
                         db,
                         project_id,
@@ -856,7 +887,11 @@ async def upload_keywords(
                 }
 
             if originalFilename and not duplicate_info:
-                idempotency_key = _sha256_file(final_path) if os.path.exists(final_path) else None
+                idempotency_key = (
+                    _build_idempotency_key(final_path, originalFilename)
+                    if os.path.exists(final_path)
+                    else None
+                )
                 await enqueue_processing_file(
                     db,
                     project_id,
@@ -998,7 +1033,11 @@ async def upload_keywords(
             # Enqueue each file separately to avoid brittle header-combine failures.
             for entry in processable_entries:
                 entry_path = entry["file_path"]
-                idempotency_key = _sha256_file(entry_path) if os.path.exists(entry_path) else None
+                idempotency_key = (
+                    _build_idempotency_key(entry_path, entry.get("file_name"))
+                    if os.path.exists(entry_path)
+                    else None
+                )
                 await enqueue_processing_file(
                     db,
                     project_id,
@@ -1022,7 +1061,11 @@ async def upload_keywords(
                 "file_name": file.filename,
             }
 
-        idempotency_key = _sha256_file(file_path) if os.path.exists(file_path) else None
+        idempotency_key = (
+            _build_idempotency_key(file_path, file.filename)
+            if os.path.exists(file_path)
+            else None
+        )
         await enqueue_processing_file(
             db,
             project_id,

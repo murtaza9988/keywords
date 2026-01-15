@@ -16,6 +16,7 @@ from app.services.project_processing_lease import ProjectProcessingLeaseService
 from app.utils.security import get_current_user
 from app.models.csv_processing_job import CsvProcessingJob
 from app.services.processing_queue import processing_queue_service
+from app.routes.keyword_routes import _build_idempotency_key
 
 
 def _override_get_current_user() -> dict:
@@ -105,7 +106,7 @@ def test_processing_status_includes_lock_counts(monkeypatch):
     monkeypatch.setattr(
         CsvProcessingJobService,
         "list_file_names_by_status",
-        AsyncMock(return_value=[]),
+        AsyncMock(side_effect=[[], [], []]),
     )
     monkeypatch.setattr(
         CsvProcessingJobService,
@@ -128,6 +129,62 @@ def test_processing_status_includes_lock_counts(monkeypatch):
     assert data["locked"] is True
     assert data["queuedJobs"] == 2
     assert data["runningJobs"] == 1
+
+
+def test_idempotency_key_includes_filename(tmp_path):
+    file_path = tmp_path / "keywords.csv"
+    file_path.write_text("alpha,beta\n")
+
+    key_one = _build_idempotency_key(str(file_path), "one.csv")
+    key_two = _build_idempotency_key(str(file_path), "two.csv")
+    key_one_repeat = _build_idempotency_key(str(file_path), "one.csv")
+
+    assert key_one != key_two
+    assert key_one == key_one_repeat
+
+
+@pytest.mark.asyncio
+async def test_runner_marks_failed_and_continues(monkeypatch):
+    runner = ProjectCsvRunnerService()
+    job_one = SimpleNamespace(id=1, storage_path="one.csv", source_filename="one.csv")
+    job_two = SimpleNamespace(id=2, storage_path="two.csv", source_filename="two.csv")
+    claim_side_effect = [job_one, job_two, None]
+
+    @asynccontextmanager
+    async def _fake_db():
+        yield AsyncMock()
+
+    async def _fake_claim(*_args, **_kwargs):
+        return claim_side_effect.pop(0)
+
+    async def _process_side_effect(file_path, *_args, **_kwargs):
+        if file_path == "one.csv":
+            raise RuntimeError("boom")
+        return None
+
+    process_mock = AsyncMock(side_effect=_process_side_effect)
+    group_mock = AsyncMock()
+    mark_succeeded = AsyncMock()
+    mark_failed = AsyncMock()
+
+    monkeypatch.setattr("app.services.project_csv_runner.get_db_context", _fake_db)
+    monkeypatch.setattr(ProjectProcessingLeaseService, "renew", AsyncMock())
+    monkeypatch.setattr(ProjectProcessingLeaseService, "release", AsyncMock())
+    monkeypatch.setattr(CsvProcessingJobService, "recovery_sweep", AsyncMock())
+    monkeypatch.setattr(CsvProcessingJobService, "claim_next_job", _fake_claim)
+    monkeypatch.setattr(CsvProcessingJobService, "mark_succeeded", mark_succeeded)
+    monkeypatch.setattr(CsvProcessingJobService, "mark_failed", mark_failed)
+    monkeypatch.setattr(CsvProcessingJobService, "has_pending_jobs", AsyncMock(return_value=False))
+    monkeypatch.setattr(processing_queue_service, "set_current_file", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("app.routes.keyword_processing.process_csv_file", process_mock)
+    monkeypatch.setattr("app.routes.keyword_processing.group_remaining_ungrouped_keywords", group_mock)
+
+    await runner.run(1, owner="owner")
+
+    assert process_mock.call_count == 2
+    mark_failed.assert_awaited_once()
+    mark_succeeded.assert_awaited_once()
+    group_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
