@@ -194,6 +194,37 @@ def test_upload_keywords_batch_combines_files(
     assert queued[0]["file_name"] in {"keywords-one.csv", "keywords-two.csv"}
 
 
+def test_upload_keywords_multi_file_request_enqueues_all_files(
+    test_api_client,
+    mock_project_model,
+    mock_processing_tasks,
+    mock_processing_queue,
+    temp_upload_dir,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        ProjectService,
+        "get_by_id",
+        AsyncMock(return_value=mock_project_model),
+    )
+    monkeypatch.setattr("app.routes.keyword_processing.process_csv_file", AsyncMock())
+
+    response = test_api_client.post(
+        "/api/projects/1/upload",
+        files=[
+            ("file", ("keywords-one.csv", b"Keyword,Volume\nalpha,10\n", "text/csv")),
+            ("file", ("keywords-two.csv", b"Keyword,Volume\nbeta,20\n", "text/csv")),
+            ("file", ("keywords-three.csv", b"Keyword,Volume\ngamma,30\n", "text/csv")),
+        ],
+    )
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "processing"
+    assert mock_processing_tasks[1] == "processing"
+    assert 1 in mock_processing_queue
+    assert len(list(mock_processing_queue[1])) == 2
+
+
 def test_processing_status_idle_does_not_force_complete(
     test_api_client,
     mock_processing_tasks,
