@@ -418,19 +418,19 @@ All endpoints that mutate grouping state must check:
 
 ### Frontend
 
-* [x] Add lock indicator to Grouping tab/header
-* [x] Disable interactions when locked
-* [x] Keep tab viewable
-* [x] Hook to processing status polling
+* [ ] Add lock indicator to Grouping tab/header
+* [ ] Disable interactions when locked
+* [ ] Keep tab viewable
+* [ ] Hook to processing status polling
 
 ### Tests
 
-* [x] Concurrent kick -> one lease owner
-* [x] Multi-file -> all jobs processed
-* [x] Retry/idempotency -> no duplicate keywords
-* [x] 409 grouping mutations during processing
-* [x] recovery sweep re-queues stale running jobs
-* [x] deterministic ordering of job processing
+* [ ] Concurrent kick -> one lease owner
+* [ ] Multi-file -> all jobs processed
+* [ ] Retry/idempotency -> no duplicate keywords
+* [ ] 409 grouping mutations during processing
+* [ ] recovery sweep re-queues stale running jobs
+* [ ] deterministic ordering of job processing
 
 ***
 
