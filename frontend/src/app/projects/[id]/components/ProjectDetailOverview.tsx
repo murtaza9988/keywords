@@ -29,6 +29,8 @@ interface ProjectDetailOverviewProps {
   displayProgress: number;
   processingCurrentFile: string | null;
   processingQueue: string[];
+  processingSucceededJobs?: number;
+  processingFailedJobs?: number;
   processingFileErrors: ProcessingFileError[];
   csvUploadsRefreshKey?: number;
   uploadedFiles?: string[];
@@ -51,6 +53,8 @@ export function ProjectDetailOverview({
   displayProgress,
   processingCurrentFile,
   processingQueue,
+  processingSucceededJobs,
+  processingFailedJobs,
   processingFileErrors,
   csvUploadsRefreshKey,
   uploadedFiles,
@@ -115,6 +119,14 @@ export function ProjectDetailOverview({
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">CSV files successfully processed</p>
+          <p className="text-lg font-semibold text-foreground">{(processingSucceededJobs ?? 0).toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">CSV files failed</p>
+          <p className="text-lg font-semibold text-foreground">{(processingFailedJobs ?? 0).toLocaleString()}</p>
+        </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total keywords uploaded</p>
           <p className="text-lg font-semibold text-foreground">{stats.totalKeywords.toLocaleString()}</p>

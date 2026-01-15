@@ -130,7 +130,8 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   );
   const queuedCount = queueItems.length;
 
-  if (status === 'idle') {
+  const shouldHide = status === 'idle' && !showUploadSummary && safeFileErrors.length === 0;
+  if (shouldHide) {
     return null;
   }
 
@@ -153,6 +154,16 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                 </button>
               )}
             </div>
+          ) : status === 'idle' ? (
+            <>
+              <CheckCircle2 className="h-4 w-4 text-muted" />
+              <span>
+                {showUploadSummary
+                  ? 'Last upload summary'
+                  : 'Idle'
+                }
+              </span>
+            </>
           ) : (
             <>
               <Loader2 className="h-4 w-4 animate-spin text-blue-500" />

@@ -75,6 +75,7 @@ class ProjectCsvRunnerService:
                         display_name,
                         run_grouping=False,
                         finalize_project=False,
+                        raise_on_error=True,
                     )
                     async with get_db_context() as db:
                         await CsvProcessingJobService.mark_succeeded(db, cast(int, job.id))
