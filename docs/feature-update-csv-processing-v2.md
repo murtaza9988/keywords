@@ -434,14 +434,62 @@ All endpoints that mutate grouping state must check:
 
 ***
 
-## 11) Non-Goals (for this phase)
+## 11) Known Issues & Remaining Work
+
+### 11.1) Auto-Update After Processing Completes
+
+**Status**: Partially Working
+
+The frontend polls the backend for processing status every 1 second when processing is active. When processing completes:
+1. The polling stops via `stopProcessingCheck()`
+2. `fetchKeywords()` and `fetchProjectStats()` are called to refresh data
+3. A success snackbar is shown
+
+**Issue**: Users sometimes report needing to manually refresh the page. Root causes may include:
+- Cache timing issues (API cache TTL may return stale data)
+- Race conditions between status completion and data refresh
+- UI state not properly updating after data refresh
+
+**Mitigation**:
+- The `csvUploadsRefreshKey` is incremented to force CSVUploadDropdown to refresh
+- Cache invalidation is triggered for keywords/stats endpoints
+
+### 11.2) CSV File Processing Visualization
+
+**Status**: Needs Enhancement
+
+The ProcessingProgressBar shows:
+- Current file being processed
+- Queued files waiting to be processed
+- File errors if any occurred
+
+**Missing**: Visual indicator showing which files have been successfully processed with checkmarks.
+
+The backend already returns `uploadedFiles` and `processedFiles` arrays in the processing status response. The frontend needs to:
+- Display a list of all uploaded CSV files
+- Show a checkmark (✓) next to files that have completed processing
+- Show a spinner next to the currently processing file
+- Show pending indicator for queued files
+
+### 11.3) Remaining Frontend Tasks
+
+* [ ] Add checkmark indicators for processed CSVs in ProcessingProgressBar
+* [ ] Show uploaded vs processed file counts in the UI
+* [ ] Ensure UI auto-refreshes reliably when processing completes
+* [ ] Add lock indicator to Grouping tab/header  
+* [ ] Disable interactions when locked
+* [ ] Keep tab viewable
+
+***
+
+## 12) Non-Goals (for this phase)
 
 * Parallel processing of CSVs within a project (can be added later with careful partitioning)
 * Real distributed job queue (Celery/RQ) — DB queue is sufficient for now
 
 ***
 
-## 12) Notes on Existing Components
+## 13) Notes on Existing Components
 
 * Existing `processing_queue_service` should remain for UI progress reporting, but correctness must rely on DB job state + lease.
 * File hashing (`sha256`) is already used for duplicate detection; reuse it to generate `idempotency_key`.

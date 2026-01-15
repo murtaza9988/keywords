@@ -226,6 +226,8 @@ export default function ProjectDetail(): React.ReactElement {
   const processingQueue = processing.processingQueue;
   const processingFileErrors = processing.processingFileErrors;
   const displayProgress = processing.displayProgress;
+  const uploadedFiles = processing.uploadedFiles;
+  const processedFiles = processing.processedFiles;
   const minVolume = filters.minVolume;
   const maxVolume = filters.maxVolume;
   const minLength = filters.minLength;
@@ -2175,6 +2177,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingQueue: data.queuedFiles ?? [],
           processingFileErrors: data.fileErrors ?? [],
           processingLocked: Boolean(data.locked),
+          uploadedFiles: data.uploadedFiles ?? [],
+          processedFiles: data.processedFiles ?? [],
         },
       });
 
@@ -2954,6 +2958,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     processingQueue={processingQueue}
                     processingFileErrors={processingFileErrors}
                     csvUploadsRefreshKey={csvUploadsRefreshKey}
+                    uploadedFiles={uploadedFiles}
+                    processedFiles={processedFiles}
                     onUploadStart={handleUploadStart}
                     onUploadBatchStart={handleUploadBatchStart}
                     onUploadSuccess={handleUploadSuccess}
