@@ -1,5 +1,5 @@
 // ProcessingProgressBar.tsx
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ProcessingFileError, ProcessingStatus } from './types';
 import { CheckCircle2, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
@@ -19,12 +19,10 @@ interface ProcessingProgressBarProps {
   stageDetail?: string | null;
   projectId?: string;
   onReset?: () => void;
-  uploadedFiles?: string[];
-  processedFiles?: string[];
 }
 
-const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({ 
-  status, 
+const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
+  status,
   progress,
   currentFileName,
   queuedFiles,
@@ -38,8 +36,6 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   stageDetail,
   projectId,
   onReset,
-  uploadedFiles,
-  processedFiles,
 }) => {
   const [isResetting, setIsResetting] = useState(false);
 
@@ -56,10 +52,6 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
       setIsResetting(false);
     }
   };
-  if (status === 'idle') {
-    return null;
-  }
-
   // Ensure progress is always between 0-100
   const safeProgress = Math.max(0, Math.min(100, progress));
   
@@ -109,18 +101,38 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
     if (status === 'error') return stage ? processingStageToStepIndex(stage) : 4;
     return 0;
   })();
-  const queuedCount = queuedFiles?.length ?? 0;
-  const safeFileErrors = fileErrors?.filter((error) => error && (error.fileName || error.message)) ?? [];
-  const safeUploadedFiles = uploadedFiles ?? [];
-  const safeProcessedFiles = processedFiles ?? [];
-  const processedSet = new Set(safeProcessedFiles);
-  const totalFiles = uploadedFileCount ?? safeUploadedFiles.length;
-  const processedCount = processedFileCount ?? safeProcessedFiles.length;
-  const showUploadSummary = totalFiles > 0 || safeUploadedFiles.length > 0 || safeProcessedFiles.length > 0;
-  const queueItems = [
-    ...(currentFileName ? [{ name: currentFileName, status: 'current' as const }] : []),
-    ...(queuedFiles ?? []).map((file) => ({ name: file, status: 'queued' as const })),
-  ];
+  const safeFileErrors = useMemo(
+    () => fileErrors?.filter((error) => error && (error.fileName || error.message)) ?? [],
+    [fileErrors]
+  );
+  const safeUploadedFiles = useMemo(() => uploadedFiles ?? [], [uploadedFiles]);
+  const safeProcessedFiles = useMemo(() => processedFiles ?? [], [processedFiles]);
+  const queuedList = useMemo(() => queuedFiles ?? [], [queuedFiles]);
+  const processedSet = useMemo(() => new Set(safeProcessedFiles), [safeProcessedFiles]);
+  const totalFiles = useMemo(
+    () => uploadedFileCount ?? safeUploadedFiles.length,
+    [uploadedFileCount, safeUploadedFiles]
+  );
+  const processedCount = useMemo(
+    () => processedFileCount ?? safeProcessedFiles.length,
+    [processedFileCount, safeProcessedFiles]
+  );
+  const showUploadSummary = useMemo(
+    () => totalFiles > 0 || safeUploadedFiles.length > 0 || safeProcessedFiles.length > 0,
+    [totalFiles, safeUploadedFiles, safeProcessedFiles]
+  );
+  const queueItems = useMemo(
+    () => [
+      ...(currentFileName ? [{ name: currentFileName, status: 'current' as const }] : []),
+      ...queuedList.map((file) => ({ name: file, status: 'queued' as const })),
+    ],
+    [currentFileName, queuedList]
+  );
+  const queuedCount = queueItems.length;
+
+  if (status === 'idle') {
+    return null;
+  }
 
   return (
     <div className="w-full mt-3 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
@@ -211,34 +223,22 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-muted">
           <div className="flex items-center justify-between">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-              CSV Files ({completedCount}/{totalFilesCount} processed)
+              Queue ({queueItems.length})
             </div>
           </div>
           <ol className="mt-2 space-y-1">
-            {allFiles.map((file, index) => (
-              <li key={`${file.name}-${index}`} className="flex items-center gap-2">
-                {file.fileStatus === 'completed' ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                ) : file.fileStatus === 'processing' ? (
+            {queueItems.map((file) => (
+              <li key={`${file.name}-${file.status}`} className="flex items-center gap-2">
+                {file.status === 'current' ? (
                   <Loader2 className="h-4 w-4 animate-spin text-blue-500 flex-shrink-0" />
-                ) : file.fileStatus === 'error' ? (
-                  <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
                 ) : (
                   <span className="h-4 w-4 rounded-full border border-gray-300 flex-shrink-0" />
                 )}
-                <span className={
-                  file.fileStatus === 'completed' ? 'text-foreground' :
-                  file.fileStatus === 'processing' ? 'text-blue-600' :
-                  file.fileStatus === 'error' ? 'text-red-600' :
-                  'text-muted'
-                }>
+                <span className={file.status === 'current' ? 'text-blue-600' : 'text-muted'}>
                   {file.name}
                 </span>
                 <span className="text-[10px] text-muted">
-                  {file.fileStatus === 'completed' ? 'Done' :
-                   file.fileStatus === 'processing' ? 'Processing...' :
-                   file.fileStatus === 'error' ? 'Failed' :
-                   'Queued'}
+                  {file.status === 'current' ? 'Processing...' : 'Queued'}
                 </span>
               </li>
             ))}

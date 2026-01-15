@@ -63,8 +63,6 @@ export interface ProcessingState {
   isExportingParent: boolean;
   isImportingParent: boolean;
   isExporting: boolean;
-  uploadedFiles: string[];
-  processedFiles: string[];
 }
 
 export interface ViewState {
@@ -174,8 +172,6 @@ export const initialProjectDetailState: ProjectDetailState = {
     isExportingParent: false,
     isImportingParent: false,
     isExporting: false,
-    uploadedFiles: [],
-    processedFiles: [],
   },
   stats: {
     ungroupedCount: 0,

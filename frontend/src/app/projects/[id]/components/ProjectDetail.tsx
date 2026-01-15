@@ -233,8 +233,6 @@ export default function ProjectDetail(): React.ReactElement {
   const uploadedFiles = processing.uploadedFiles;
   const processedFiles = processing.processedFiles;
   const displayProgress = processing.displayProgress;
-  const uploadedFiles = processing.uploadedFiles;
-  const processedFiles = processing.processedFiles;
   const minVolume = filters.minVolume;
   const maxVolume = filters.maxVolume;
   const minLength = filters.minLength;
@@ -2166,7 +2164,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     if (!projectIdStr) return;
 
     try {
-              const data = await checkProcessingStatusApi(projectIdStr);
+      const data = await checkProcessingStatusApi(projectIdStr);
       
       if (data.progress !== undefined) {
         const normalizedProgress = Math.max(0, Math.min(100, data.progress));
@@ -2191,8 +2189,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           uploadedFiles: data.uploadedFiles ?? [],
           processedFiles: data.processedFiles ?? [],
           processingLocked: Boolean(data.locked),
-          uploadedFiles: data.uploadedFiles ?? [],
-          processedFiles: data.processedFiles ?? [],
         },
       });
 
@@ -2461,7 +2457,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             message?: string;
             currentFileName?: string | null;
             queuedFiles?: string[];
+            uploadedFileCount?: number;
+            processedFileCount?: number;
             uploadedFiles?: string[];
+            processedFiles?: string[];
             fileErrors?: ProcessingFileError[];
             queuedJobs?: number;
             runningJobs?: number;
@@ -2477,6 +2476,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               processingQueuedJobs: processingStatus.queuedJobs ?? 0,
               processingRunningJobs: processingStatus.runningJobs ?? 0,
               processingFileErrors: processingStatus.fileErrors ?? [],
+              uploadedFileCount: processingStatus.uploadedFileCount ?? 0,
+              processedFileCount: processingStatus.processedFileCount ?? 0,
+              uploadedFiles: processingStatus.uploadedFiles ?? [],
+              processedFiles: processingStatus.processedFiles ?? [],
               processingLocked: Boolean(processingStatus.locked),
             },
           });
