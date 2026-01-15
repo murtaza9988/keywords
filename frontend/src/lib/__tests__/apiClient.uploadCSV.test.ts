@@ -54,7 +54,7 @@ describe('apiClient.uploadCSV', () => {
   });
 
   it('invalidates keyword and stats caches before upload', async () => {
-    const cacheClient = apiClient as { cache: { invalidate: (pattern: string) => void } };
+    const cacheClient = apiClient as unknown as { cache: { invalidate: (pattern: string) => void } };
     const invalidateSpy = jest.spyOn(cacheClient.cache, 'invalidate');
     const formData = new FormData();
     formData.append('file', new Blob(['keyword,volume\n'], { type: 'text/csv' }), 'test.csv');
