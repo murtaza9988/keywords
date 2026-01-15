@@ -75,6 +75,7 @@ class ProjectState:
     stage_detail: Optional[str] = None
     keywords: List[Dict[str, Any]] = field(default_factory=list)
     complete: bool = False
+    file_errors: List[Dict[str, Any]] = field(default_factory=list)
     
     # File tracking for validation
     uploaded_files: List[str] = field(default_factory=list)
@@ -123,6 +124,7 @@ class ProjectState:
             "uploaded_files": list(self.uploaded_files),
             "processed_files": list(self.processed_files),
             "validation_error": None,
+            "file_errors": list(self.file_errors),
         }
 
     def to_dict(self) -> Dict[str, Any]:
@@ -158,6 +160,7 @@ class ProjectState:
             "complete": self.complete,
             "uploaded_files": self.uploaded_files,
             "processed_files": self.processed_files,
+            "file_errors": self.file_errors,
             "batches": {
                 batch_id: {
                     "total_files": batch.total_files,
@@ -219,6 +222,7 @@ class ProjectState:
         state.complete = data.get("complete", False)
         state.uploaded_files = data.get("uploaded_files", [])
         state.processed_files = data.get("processed_files", [])
+        state.file_errors = data.get("file_errors", [])
         batches: Dict[str, BatchInfo] = {}
         for batch_id, batch_data in data.get("batches", {}).items():
             batch = BatchInfo(total_files=batch_data.get("total_files", 0))
