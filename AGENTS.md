@@ -173,6 +173,22 @@ python -m app.scripts.backfill_compounds --project-id <id>
 - **Processing Pipeline Steward**: Keep the Project Detail → Process tab and related docs aligned with the backend pipeline (chunk upload sizes, duplicate detection, sequential queue, normalization steps, grouping passes).
 - **Queue State Monitor**: When processing statuses or stages change (idle, uploading, combining, queued, processing, complete, error; stages like db_prepare/read_csv/import_rows/persist/group), update the UI labels and documentation to match.
 
+## Custom Copilot Agent Profiles
+- **API Contract Auditor**: Mission/scope: confirm request/response shapes stay aligned across backend + frontend changes. Key files: `backend/app/schemas/`, `backend/app/routes/`, `frontend/src/**/api*.ts`. Handoff: list any renamed fields and the affected components/services.
+- **Processing UI Sync**: Mission/scope: ensure processing status labels, stages, and progress UI match backend pipeline changes. Key files: `frontend/src/app/**/ProjectDetail*`, `backend/app/services/processing*`, `docs/`. Handoff: summarize UI label updates and any missing docs.
+- **Queue State Referee**: Mission/scope: validate queue state transitions and invariants after changes. Key files: `backend/app/services/processing_state*`, `backend/app/models/processing*`. Handoff: enumerate invariants verified and any transitions that need tests.
+- **Keyword UX Curator**: Mission/scope: review keyword table interactions and performance constraints. Key files: `frontend/src/app/**/Keyword*`, `frontend/src/components/**`. Handoff: list any performance or accessibility risks and recommended tweaks.
+- **Migration Gatekeeper**: Mission/scope: ensure model changes include Alembic migrations. Key files: `backend/app/models/`, `backend/alembic/versions/`. Handoff: confirm migration presence and note any required backfills.
+- **Feature Implementation**: Mission/scope: deliver scoped product features end-to-end with correct data flow and UI state. Key files: `backend/app/routes/`, `backend/app/services/`, `frontend/src/app/`, `frontend/src/components/`. Handoff: summarize changes, new endpoints, and UI touchpoints to validate.
+- **Bug Finder**: Mission/scope: isolate regressions and confirm fixes with minimal diffs. Key files: `backend/app/`, `frontend/src/`, `docs/`. Handoff: list root cause, fix location, and any follow-up tests or monitoring.
+- **Refactor Steward**: Mission/scope: improve structure without changing behavior or contracts. Key files: `backend/app/`, `frontend/src/`, `docs/`. Handoff: note moved files, renamed symbols, and any behavior invariants to re-verify.
+
+### Copilot Agent Efficiency Tips
+- [ ] Define the agent mission in one sentence and the exact files to touch.
+- [ ] Provide expected inputs/outputs (schemas, UI states, error messages) up front.
+- [ ] Ask for a brief handoff summary with risks and next steps.
+- [ ] Keep scope tight; spawn a second agent for unrelated concerns.
+
 ## Incident log
 - 2026-01-15: "No children found or failed to load" appeared under every parent keyword because Pydantic schemas were missing `serialize_by_alias=True`. The backend returned snake_case keys (is_parent, group_id) instead of camelCase (isParent, groupId) that the frontend expected. Prevention: Always add `serialize_by_alias=True` to Pydantic model_config when using Field aliases, especially for response models.
 - 2026-01-15: Multi-CSV upload showed validation error "X file(s) did not finish processing" even when uploads succeeded. Cause: Empty CSV files and failed CSV files were not being marked as processed, causing uploaded_count > processed_count. Prevention: Always call mark_file_processed (or pass file_name to mark_error/mark_complete) so upload/processed counts match.
