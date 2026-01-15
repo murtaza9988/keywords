@@ -4,6 +4,49 @@ import { ProcessingFileError, ProcessingStatus } from './types';
 import { CheckCircle2, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 
+const STAGE_LABELS: Record<string, string> = {
+  db_prepare: 'Preparing database',
+  read_csv: 'Reading CSV',
+  count_rows: 'Counting rows',
+  import_rows: 'Importing rows',
+  persist: 'Saving keywords',
+  group: 'Grouping keywords',
+  complete: 'Complete',
+};
+
+const buildOrderedFileList = ({
+  uploadedFiles,
+  processedFiles,
+  queuedFiles,
+  currentFileName,
+  fileErrors,
+}: {
+  uploadedFiles: string[];
+  processedFiles: string[];
+  queuedFiles: string[];
+  currentFileName?: string | null;
+  fileErrors: ProcessingFileError[];
+}): string[] => {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  const add = (name?: string | null) => {
+    if (!name) return;
+    if (seen.has(name)) return;
+    seen.add(name);
+    names.push(name);
+  };
+
+  if (uploadedFiles.length > 0) {
+    uploadedFiles.forEach(add);
+  }
+  add(currentFileName);
+  queuedFiles.forEach(add);
+  processedFiles.forEach(add);
+  fileErrors.forEach((error) => add(error.fileName));
+
+  return names;
+};
+
 interface ProcessingProgressBarProps {
   status: ProcessingStatus;
   progress: number;
@@ -112,40 +155,20 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
       .filter((error) => error.fileName)
       .map((error) => [error.fileName as string, error])
   );
-  const stageLabels: Record<string, string> = {
-    db_prepare: 'Preparing database',
-    read_csv: 'Reading CSV',
-    count_rows: 'Counting rows',
-    import_rows: 'Importing rows',
-    persist: 'Saving keywords',
-    group: 'Grouping keywords',
-    complete: 'Complete',
-  };
-  const currentStageLabel = stage ? stageLabels[stage] ?? stage : null;
+  const currentStageLabel = stage ? STAGE_LABELS[stage] ?? stage : null;
   const fileStatusLabel = {
     combining: 'Combining',
     uploading: 'Uploading',
   }[status] ?? 'Uploaded';
 
-  const orderedFiles = (() => {
-    const names: string[] = [];
-    const seen = new Set<string>();
-    const add = (name?: string | null) => {
-      if (!name) return;
-      if (seen.has(name)) return;
-      seen.add(name);
-      names.push(name);
-    };
-    if (safeUploadedFiles.length > 0) {
-      safeUploadedFiles.forEach(add);
-    }
-    add(currentFileName);
-    (queuedFiles ?? []).forEach(add);
-    safeProcessedFiles.forEach(add);
-    safeFileErrors.forEach((error) => add(error.fileName));
-    return names;
-  })();
-  const totalFileCount = Math.max(safeUploadedFiles.length, orderedFiles.length);
+  const orderedFiles = buildOrderedFileList({
+    uploadedFiles: safeUploadedFiles,
+    processedFiles: safeProcessedFiles,
+    queuedFiles: queuedFiles ?? [],
+    currentFileName,
+    fileErrors: safeFileErrors,
+  });
+  const totalFileCount = safeUploadedFiles.length;
   const processedFileCount = safeProcessedFiles.length;
   const fileSummary = totalFileCount > 0 ? `${processedFileCount}/${totalFileCount} files processed` : null;
   const statusText = status === 'queued'
