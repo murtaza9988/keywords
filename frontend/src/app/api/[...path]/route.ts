@@ -8,15 +8,27 @@ type RouteContext = {
   params: Promise<{ path?: string[] }>;
 };
 
-function buildBackendUrl(request: NextRequest, pathParts: string[]): string {
+function buildBackendUrls(request: NextRequest, pathParts: string[]): string[] {
   const backendPath = pathParts.length ? `/${pathParts.join('/')}` : '';
+  const query = request.nextUrl.search;
   const baseHasApi = BACKEND_BASE.endsWith('/api');
-  const prefix = baseHasApi ? '' : '/api';
-  return `${BACKEND_BASE}${prefix}${backendPath}${request.nextUrl.search}`;
+
+  if (baseHasApi) {
+    const baseNoApi = BACKEND_BASE.replace(/\/api$/, '');
+    return [
+      `${BACKEND_BASE}${backendPath}${query}`,
+      `${baseNoApi}/api${backendPath}${query}`,
+    ];
+  }
+
+  return [
+    `${BACKEND_BASE}/api${backendPath}${query}`,
+    `${BACKEND_BASE}${backendPath}${query}`,
+  ];
 }
 
 async function proxy(request: NextRequest, pathParts: string[]): Promise<NextResponse> {
-  const url = buildBackendUrl(request, pathParts);
+  const urls = buildBackendUrls(request, pathParts);
 
   const headers = new Headers(request.headers);
   headers.delete('host');
@@ -25,12 +37,21 @@ async function proxy(request: NextRequest, pathParts: string[]): Promise<NextRes
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
   const body = hasBody ? await request.arrayBuffer() : undefined;
 
-  const upstreamResponse = await fetch(url, {
+  let upstreamResponse = await fetch(urls[0], {
     method: request.method,
     headers,
     body,
     redirect: 'manual',
   });
+
+  if (upstreamResponse.status === 404 && urls.length > 1) {
+    upstreamResponse = await fetch(urls[1], {
+      method: request.method,
+      headers,
+      body,
+      redirect: 'manual',
+    });
+  }
 
   const responseHeaders = new Headers(upstreamResponse.headers);
   responseHeaders.delete('content-encoding');
