@@ -163,6 +163,7 @@ export default function ProjectDetail(): React.ReactElement {
   const projectIdStr = params?.id ? String(params.id) : '';
   const dispatch: AppDispatch = useDispatch();
   const statusCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const statusCheckIntervalMsRef = useRef<number | null>(null);
   const apiCache = useMemo(() => new ApiCache(), []);
   
   const project = useSelector((state: RootState) =>
@@ -224,6 +225,8 @@ export default function ProjectDetail(): React.ReactElement {
   const processingStageDetail = processing.processingStageDetail ?? null;
   const processingCurrentFile = processing.processingCurrentFile;
   const processingQueue = processing.processingQueue;
+  const processingQueuedJobs = processing.processingQueuedJobs;
+  const processingRunningJobs = processing.processingRunningJobs;
   const processingFileErrors = processing.processingFileErrors;
   const displayProgress = processing.displayProgress;
   const minVolume = filters.minVolume;
@@ -2149,6 +2152,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       clearInterval(statusCheckIntervalRef.current);
       statusCheckIntervalRef.current = null;
     }
+    statusCheckIntervalMsRef.current = null;
   }, []);
   const [csvUploadsRefreshKey, setCsvUploadsRefreshKey] = useState(0);
 
@@ -2173,6 +2177,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingStageDetail: data.stageDetail ?? null,
           processingCurrentFile: data.currentFileName ?? null,
           processingQueue: data.queuedFiles ?? [],
+          processingQueuedJobs: data.queuedJobs ?? 0,
+          processingRunningJobs: data.runningJobs ?? 0,
           processingFileErrors: data.fileErrors ?? [],
           processingLocked: Boolean(data.locked),
         },
@@ -2187,7 +2193,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             uploadSuccess: true,
           },
         });
-        stopProcessingCheck();
         addSnackbarMessage('Processing complete', 'success', {
           stage: 'complete',
           description: 'Your keywords are ready to review.'
@@ -2212,13 +2217,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             payload: { isUploading: false, processingProgress: 0 },
           });
           addSnackbarMessage(data.message || 'File processing failed', 'error');
-          stopProcessingCheck();
         } else if (data.status === 'idle') {
           detailDispatch({
             type: 'updateProcessing',
             payload: { isUploading: false },
           });
-          stopProcessingCheck();
         } else if (data.status === 'uploading' || data.status === 'combining') {
           detailDispatch({
             type: 'updateProcessing',
@@ -2294,7 +2297,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         type: 'updateProcessing',
         payload: { isUploading: false },
       });
-      stopProcessingCheck();
       detailDispatch({
         type: 'updateProcessing',
         payload: {
@@ -2305,43 +2307,61 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       });
     }
   }, [
-    projectIdStr, processingStatus, stopProcessingCheck, 
+    projectIdStr, processingStatus,
     fetchKeywords, pagination.limit, activeView, sortParams, 
     filterParams, addSnackbarMessage, 
     dispatch, projectIdNum, fetchProjectStats, bumpLogsRefresh
   ]);
 
   useEffect(() => {
-    if (
+    const hasActiveStatus = (
       processingStatus === 'uploading' ||
       processingStatus === 'combining' ||
       processingStatus === 'queued' ||
       processingStatus === 'processing'
-    ) {
-      if (!statusCheckIntervalRef.current) {
-        checkProcessingStatus();
-        statusCheckIntervalRef.current = setInterval(checkProcessingStatus, 1000);
-      }
-    } else {
-      if (statusCheckIntervalRef.current) {
-        clearInterval(statusCheckIntervalRef.current);
-        statusCheckIntervalRef.current = null;
-      }
+    );
+    const hasQueuedFiles = processingQueue.length > 0;
+    const hasCurrentFile = Boolean(processingCurrentFile);
+    const hasJobSignals = (processingQueuedJobs ?? 0) > 0 || (processingRunningJobs ?? 0) > 0;
+    const shouldPollFast = hasActiveStatus || hasQueuedFiles || hasCurrentFile || hasJobSignals;
+    const shouldPollSlow = !shouldPollFast && processingLocked;
+    const nextIntervalMs = shouldPollFast ? 1000 : shouldPollSlow ? 5000 : null;
+
+    if (nextIntervalMs === null) {
+      stopProcessingCheck();
+      return;
     }
-  
-    return () => {
-      if (statusCheckIntervalRef.current) {
-        clearInterval(statusCheckIntervalRef.current);
-        statusCheckIntervalRef.current = null;
-      }
-    };
-  }, [processingStatus, checkProcessingStatus]);
+
+    if (
+      !statusCheckIntervalRef.current ||
+      statusCheckIntervalMsRef.current !== nextIntervalMs
+    ) {
+      stopProcessingCheck();
+      checkProcessingStatus();
+      statusCheckIntervalRef.current = setInterval(checkProcessingStatus, nextIntervalMs);
+      statusCheckIntervalMsRef.current = nextIntervalMs;
+    }
+  }, [
+    processingStatus,
+    processingLocked,
+    processingQueue.length,
+    processingCurrentFile,
+    processingQueuedJobs,
+    processingRunningJobs,
+    checkProcessingStatus,
+    stopProcessingCheck,
+  ]);
+
+  useEffect(() => () => {
+    stopProcessingCheck();
+  }, [stopProcessingCheck]);
   
   
   const startProcessingCheck = useCallback(() => {
     stopProcessingCheck();
     checkProcessingStatus();
     statusCheckIntervalRef.current = setInterval(checkProcessingStatus, 1000);
+    statusCheckIntervalMsRef.current = 1000;
   }, [checkProcessingStatus, stopProcessingCheck]);
   
   const fetchInitialData = useCallback(async () => {
@@ -2431,6 +2451,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             queuedFiles?: string[];
             uploadedFiles?: string[];
             fileErrors?: ProcessingFileError[];
+            queuedJobs?: number;
+            runningJobs?: number;
           };
           detailDispatch({
             type: 'updateProcessing',
@@ -2440,6 +2462,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               processingMessage: processingStatus.message || '',
               processingCurrentFile: processingStatus.currentFileName ?? null,
               processingQueue: processingStatus.queuedFiles ?? [],
+              processingQueuedJobs: processingStatus.queuedJobs ?? 0,
+              processingRunningJobs: processingStatus.runningJobs ?? 0,
               processingFileErrors: processingStatus.fileErrors ?? [],
               processingLocked: Boolean(processingStatus.locked),
             },

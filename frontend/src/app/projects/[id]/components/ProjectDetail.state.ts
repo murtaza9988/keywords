@@ -52,6 +52,8 @@ export interface ProcessingState {
   processingStageDetail?: string | null;
   processingCurrentFile: string | null;
   processingQueue: string[];
+  processingQueuedJobs?: number;
+  processingRunningJobs?: number;
   processingFileErrors: ProcessingFileError[];
   displayProgress: number;
   isExportingParent: boolean;
@@ -155,6 +157,8 @@ export const initialProjectDetailState: ProjectDetailState = {
     processingStageDetail: null,
     processingCurrentFile: null,
     processingQueue: [],
+    processingQueuedJobs: undefined,
+    processingRunningJobs: undefined,
     processingFileErrors: [],
     displayProgress: 0,
     isExportingParent: false,
