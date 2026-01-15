@@ -148,6 +148,7 @@ export function TokenManagement({
         sortParams.column,
         sortParams.direction,
         activeView,
+        activeViewKeywords.length,
       ].join('|');
       const cached = tokenCacheRef.current.get(cacheKey);
       if (cached) {

@@ -575,6 +575,11 @@ class ApiClient {
     try {
       this.cache.invalidate(`/api/projects/${projectId}`);
       this.cache.invalidate(`/api/projects/${projectId}/csv-uploads`);
+      this.cache.invalidate(`/api/projects/${projectId}/keywords`);
+      this.cache.invalidate(`/api/projects/${projectId}/stats`);
+      this.cache.invalidate(`/api/projects/${projectId}/tokens`);
+      this.cache.invalidate(`/api/projects/${projectId}/initial-data`);
+      this.cache.invalidate('/api/projects/with-stats');
       const chunkIndex = formData.get('chunkIndex');
       const totalChunks = formData.get('totalChunks');
       const url = `/api/projects/${projectId}/upload?_t=${Date.now()}`;
