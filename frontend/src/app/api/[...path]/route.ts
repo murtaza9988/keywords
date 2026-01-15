@@ -17,7 +17,7 @@ function buildBackendUrls(request: NextRequest, pathParts: string[]): string[] {
     const baseNoApi = BACKEND_BASE.replace(/\/api$/, '');
     return [
       `${BACKEND_BASE}${backendPath}${query}`,
-      `${baseNoApi}/api${backendPath}${query}`,
+      `${baseNoApi}${backendPath}${query}`,
     ];
   }
 
