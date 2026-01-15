@@ -200,6 +200,12 @@ async def reset_processing_status(
         raise HTTPException(status_code=404, detail="Project not found")
     
     cleared_info = processing_queue_service.reset_processing(project_id)
+    cancelled_jobs = await CsvProcessingJobService.cancel_pending_jobs(
+        db,
+        project_id=project_id,
+        error="Reset by user",
+    )
+    await ProjectProcessingLeaseService.clear_for_project(db, project_id=project_id)
     
     await ActivityLogService.log_activity(
         db,
@@ -209,6 +215,7 @@ async def reset_processing_status(
             "previous_status": cleared_info.get("had_status"),
             "had_queued_files": cleared_info.get("had_queue", 0),
             "had_current_file": cleared_info.get("had_current_file"),
+            "cancelled_jobs": cancelled_jobs,
         },
         user=current_user.get("username", "admin"),
     )
@@ -216,6 +223,7 @@ async def reset_processing_status(
     return {
         "message": "Processing state reset successfully",
         "cleared": cleared_info,
+        "cancelledJobs": cancelled_jobs,
     }
 
 
