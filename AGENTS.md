@@ -34,6 +34,30 @@
   - `fix: resolve jwt expiration bug`
   - `chore: update dependencies`
 
+### ⛔ NEVER PUSH DIRECTLY TO MAIN ⛔
+> **This is a hard rule. No exceptions. No urgency justifies bypassing it.**
+
+AI agents and contributors MUST:
+1. **Always create a feature/fix branch** before making changes
+2. **Always open a Pull Request** to merge into main
+3. **Never run `git push origin main`** - this is forbidden
+
+Even for "urgent hotfixes":
+- Create a branch: `git checkout -b fix/urgent-hotfix`
+- Push the branch: `git push origin fix/urgent-hotfix`
+- Create a PR: `gh pr create --base main`
+- Merge via GitHub (not locally)
+
+**If an AI agent pushes directly to main, it has violated this repository's core workflow.**
+
+### ⛔ HARD RULES FOR AI AGENTS ⛔
+
+1. **Never push directly to main** - Always use PRs (see above)
+2. **Always read files before editing** - Never assume content; use read_file first
+3. **Run `npm run lint && npm run typecheck` before committing** - Fix errors, don't ignore them
+4. **One concern per PR** - Don't bundle unrelated changes
+5. **Verify the build passes locally before pushing** - `npm run build` must succeed
+
 ### Pre-Commit Checklist
 Before submitting a PR, ensure:
 1. **Linting**:
