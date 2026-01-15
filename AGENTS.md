@@ -50,6 +50,14 @@ Even for "urgent hotfixes":
 
 **If an AI agent pushes directly to main, it has violated this repository's core workflow.**
 
+### ⛔ HARD RULES FOR AI AGENTS ⛔
+
+1. **Never push directly to main** - Always use PRs (see above)
+2. **Always read files before editing** - Never assume content; use read_file first
+3. **Run `npm run lint && npm run typecheck` before committing** - Fix errors, don't ignore them
+4. **One concern per PR** - Don't bundle unrelated changes
+5. **Verify the build passes locally before pushing** - `npm run build` must succeed
+
 ### Pre-Commit Checklist
 Before submitting a PR, ensure:
 1. **Linting**:
