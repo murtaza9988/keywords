@@ -328,6 +328,13 @@ All endpoints that mutate grouping state must check:
 
   * returns `{ locked: boolean, status: ..., current_file: ..., progress: ... }`
 
+### 7.3.1 Polling requirement (continuous while backend active)
+
+* The UI **must continue polling** processing status if the backend reports any active work (queued/running jobs or locked lease),
+  even if the current UI state believes processing is idle or complete.
+* Do **not** stop polling based solely on stale client-side flags; only stop when the backend reports no active processing and
+  the uploaded/processed file counts match.
+
 ### 7.4 Processing status contract (explicit fields)
 
 ```
@@ -345,6 +352,21 @@ All endpoints that mutate grouping state must check:
   }
 }
 ```
+
+### 7.5 File count + per-file status mapping (UI contract)
+
+Backend response fields for Process visualization **must** be mapped as follows:
+
+* `uploadedFiles` → total list of files uploaded for the project (source of `uploadedFileCount`).
+* `processedFiles` → list of files that have completed processing (source of `processedFileCount`).
+* `processedFileCount` → server-authoritative count displayed as `processedFileCount / uploadedFileCount`.
+
+Process visualization requirements:
+
+* Display **`processedFileCount / uploadedFileCount`** at all times.
+* Show per-file status by checking each uploaded file against `processedFiles`
+  (or per-file status metadata where available) to avoid assuming completion from UI-only state.
+* If counts diverge or backend reports active processing, continue polling and keep UI in “processing” state.
 
 ***
 

@@ -10,6 +10,10 @@ interface ProcessingProgressBarProps {
   currentFileName?: string | null;
   queuedFiles?: string[];
   fileErrors?: ProcessingFileError[];
+  uploadedFileCount?: number;
+  processedFileCount?: number;
+  uploadedFiles?: string[];
+  processedFiles?: string[];
   message?: string;
   stage?: string | null;
   stageDetail?: string | null;
@@ -25,6 +29,10 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   currentFileName,
   queuedFiles,
   fileErrors,
+  uploadedFileCount,
+  processedFileCount,
+  uploadedFiles,
+  processedFiles,
   message,
   stage,
   stageDetail,
@@ -103,56 +111,16 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   })();
   const queuedCount = queuedFiles?.length ?? 0;
   const safeFileErrors = fileErrors?.filter((error) => error && (error.fileName || error.message)) ?? [];
-
-  // Build a comprehensive list of all CSV files with their processing status
-  const processedFilesSet = new Set(processedFiles ?? []);
-  const errorFilesSet = new Set(safeFileErrors.map(e => e.fileName).filter(Boolean) as string[]);
-  
-  // Combine all files into one list with status
-  const allFiles: { name: string; fileStatus: 'completed' | 'processing' | 'queued' | 'error' }[] = [];
-  const addedFiles = new Set<string>();
-  
-  // Helper to add a file if not already added
-  const addFile = (name: string, status: 'completed' | 'processing' | 'queued' | 'error') => {
-    if (!addedFiles.has(name)) {
-      allFiles.push({ name, fileStatus: status });
-      addedFiles.add(name);
-    }
-  };
-  
-  // Add processed files (completed)
-  (processedFiles ?? []).forEach(file => {
-    if (!errorFilesSet.has(file)) {
-      addFile(file, 'completed');
-    }
-  });
-  
-  // Add current file (processing)
-  if (currentFileName && !processedFilesSet.has(currentFileName)) {
-    addFile(currentFileName, 'processing');
-  }
-  
-  // Add queued files
-  (queuedFiles ?? []).forEach(file => {
-    if (!processedFilesSet.has(file) && file !== currentFileName) {
-      addFile(file, 'queued');
-    }
-  });
-  
-  // Add error files
-  safeFileErrors.forEach(error => {
-    if (error.fileName) {
-      addFile(error.fileName, 'error');
-    }
-  });
-  
-  // Add any uploaded files not yet categorized (treat as queued)
-  (uploadedFiles ?? []).forEach(file => {
-    addFile(file, 'queued');
-  });
-  
-  const completedCount = allFiles.filter(f => f.fileStatus === 'completed').length;
-  const totalFilesCount = allFiles.length;
+  const safeUploadedFiles = uploadedFiles ?? [];
+  const safeProcessedFiles = processedFiles ?? [];
+  const processedSet = new Set(safeProcessedFiles);
+  const totalFiles = uploadedFileCount ?? safeUploadedFiles.length;
+  const processedCount = processedFileCount ?? safeProcessedFiles.length;
+  const showUploadSummary = totalFiles > 0 || safeUploadedFiles.length > 0 || safeProcessedFiles.length > 0;
+  const queueItems = [
+    ...(currentFileName ? [{ name: currentFileName, status: 'current' as const }] : []),
+    ...(queuedFiles ?? []).map((file) => ({ name: file, status: 'queued' as const })),
+  ];
 
   return (
     <div className="w-full mt-3 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
@@ -202,9 +170,44 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         {queuedCount > 0 && (
           <span className="text-xs text-muted">Queued files: {queuedCount}</span>
         )}
+        {showUploadSummary && (
+          <span className="text-xs text-muted">
+            Processed {processedCount}/{totalFiles} CSVs
+          </span>
+        )}
       </div>
-      {/* CSV Files Processing Breakdown */}
-      {allFiles.length > 0 && (
+      {showUploadSummary && (
+        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-muted">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <span>Uploads</span>
+            <span className="text-[11px] font-medium text-muted">
+              Processed {processedCount}/{totalFiles} CSVs
+            </span>
+          </div>
+          {safeUploadedFiles.length > 0 ? (
+            <ul className="mt-2 space-y-1">
+              {safeUploadedFiles.map((file) => {
+                const isProcessed = processedSet.has(file);
+                return (
+                  <li key={file} className="flex items-center gap-2">
+                    {isProcessed ? (
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <span className="h-3 w-3 rounded-full border border-gray-300" />
+                    )}
+                    <span className={isProcessed ? 'text-foreground' : 'text-muted'}>
+                      {file}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="mt-2 text-xs text-muted">No uploaded files yet.</div>
+          )}
+        </div>
+      )}
+      {queueItems.length > 0 && (
         <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-muted">
           <div className="flex items-center justify-between">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
