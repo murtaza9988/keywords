@@ -8,6 +8,7 @@ from app.models.project import Project
 from app.models.keyword import Keyword, KeywordStatus
 from app.schemas.project import ProjectCreate, ProjectResponse
 from app.services.project import ProjectService
+from app.services.activity_log import ActivityLogService
 from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -20,6 +21,13 @@ async def create_project(
 ) -> ProjectResponse:
     """Create a new project."""
     project = await ProjectService.create(db, project_data.name)
+    await ActivityLogService.log_activity(
+        db,
+        project_id=project.id,
+        action="project.create",
+        details={"name": project.name},
+        user=current_user.get("username", "admin"),
+    )
     return ProjectResponse.from_orm(project)
 
 @router.get("", response_model=List[ProjectResponse])
@@ -160,6 +168,14 @@ async def update_project(
     db: AsyncSession = Depends(get_db)
 ) -> ProjectResponse:
     """Update a project."""
+    existing_project = await ProjectService.get_by_id(db, project_id)
+    if not existing_project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
+    previous_name = existing_project.name
     project = await ProjectService.update(db, project_id, project_data.name)
     
     if not project:
@@ -167,7 +183,15 @@ async def update_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
+    await ActivityLogService.log_activity(
+        db,
+        project_id=project_id,
+        action="project.rename",
+        details={"from": previous_name, "to": project.name},
+        user=current_user.get("username", "admin"),
+    )
+
     return ProjectResponse.from_orm(project)
 
 @router.delete("/{project_id}", status_code=status.HTTP_202_ACCEPTED)
@@ -184,5 +208,12 @@ async def delete_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
+    await ActivityLogService.log_activity(
+        db,
+        project_id=project_id,
+        action="project.delete",
+        details={"name": project.name},
+        user=current_user.get("username", "admin"),
+    )
     background_tasks.add_task(ProjectService.delete, db, project_id)
     return {"message": "Deletion in progress"}

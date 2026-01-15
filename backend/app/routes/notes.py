@@ -6,6 +6,7 @@ from datetime import datetime
 from app.database import get_db
 from app.schemas.notes import NoteCreate, NoteResponse
 from app.services.notes import NoteService
+from app.services.activity_log import ActivityLogService
 from app.utils.security import get_current_user
 
 router = APIRouter(tags=["notes"])
@@ -41,11 +42,25 @@ async def create_or_update_notes(
 ) -> NoteResponse:
     """Create or update notes for a specific project."""
     try:
+        existing_note = await NoteService.get_by_project_id(db, project_id)
         note = await NoteService.create_or_update(
             db=db,
             project_id=project_id,
             note1=note_data.note1,
             note2=note_data.note2
+        )
+        action = "note.create" if existing_note is None else "note.update"
+        updated_fields = []
+        if note_data.note1 is not None:
+            updated_fields.append("note1")
+        if note_data.note2 is not None:
+            updated_fields.append("note2")
+        await ActivityLogService.log_activity(
+            db,
+            project_id=project_id,
+            action=action,
+            details={"updated_fields": updated_fields},
+            user=current_user.get("username", "admin"),
         )
         return NoteResponse.from_orm(note)
     except ValueError as e:
