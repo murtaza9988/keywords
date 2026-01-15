@@ -495,14 +495,16 @@ class ProcessingQueueService:
         """
         state = self._get_or_create(project_id)
         
-        # If already processing, check if we're stuck
-        if state.status == "processing":
-            if state.current_file is None:
-                # Stuck state - reset and continue
-                state.status = "queued"
-            else:
-                # Actually processing - don't interrupt
-                return None
+        # If already processing AND has a current file, don't interrupt
+        # (unless the processing is stale/stuck)
+        if state.status == "processing" and state.current_file is not None:
+            if not state.is_stale():
+                return None  # Actually busy processing, don't interrupt
+        
+        # Reset status if we were "processing" but current_file was cleared
+        # This happens after mark_complete() clears current_file
+        if state.status == "processing" and state.current_file is None:
+            state.status = "queued"
         
         # Try to get next file from queue
         if not state.queue:
@@ -510,6 +512,7 @@ class ProcessingQueueService:
             if state.status not in ("complete", "error"):
                 state.status = "idle"
             state.current_file = None
+            self._save_state_to_disk(project_id)
             return None
         
         # Dequeue and start processing

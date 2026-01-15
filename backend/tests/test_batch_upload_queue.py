@@ -261,3 +261,69 @@ def test_mark_complete_clears_current_file():
     assert processing_queue_service.get_current_file(project_id) is None
     
     processing_queue_service.cleanup(project_id)
+
+
+def test_sequential_processing_chain():
+    """
+    Test that files are processed sequentially: file1 completes -> file2 starts -> etc.
+    This is the core multi-CSV upload flow.
+    """
+    project_id = 991
+    processing_queue_service.cleanup(project_id)
+    
+    # Enqueue 3 files
+    processing_queue_service.enqueue(project_id, "/path/file1.csv", "file1.csv")
+    processing_queue_service.enqueue(project_id, "/path/file2.csv", "file2.csv")
+    processing_queue_service.enqueue(project_id, "/path/file3.csv", "file3.csv")
+    
+    assert len(processing_queue_service.get_queue(project_id)) == 3
+    
+    # Start first file
+    first = processing_queue_service.start_next(project_id)
+    assert first["file_name"] == "file1.csv"
+    assert processing_queue_service.get_status(project_id) == "processing"
+    assert len(processing_queue_service.get_queue(project_id)) == 2
+    
+    # Complete first file - this clears current_file
+    processing_queue_service.mark_complete(
+        project_id,
+        message="Done with file1",
+        file_name="file1.csv",
+        has_more_in_queue=True,
+    )
+    
+    # CRITICAL: start_next should work even though status might still show effects of processing
+    # The fix ensures we check current_file is None before continuing
+    second = processing_queue_service.start_next(project_id)
+    assert second is not None, "start_next should return file2 after file1 completes"
+    assert second["file_name"] == "file2.csv"
+    assert len(processing_queue_service.get_queue(project_id)) == 1
+    
+    # Complete second file
+    processing_queue_service.mark_complete(
+        project_id,
+        message="Done with file2",
+        file_name="file2.csv",
+        has_more_in_queue=True,
+    )
+    
+    # Should get third file
+    third = processing_queue_service.start_next(project_id)
+    assert third is not None, "start_next should return file3 after file2 completes"
+    assert third["file_name"] == "file3.csv"
+    assert len(processing_queue_service.get_queue(project_id)) == 0
+    
+    # Complete third file
+    processing_queue_service.mark_complete(
+        project_id,
+        message="Done with file3",
+        file_name="file3.csv",
+        has_more_in_queue=False,
+    )
+    
+    # Queue should be empty, status complete
+    assert processing_queue_service.get_status(project_id) == "complete"
+    fourth = processing_queue_service.start_next(project_id)
+    assert fourth is None, "No more files to process"
+    
+    processing_queue_service.cleanup(project_id)

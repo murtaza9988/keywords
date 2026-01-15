@@ -145,6 +145,10 @@ def enqueue_processing_file(
 
 async def start_next_processing(project_id: int) -> None:
     """Start processing the next file in the queue for the given project."""
+    # Small delay to ensure previous state changes are fully persisted to disk
+    # This prevents race conditions where the new task sees stale state
+    await asyncio.sleep(0.05)
+    
     next_item = processing_queue_service.start_next(project_id)
     if not next_item:
         # No more items in queue - processing is complete or queue is empty
