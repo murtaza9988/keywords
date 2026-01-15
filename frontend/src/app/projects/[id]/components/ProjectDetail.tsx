@@ -2989,10 +2989,6 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     processingCurrentFile={processingCurrentFile}
                     processingQueue={processingQueue}
                     processingFileErrors={processingFileErrors}
-                    uploadedFileCount={uploadedFileCount}
-                    processedFileCount={processedFileCount}
-                    uploadedFiles={uploadedFiles}
-                    processedFiles={processedFiles}
                     csvUploadsRefreshKey={csvUploadsRefreshKey}
                     uploadedFiles={uploadedFiles}
                     processedFiles={processedFiles}
