@@ -171,6 +171,11 @@ export interface InitialDataResponse {
     message?: string;
     currentFileName?: string | null;
     queuedFiles?: string[];
+    uploadedFiles?: string[];
+    processedFiles?: string[];
+    uploadedFileCount?: number;
+    processedFileCount?: number;
+    validationError?: string | null;
     fileErrors?: ProcessingFileError[];
   };
 }

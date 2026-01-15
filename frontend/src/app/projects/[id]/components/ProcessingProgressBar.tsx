@@ -9,6 +9,8 @@ interface ProcessingProgressBarProps {
   progress: number;
   currentFileName?: string | null;
   queuedFiles?: string[];
+  uploadedFiles?: string[];
+  processedFiles?: string[];
   fileErrors?: ProcessingFileError[];
   message?: string;
   stage?: string | null;
@@ -22,6 +24,8 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   progress,
   currentFileName,
   queuedFiles,
+  uploadedFiles,
+  processedFiles,
   fileErrors,
   message,
   stage,
@@ -99,10 +103,51 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   })();
   const queuedCount = queuedFiles?.length ?? 0;
   const safeFileErrors = fileErrors?.filter((error) => error && (error.fileName || error.message)) ?? [];
-  const queueItems = [
-    ...(currentFileName ? [{ name: currentFileName, status: 'current' as const }] : []),
-    ...(queuedFiles ?? []).map((file) => ({ name: file, status: 'queued' as const })),
-  ];
+  const safeUploadedFiles = uploadedFiles?.filter(Boolean) ?? [];
+  const safeProcessedFiles = processedFiles?.filter(Boolean) ?? [];
+  const processedFileSet = new Set(safeProcessedFiles);
+  const queuedFileSet = new Set(queuedFiles ?? []);
+  const errorMap = new Map(
+    safeFileErrors
+      .filter((error) => error.fileName)
+      .map((error) => [error.fileName as string, error])
+  );
+  const stageLabels: Record<string, string> = {
+    db_prepare: 'Preparing database',
+    read_csv: 'Reading CSV',
+    count_rows: 'Counting rows',
+    import_rows: 'Importing rows',
+    persist: 'Saving keywords',
+    group: 'Grouping keywords',
+    complete: 'Complete',
+  };
+  const currentStageLabel = stage ? stageLabels[stage] ?? stage : null;
+  const fileStatusLabel = status === 'combining' ? 'Combining' : status === 'uploading' ? 'Uploading' : 'Uploaded';
+
+  const orderedFiles = (() => {
+    const names: string[] = [];
+    const add = (name?: string | null) => {
+      if (!name) return;
+      if (!names.includes(name)) names.push(name);
+    };
+    if (safeUploadedFiles.length > 0) {
+      safeUploadedFiles.forEach(add);
+    }
+    add(currentFileName);
+    (queuedFiles ?? []).forEach(add);
+    safeProcessedFiles.forEach(add);
+    safeFileErrors.forEach((error) => add(error.fileName));
+    return names;
+  })();
+  const totalFileCount = safeUploadedFiles.length || orderedFiles.length;
+  const processedFileCount = safeProcessedFiles.length;
+  const completedFileCount = totalFileCount > 0 ? totalFileCount : processedFileCount;
+  const fileSummary = totalFileCount > 0 ? `${processedFileCount}/${totalFileCount} files processed` : null;
+  const statusText = status === 'queued'
+    ? 'Queued for processing...'
+    : status === 'complete'
+      ? `Processed ${completedFileCount} file${completedFileCount === 1 ? '' : 's'}.`
+      : `Processing CSV: ${Math.round(safeProgress)}%`;
 
   return (
     <div className="w-full mt-3 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
@@ -126,19 +171,15 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
           ) : (
             <>
               <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-              <span>
-                {status === 'queued'
-                  ? 'Queued for processing...'
-                  : status === 'complete'
-                    ? 'Processing complete.'
-                    : `Processing CSV: ${Math.round(safeProgress)}%`
-                }
-              </span>
+              <span>{statusText}</span>
             </>
           )}
         </div>
         {message && (
           <span className="text-xs text-muted">{message}</span>
+        )}
+        {fileSummary && (
+          <span className="text-xs text-muted">{fileSummary}</span>
         )}
         {stageDetail && (
           <span className="text-xs text-muted">{stageDetail}</span>
@@ -153,24 +194,87 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
           <span className="text-xs text-muted">Queued files: {queuedCount}</span>
         )}
       </div>
-      {queueItems.length > 0 && (
-        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-muted">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-            Queue order
+      {orderedFiles.length > 0 && (
+        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <span>Files</span>
+            {fileSummary && <span>{fileSummary}</span>}
           </div>
-          <ol className="mt-2 space-y-1">
-            {queueItems.map((item, index) => (
-              <li key={`${item.name}-${index}`} className="flex items-center gap-2">
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    item.status === 'current' ? 'bg-blue-500' : 'bg-gray-300'
-                  }`}
-                />
-                <span className={item.status === 'current' ? 'text-foreground' : 'text-muted'}>
-                  {item.status === 'current' ? 'Processing' : 'Queued'}: {item.name}
-                </span>
-              </li>
-            ))}
+          <ol className="mt-2 space-y-2">
+            {orderedFiles.map((fileName, index) => {
+              const errorEntry = errorMap.get(fileName);
+              const isCurrent = currentFileName === fileName && status !== 'error';
+              const isComplete = processedFileSet.has(fileName);
+              const isQueued = queuedFileSet.has(fileName);
+              const isUploading = status === 'uploading' || status === 'combining';
+              const detail = errorEntry?.stageDetail
+                || errorEntry?.message
+                || (isCurrent ? stageDetail || currentStageLabel : null);
+
+              if (errorEntry) {
+                return (
+                  <li key={`${fileName}-${index}`} className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-red-500" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-red-700">{fileName}</span>
+                      <span className="text-[11px] text-red-600">Error</span>
+                      {detail && <span className="text-[11px] text-red-500">{detail}</span>}
+                    </div>
+                  </li>
+                );
+              }
+
+              if (isComplete) {
+                return (
+                  <li key={`${fileName}-${index}`} className="flex items-start gap-2">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-500" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-foreground">{fileName}</span>
+                      <span className="text-[11px] text-green-600">Complete</span>
+                    </div>
+                  </li>
+                );
+              }
+
+              if (isCurrent) {
+                return (
+                  <li key={`${fileName}-${index}`} className="flex items-start gap-2">
+                    <Loader2 className="mt-0.5 h-4 w-4 animate-spin text-blue-500" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-foreground">{fileName}</span>
+                      <span className="text-[11px] text-blue-600">Processing</span>
+                      {detail && <span className="text-[11px] text-muted">{detail}</span>}
+                    </div>
+                  </li>
+                );
+              }
+
+              if (isQueued) {
+                return (
+                  <li key={`${fileName}-${index}`} className="flex items-start gap-2">
+                    <span className="mt-1 h-2 w-2 rounded-full bg-gray-300" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-foreground">{fileName}</span>
+                      <span className="text-[11px] text-muted">Queued</span>
+                    </div>
+                  </li>
+                );
+              }
+
+              return (
+                <li key={`${fileName}-${index}`} className="flex items-start gap-2">
+                  {isUploading ? (
+                    <Loader2 className="mt-0.5 h-4 w-4 animate-spin text-blue-400" />
+                  ) : (
+                    <span className="mt-1 h-2 w-2 rounded-full bg-gray-200" />
+                  )}
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-foreground">{fileName}</span>
+                    <span className="text-[11px] text-muted">{fileStatusLabel}</span>
+                  </div>
+                </li>
+              );
+            })}
           </ol>
         </div>
       )}

@@ -15,6 +15,8 @@ interface ProcessingPanelProps {
   displayProgress: number;
   processingCurrentFile: string | null;
   processingQueue: string[];
+  processingUploadedFiles: string[];
+  processingProcessedFiles: string[];
   processingFileErrors: ProcessingFileError[];
   processingStage?: string | null;
   processingStageDetail?: string | null;
@@ -33,6 +35,8 @@ export function ProcessingPanel({
   displayProgress,
   processingCurrentFile,
   processingQueue,
+  processingUploadedFiles,
+  processingProcessedFiles,
   processingFileErrors,
   processingStage,
   processingStageDetail,
@@ -85,6 +89,8 @@ export function ProcessingPanel({
         progress={displayProgress}
         currentFileName={processingCurrentFile}
         queuedFiles={processingQueue}
+        uploadedFiles={processingUploadedFiles}
+        processedFiles={processingProcessedFiles}
         fileErrors={processingFileErrors}
         message={processingMessage}
         stage={processingStage}
