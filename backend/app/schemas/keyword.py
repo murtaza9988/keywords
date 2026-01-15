@@ -108,6 +108,11 @@ class KeywordListResponse(BaseModel):
 class KeywordChildrenResponse(BaseModel):
     children: List[KeywordResponse]
 
+    model_config = {
+        "populate_by_name": True,
+        "serialize_by_alias": True,
+    }
+
 class GroupRequest(BaseModel):
     keyword_ids: List[int] = Field(..., alias="keywordIds")
     group_name: str = Field(..., alias="groupName")
