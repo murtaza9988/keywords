@@ -2479,7 +2479,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         payload: {
           processingStatus: status,
           processingMessage: message || '',
-          processingProcessedFiles: status === 'complete' ? processingUploadedFiles : processingProcessedFiles,
+          processingProcessedFiles: status === 'complete' ? processingUploadedFiles : [],
           processingFileErrors: [],
         },
       });

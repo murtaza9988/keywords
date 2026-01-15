@@ -122,7 +122,10 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
     complete: 'Complete',
   };
   const currentStageLabel = stage ? stageLabels[stage] ?? stage : null;
-  const fileStatusLabel = status === 'combining' ? 'Combining' : status === 'uploading' ? 'Uploading' : 'Uploaded';
+  const fileStatusLabel = {
+    combining: 'Combining',
+    uploading: 'Uploading',
+  }[status] ?? 'Uploaded';
 
   const orderedFiles = (() => {
     const names: string[] = [];
@@ -141,7 +144,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   })();
   const totalFileCount = safeUploadedFiles.length || orderedFiles.length;
   const processedFileCount = safeProcessedFiles.length;
-  const completedFileCount = totalFileCount > 0 ? totalFileCount : processedFileCount;
+  const completedFileCount = processedFileCount;
   const fileSummary = totalFileCount > 0 ? `${processedFileCount}/${totalFileCount} files processed` : null;
   const statusText = status === 'queued'
     ? 'Queued for processing...'
