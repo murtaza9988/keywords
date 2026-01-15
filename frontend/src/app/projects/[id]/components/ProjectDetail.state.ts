@@ -54,6 +54,8 @@ export interface ProcessingState {
   processingQueue: string[];
   processingQueuedJobs?: number;
   processingRunningJobs?: number;
+  processingSucceededJobs?: number;
+  processingFailedJobs?: number;
   processingFileErrors: ProcessingFileError[];
   uploadedFileCount: number;
   processedFileCount: number;
@@ -163,6 +165,8 @@ export const initialProjectDetailState: ProjectDetailState = {
     processingQueue: [],
     processingQueuedJobs: undefined,
     processingRunningJobs: undefined,
+    processingSucceededJobs: undefined,
+    processingFailedJobs: undefined,
     processingFileErrors: [],
     uploadedFileCount: 0,
     processedFileCount: 0,

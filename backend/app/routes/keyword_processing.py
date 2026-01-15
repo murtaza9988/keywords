@@ -201,6 +201,7 @@ async def process_csv_file(
     file_names: Optional[List[str]] = None,
     run_grouping: bool = True,
     finalize_project: bool = True,
+    raise_on_error: bool = False,
 ) -> None:
     """
     Process a CSV file with FIRST PRINCIPLES approach:
@@ -599,6 +600,10 @@ async def process_csv_file(
                                     stage=current_stage,
                                     stage_detail=f"Database write failed: {db_err}",
                                 )
+                                # IMPORTANT: If we cannot persist a batch, we must fail the file.
+                                # Continuing would silently drop keywords and still mark the CSV
+                                # as processed/succeeded.
+                                raise
                             
                             await asyncio.sleep(0.005)
                         
@@ -689,6 +694,8 @@ async def process_csv_file(
                 await db.commit()
         except Exception as cleanup_error:
             print(f"[PROCESS] Error during cleanup: {cleanup_error}")
+        if raise_on_error:
+            raise
     finally:
         # IMPORTANT: Do NOT delete uploaded files.
         # Users must be able to re-download any uploaded CSV, and batch-combined

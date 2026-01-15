@@ -227,6 +227,8 @@ export default function ProjectDetail(): React.ReactElement {
   const processingQueue = processing.processingQueue;
   const processingQueuedJobs = processing.processingQueuedJobs;
   const processingRunningJobs = processing.processingRunningJobs;
+  const processingSucceededJobs = processing.processingSucceededJobs;
+  const processingFailedJobs = processing.processingFailedJobs;
   const processingFileErrors = processing.processingFileErrors;
   const uploadedFileCount = processing.uploadedFileCount;
   const processedFileCount = processing.processedFileCount;
@@ -2183,6 +2185,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingQueue: data.queuedFiles ?? [],
           processingQueuedJobs: data.queuedJobs ?? 0,
           processingRunningJobs: data.runningJobs ?? 0,
+          processingSucceededJobs: data.succeededJobs ?? 0,
+          processingFailedJobs: data.failedJobs ?? 0,
           processingFileErrors: data.fileErrors ?? [],
           uploadedFileCount: data.uploadedFileCount ?? 0,
           processedFileCount: data.processedFileCount ?? 0,
@@ -2991,6 +2995,8 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     displayProgress={displayProgress}
                     processingCurrentFile={processingCurrentFile}
                     processingQueue={processingQueue}
+                    processingSucceededJobs={processingSucceededJobs}
+                    processingFailedJobs={processingFailedJobs}
                     processingFileErrors={processingFileErrors}
                     csvUploadsRefreshKey={csvUploadsRefreshKey}
                     uploadedFiles={uploadedFiles}
