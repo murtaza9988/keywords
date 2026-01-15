@@ -47,6 +47,9 @@ const buildOrderedFileList = ({
   return names;
 };
 
+const pluralize = (count: number, singular: string, plural = `${singular}s`): string =>
+  count === 1 ? singular : plural;
+
 interface ProcessingProgressBarProps {
   status: ProcessingStatus;
   progress: number;
@@ -155,7 +158,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
       .filter((error) => error.fileName)
       .map((error) => [error.fileName as string, error])
   );
-  const currentStageLabel = stage ? STAGE_LABELS[stage] ?? stage : null;
+  const currentStageLabel = stage ? STAGE_LABELS[stage] || stage : null;
   const fileStatusLabel = {
     combining: 'Combining',
     uploading: 'Uploading',
@@ -170,11 +173,13 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   });
   const totalFileCount = safeUploadedFiles.length;
   const processedFileCount = safeProcessedFiles.length;
-  const fileSummary = totalFileCount > 0 ? `${processedFileCount}/${totalFileCount} files processed` : null;
+  const fileSummary = totalFileCount > 0
+    ? `${processedFileCount}/${totalFileCount} ${pluralize(totalFileCount, 'file')} processed`
+    : null;
   const statusText = status === 'queued'
     ? 'Queued for processing...'
     : status === 'complete'
-      ? `Processed ${processedFileCount} file${processedFileCount === 1 ? '' : 's'}.`
+      ? `Processed ${processedFileCount} ${pluralize(processedFileCount, 'file')}.`
       : `Processing CSV: ${Math.round(safeProgress)}%`;
 
   return (
@@ -231,7 +236,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
               const isCurrent = currentFileName === fileName && status !== 'error';
               const isComplete = processedFileSet.has(fileName);
               const isQueued = queuedFileSet.has(fileName);
-              const isUploading = status === 'uploading' || status === 'combining';
+              const isUploading = ['uploading', 'combining'].includes(status);
               const detail = errorEntry?.stageDetail
                 || errorEntry?.message
                 || (isCurrent ? stageDetail || currentStageLabel : null);
