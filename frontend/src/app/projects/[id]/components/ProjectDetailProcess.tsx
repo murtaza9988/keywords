@@ -17,19 +17,19 @@ export function ProjectDetailProcess(): React.ReactElement {
           <li className="flex gap-2">
             <span className="font-semibold text-blue-600">1.</span>
             <div>
-              <span className="font-medium">File Upload:</span> CSV files are uploaded in chunks (1-2MB per chunk) to handle large files reliably. Multiple files can be uploaded together as a batch.
+              <span className="font-medium">File Upload:</span> CSV files are uploaded in 1MB chunks (2MB for files larger than 20MB) for reliability. Multiple files can be uploaded together as a batch.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-blue-600">2.</span>
             <div>
-              <span className="font-medium">Chunk Assembly:</span> When all chunks arrive, they&apos;re combined into the final CSV file. The system tracks uploaded files for batch validation.
+              <span className="font-medium">Chunk Assembly:</span> When the final chunk arrives, the backend assembles the file, records the upload for download, and skips it if an identical CSV was already uploaded.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-blue-600">3.</span>
             <div>
-              <span className="font-medium">Queue Management:</span> Each file is added to a processing queue. Files are processed one at a time to ensure data integrity. The queue shows progress for multi-file uploads.
+              <span className="font-medium">Queue Management:</span> Non-duplicate files are queued for sequential processing, with the progress bar showing the current file and any queued files.
             </div>
           </li>
         </ol>
@@ -47,37 +47,37 @@ export function ProjectDetailProcess(): React.ReactElement {
           <li className="flex gap-2">
             <span className="font-semibold text-green-600">1.</span>
             <div>
-              <span className="font-medium">Text Cleanup:</span> Smart quotes, dashes, and special characters are normalized. Numbers are standardized.
+              <span className="font-medium">Text Cleanup:</span> Smart quotes, dashes, currency symbols, and numeric formats are normalized (ex: &quot;$1,500&quot; → &quot;1500&quot;).
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-green-600">2.</span>
             <div>
-              <span className="font-medium">Tokenization:</span> Keywords are split into words using NLTK. Example: &quot;best sba loans&quot; → [&quot;best&quot;, &quot;sba&quot;, &quot;loans&quot;]
+              <span className="font-medium">Tokenization:</span> Keywords are lowercased and split into words using NLTK. Example: &quot;best sba loans&quot; → [&quot;best&quot;, &quot;sba&quot;, &quot;loans&quot;]
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-green-600">3.</span>
             <div>
-              <span className="font-medium">Compound Detection:</span> Common compound words are normalized. Example: &quot;credit-card&quot; and &quot;creditcard&quot; both become &quot;creditcard&quot;.
+              <span className="font-medium">Compound Normalization:</span> Open, closed, and hyphenated variants are normalized. Example: &quot;credit-card&quot; and &quot;credit card&quot; both become &quot;creditcard&quot;.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-green-600">4.</span>
             <div>
-              <span className="font-medium">Stop Word Removal:</span> Common words (the, a, of, etc.) are removed. Question words (what, how, why) are kept.
+              <span className="font-medium">Lemmatization:</span> Tokens are cleaned of punctuation/non-English letters and reduced to root forms. Example: &quot;running&quot; → &quot;run&quot;, &quot;loans&quot; → &quot;loan&quot;.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-green-600">5.</span>
             <div>
-              <span className="font-medium">Lemmatization:</span> Words are reduced to root forms. Example: &quot;running&quot; → &quot;run&quot;, &quot;loans&quot; → &quot;loan&quot;.
+              <span className="font-medium">Stop Word Removal:</span> Common words (the, a, of, etc.) are removed while question words (what, how, why) are kept.
             </div>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-green-600">6.</span>
             <div>
-              <span className="font-medium">Sorting:</span> Tokens are sorted alphabetically for deterministic matching. Example: [&quot;sba&quot;, &quot;loan&quot;] → [&quot;loan&quot;, &quot;sba&quot;]
+              <span className="font-medium">Synonym Mapping & Sorting:</span> WordNet synonyms are collapsed to a base token, then tokens are de-duped and sorted for deterministic matching.
             </div>
           </li>
         </ol>
@@ -158,7 +158,7 @@ export function ProjectDetailProcess(): React.ReactElement {
           </div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-orange-400"></span>
-            <span><span className="font-medium">Processing:</span> Parsing & grouping</span>
+            <span><span className="font-medium">Processing:</span> Reading rows, importing batches, and grouping</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-green-400"></span>
@@ -188,6 +188,9 @@ export function ProjectDetailProcess(): React.ReactElement {
           </li>
           <li>
             <span className="font-medium">Duplicate keywords?</span> The system automatically skips keywords that already exist in the project (case-insensitive match).
+          </li>
+          <li>
+            <span className="font-medium">Duplicate uploads?</span> If an uploaded CSV matches a previously uploaded file (same name + content), it will be skipped.
           </li>
         </ul>
       </div>
