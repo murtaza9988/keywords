@@ -1,5 +1,5 @@
 // ProcessingProgressBar.tsx
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ProcessingFileError, ProcessingStatus } from './types';
 import { CheckCircle2, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
@@ -52,10 +52,6 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
       setIsResetting(false);
     }
   };
-  if (status === 'idle') {
-    return null;
-  }
-
   // Ensure progress is always between 0-100
   const safeProgress = Math.max(0, Math.min(100, progress));
   
@@ -105,18 +101,38 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
     if (status === 'error') return stage ? processingStageToStepIndex(stage) : 4;
     return 0;
   })();
-  const queuedCount = queuedFiles?.length ?? 0;
-  const safeFileErrors = fileErrors?.filter((error) => error && (error.fileName || error.message)) ?? [];
-  const safeUploadedFiles = uploadedFiles ?? [];
-  const safeProcessedFiles = processedFiles ?? [];
-  const processedSet = new Set(safeProcessedFiles);
-  const totalFiles = uploadedFileCount ?? safeUploadedFiles.length;
-  const processedCount = processedFileCount ?? safeProcessedFiles.length;
-  const showUploadSummary = totalFiles > 0 || safeUploadedFiles.length > 0 || safeProcessedFiles.length > 0;
-  const queueItems = [
-    ...(currentFileName ? [{ name: currentFileName, status: 'current' as const }] : []),
-    ...(queuedFiles ?? []).map((file) => ({ name: file, status: 'queued' as const })),
-  ];
+  const safeFileErrors = useMemo(
+    () => fileErrors?.filter((error) => error && (error.fileName || error.message)) ?? [],
+    [fileErrors]
+  );
+  const safeUploadedFiles = useMemo(() => uploadedFiles ?? [], [uploadedFiles]);
+  const safeProcessedFiles = useMemo(() => processedFiles ?? [], [processedFiles]);
+  const queuedList = useMemo(() => queuedFiles ?? [], [queuedFiles]);
+  const processedSet = useMemo(() => new Set(safeProcessedFiles), [safeProcessedFiles]);
+  const totalFiles = useMemo(
+    () => uploadedFileCount ?? safeUploadedFiles.length,
+    [uploadedFileCount, safeUploadedFiles]
+  );
+  const processedCount = useMemo(
+    () => processedFileCount ?? safeProcessedFiles.length,
+    [processedFileCount, safeProcessedFiles]
+  );
+  const showUploadSummary = useMemo(
+    () => totalFiles > 0 || safeUploadedFiles.length > 0 || safeProcessedFiles.length > 0,
+    [totalFiles, safeUploadedFiles, safeProcessedFiles]
+  );
+  const queueItems = useMemo(
+    () => [
+      ...(currentFileName ? [{ name: currentFileName, status: 'current' as const }] : []),
+      ...queuedList.map((file) => ({ name: file, status: 'queued' as const })),
+    ],
+    [currentFileName, queuedList]
+  );
+  const queuedCount = queueItems.length;
+
+  if (status === 'idle') {
+    return null;
+  }
 
   return (
     <div className="w-full mt-3 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
