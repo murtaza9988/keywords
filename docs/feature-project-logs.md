@@ -148,12 +148,105 @@ Define a consistent action naming convention.
 - Clear empty state text: “No activity logs for this project yet.”
 
 ## 10) Compatibility & Environment
-- Ensure the frontend uses the correct backend base URL.
-- If using a proxy/rewrites, confirm that `/api` routes are forwarded.
 
-## 10.1) Cross-Team Coordination & Integration Checklist (Backend + Frontend)
+This feature depends on a single non-negotiable invariant:
+
+**Invariant (Routing Ownership):** Every browser request to `/api/*` must be handled by exactly one of:
+1) a Next.js Route Handler under `frontend/src/app/api/**`, OR
+2) a Next.js rewrite/proxy rule that forwards `/api/*` to the backend.
+
+If neither is true, `GET /api/logs` will return **404 Not Found** from the frontend origin by design.
+
+### 10.1) Backend Origin vs Frontend Origin (First Principles)
+- The browser calls **an origin**.
+- A path like `/api/logs` is **origin-relative**.
+  - If the origin is the frontend, then the frontend must either implement `/api/logs` or proxy it.
+  - If the origin is the backend, then the backend must implement `/api/logs`.
+
+### 10.2) Supported Integration Modes (Choose One)
+
+#### Mode A: Same-origin `/api/*` via Next rewrites
+**Goal:** UI calls `/api/...` and Next forwards to the backend.
+
+**Status in this repo:** Not used. This repository now relies on a Route Handler proxy instead (Mode B).
+
+#### Mode B: Implement `/api/*` in Next Route Handlers (current implementation)
+**Goal:** UI calls `/api/...` and Next serves it directly.
+
+**Required conditions:**
+1) Implement a route handler under `frontend/src/app/api/**` that handles `/api/*`.
+2) Route handler forwards to the backend and must explicitly forward authentication.
+
+**Repo truth:** This repository includes a catch-all proxy route handler at:
+- `frontend/src/app/api/[...path]/route.ts`
+
+This means browser calls to `/api/logs` are handled by Next and then forwarded to the backend.
+
+#### Mode C: Direct-to-backend API calls (cross-origin)
+**Goal:** UI calls `https://<backend-origin>/api/...` directly.
+
+**Required conditions:**
+1) The API client must build absolute URLs to the backend origin (not origin-relative `/api/...`).
+2) Backend CORS must allow the frontend origin and required headers.
+3) Authentication tokens must be sent and accepted cross-origin.
+
+### 10.3) Next rewrites source of truth (repo truth)
+This repo does not rely on Next rewrites for `/api/*`.
+
+**Repo truth:** `frontend/next.config.ts` intentionally does not define `/api` rewrites because `/api/*` is handled by the Next Route Handler proxy in Mode B.
+
+### 10.4) Frontend API client base URL source of truth (repo truth)
+The frontend API client (`frontend/src/lib/apiClient.ts`) uses origin-relative URLs:
+
+- It uses `baseURL = ''` and calls paths like `/api/logs?...`.
+- Those requests are handled by the Next Route Handler proxy (`frontend/src/app/api/[...path]/route.ts`).
+
+**Invariant (Single Path):** UI → `/api/*` (frontend origin) → Next Route Handler proxy → backend `/api/*`.
+
+### 10.5) Auth refresh endpoint URL invariant (repo truth)
+The backend refresh endpoint is `POST /api/refresh` (mounted under the `/api` prefix).
+
+The frontend token refresh helper (`frontend/src/lib/authService.ts`) calls:
+- `POST /api/refresh`
+
+**Invariant (Refresh URL):** Refresh must go through the same proxy path as all other API calls.
+
+### 10.6) Backend endpoint source of truth (repo truth)
+The backend serves logs under the API prefix `settings.API_V1_STR` (currently `/api`).
+
+Routes (from `backend/app/routes/activity_logs.py`):
+- `GET /api/logs`
+- `GET /api/projects/{project_id}/logs`
+
+Routers are mounted in `backend/app/main.py` via:
+- `app.include_router(activity_logs.router, prefix=settings.API_V1_STR)`
+
+### 10.7) Query param casing (no silent mismatch)
+The backend expects specific camelCase query param names for some filters:
+- `projectId` (alias of `project_id`)
+- `startDate` (alias of `start_date`)
+- `endDate` (alias of `end_date`)
+
+**Invariant:** Frontend must send `projectId`, `startDate`, `endDate` exactly as spelled above; snake_case variants will not be parsed into the intended filters.
+
+### 10.8) Diagnosis procedure (no assumptions)
+When the Logs tab fails, determine which layer returned the error.
+
+1) **Check the URL actually requested**
+   - If the request is to `https://<frontend-origin>/api/logs`, then Mode A or Mode B must be true.
+   - If the request is to `https://<backend-origin>/api/logs`, then the backend route must exist.
+2) **Differentiate 404 vs 401**
+   - 404 typically indicates routing/proxy mismatch (wrong origin or missing route).
+   - 401/403 indicates auth is required but missing/invalid.
+3) **Confirm rewrites are active (Mode A only)**
+   - If `NEXT_PUBLIC_API_URL` and `API_URL` are unset, rewrites are disabled.
+4) **Confirm backend actually serves `/api/logs`**
+   - Backend must include the activity logs router and must be running with `settings.API_V1_STR` set as expected.
+
+## 10.9) Cross-Team Coordination & Integration Checklist (Backend + Frontend)
 To prevent mismatches, each item below must be explicitly verified in both stacks:
-- **Base URL agreement:** frontend `NEXT_PUBLIC_API_URL` or rewrites must route `/api/*` to the backend origin.
+- **Routing ownership:** `/api/*` is either proxied by rewrites (Mode A) or implemented by Next Route Handlers (Mode B).
+- **Base URL agreement:** `NEXT_PUBLIC_API_URL` or `API_URL` must route `/api/*` to the backend origin when Mode A is used.
 - **Endpoint parity:** `GET /api/logs` and `GET /api/projects/{projectId}/logs` must exist and be accessible in the deployed environment.
 - **Schema parity:** response keys must be camelCased (`projectId`, `createdAt`) and aligned with frontend models.
 - **Action taxonomy parity:** backend emits consistent action names; frontend filters and labels match the same list.
@@ -162,7 +255,7 @@ To prevent mismatches, each item below must be explicitly verified in both stack
 - **Pagination parity:** backend pagination matches frontend logic (page/limit/pages/total).
 - **Error parity:** backend error messages are actionable; frontend surfaces them clearly with retry.
 
-## 10.2) Known Gaps vs Current Codebase (Must Be Resolved)
+## 10.10) Known Gaps vs Current Codebase (Must Be Resolved)
 These are the specific coordination gaps that will prevent the feature from working as described if left unaddressed:
 - **Frontend routing mismatch:** ensure `/api/logs` resolves to the backend in the deployed environment (either env base URL or proxy/rewrites).
 - **Missing log emission for project/notes actions:** add `ActivityLogService.log_activity` for project and notes routes so actions appear.

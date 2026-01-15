@@ -20,10 +20,10 @@ import {
 } from './types';
 import authService from './authService';
 
-// BASE_URL should be the backend origin (WITHOUT trailing `/api`).
-// All client methods already prefix paths with `/api/...`.
-const RAW_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const BASE_URL = RAW_BASE_URL.replace(/\/api\/?$/, '');
+// IMPORTANT: This client uses origin-relative URLs (`/api/...`) and relies on the
+// Next.js Route Handler proxy in `src/app/api/[...path]/route.ts` to reach the backend.
+// Keeping this as same-origin avoids CORS and prevents deployment env mismatch issues.
+const BASE_URL = '';
 
 function isError(error: unknown): error is Error {
   return error instanceof Error;

@@ -73,7 +73,7 @@ class AuthService {
 
   private async performRefresh(refresh_token: string): Promise<AuthTokens> {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/refresh`, {
+      const response = await fetch('/api/refresh', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

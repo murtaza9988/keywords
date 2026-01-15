@@ -1,21 +1,8 @@
 import type { NextConfig } from "next";
 
-const backendOrigin =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
-  process.env.API_URL?.replace(/\/api\/?$/, "");
-
 const nextConfig: NextConfig = {
-  async rewrites() {
-    if (!backendOrigin) {
-      return [];
-    }
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${backendOrigin}/api/:path*`,
-      },
-    ];
-  },
+  // `/api/*` is handled by the Next.js Route Handler proxy in
+  // `src/app/api/[...path]/route.ts`.
 };
 
 export default nextConfig;
