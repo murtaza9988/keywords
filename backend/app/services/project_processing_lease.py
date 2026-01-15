@@ -75,6 +75,19 @@ class ProjectProcessingLeaseService:
         await db.commit()
 
     @staticmethod
+    async def clear_for_project(db: AsyncSession, *, project_id: int) -> None:
+        await db.execute(
+            text(
+                """
+                DELETE FROM project_processing_leases
+                WHERE project_id = :project_id
+                """
+            ),
+            {"project_id": project_id},
+        )
+        await db.commit()
+
+    @staticmethod
     async def is_locked(db: AsyncSession, *, project_id: int) -> bool:
         now = datetime.now(timezone.utc)
         result = await db.execute(

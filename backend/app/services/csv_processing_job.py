@@ -130,6 +130,33 @@ class CsvProcessingJobService:
         await db.commit()
 
     @staticmethod
+    async def cancel_pending_jobs(
+        db: AsyncSession,
+        project_id: int,
+        *,
+        error: str,
+    ) -> int:
+        now = datetime.now(timezone.utc)
+        result = await db.execute(
+            update(CsvProcessingJob)
+            .where(
+                and_(
+                    CsvProcessingJob.project_id == project_id,
+                    CsvProcessingJob.status.in_(
+                        [CsvProcessingJobStatus.queued, CsvProcessingJobStatus.running]
+                    ),
+                )
+            )
+            .values(
+                status=CsvProcessingJobStatus.failed,
+                finished_at=now,
+                error=error,
+            )
+        )
+        await db.commit()
+        return int(getattr(result, "rowcount", 0) or 0)
+
+    @staticmethod
     async def counts_by_status(db: AsyncSession, project_id: int) -> dict[str, int]:
         result = await db.execute(
             select(CsvProcessingJob.status, func.count())
