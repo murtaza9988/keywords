@@ -237,9 +237,11 @@ async def test_find_duplicate_csv_upload_matches_same_content_different_name(
     candidate_path = tmp_path / "candidate.csv"
     candidate_path.write_text("Keyword,Volume\nalpha,10\n", encoding="utf-8")
 
+    project_id = 1
+    existing_upload_id = 101
     existing_upload = CSVUpload(
-        id=101,
-        project_id=1,
+        id=existing_upload_id,
+        project_id=project_id,
         file_name="original.csv",
         storage_path=str(existing_path),
     )
@@ -262,12 +264,12 @@ async def test_find_duplicate_csv_upload_matches_same_content_different_name(
 
     duplicate_info = await _find_duplicate_csv_upload(
         mock_db,
-        project_id=1,
+        project_id=project_id,
         file_name="renamed.csv",
         candidate_path=str(candidate_path),
     )
 
-    assert duplicate_info == (101, str(existing_path))
+    assert duplicate_info == (existing_upload_id, str(existing_path))
 
 
 def test_processing_status_idle_does_not_force_complete(
