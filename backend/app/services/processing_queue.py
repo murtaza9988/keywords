@@ -663,6 +663,16 @@ class ProcessingQueueService:
             names.append(state.current_file.file_name)
 
         if names:
+            existing_keys = {
+                (
+                    entry.get("file_name"),
+                    entry.get("message"),
+                    entry.get("stage"),
+                    entry.get("stage_detail"),
+                )
+                for entry in state.file_errors
+                if isinstance(entry, dict)
+            }
             for name in names:
                 error_entry = {
                     "file_name": name,
@@ -670,8 +680,15 @@ class ProcessingQueueService:
                     "stage": state.stage,
                     "stage_detail": state.stage_detail,
                 }
-                if error_entry not in state.file_errors:
+                entry_key = (
+                    error_entry["file_name"],
+                    error_entry["message"],
+                    error_entry["stage"],
+                    error_entry["stage_detail"],
+                )
+                if entry_key not in existing_keys:
                     state.file_errors.append(error_entry)
+                    existing_keys.add(entry_key)
 
         state.status = "error"
         state.message = message

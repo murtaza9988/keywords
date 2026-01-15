@@ -53,6 +53,19 @@ def _rel_upload_path(path: str) -> str:
         return path
 
 
+def _format_file_errors(file_errors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [
+        {
+            "fileName": entry.get("file_name"),
+            "message": entry.get("message"),
+            "stage": entry.get("stage"),
+            "stageDetail": entry.get("stage_detail"),
+        }
+        for entry in file_errors
+        if isinstance(entry, dict)
+    ]
+
+
 def _resolve_csv_upload_path(project_id: int, upload: CSVUpload) -> Optional[str]:
     """
     Resolve the stored file path for a CSVUpload.
@@ -254,17 +267,7 @@ async def get_processing_status(
     queued_files = [item.get("file_name") for item in queue] if queue else []
     uploaded_files = result.get("uploaded_files", [])
     processed_files = result.get("processed_files", [])
-    file_errors = result.get("file_errors", [])
-    formatted_file_errors = [
-        {
-            "fileName": entry.get("file_name") or entry.get("fileName"),
-            "message": entry.get("message"),
-            "stage": entry.get("stage"),
-            "stageDetail": entry.get("stage_detail") or entry.get("stageDetail"),
-        }
-        for entry in file_errors
-        if isinstance(entry, dict)
-    ]
+    formatted_file_errors = _format_file_errors(result.get("file_errors", []))
     uploaded_count = len(uploaded_files)
     processed_count = len(processed_files)
     validation_error = None
@@ -1424,16 +1427,7 @@ async def get_project_initial_data(
         pages = 1
     current_view_responses = [KeywordResponse.model_validate(kw) for kw in current_view_keywords]
     processing_result = processing_queue_service.get_result(project_id)
-    formatted_file_errors = [
-        {
-            "fileName": entry.get("file_name") or entry.get("fileName"),
-            "message": entry.get("message"),
-            "stage": entry.get("stage"),
-            "stageDetail": entry.get("stage_detail") or entry.get("stageDetail"),
-        }
-        for entry in processing_result.get("file_errors", [])
-        if isinstance(entry, dict)
-    ]
+    formatted_file_errors = _format_file_errors(processing_result.get("file_errors", []))
     response = {
         "project": project.to_dict(),
         "stats": {

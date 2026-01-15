@@ -2463,12 +2463,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     (status: ProcessingStatus, message?: string) => {
       detailDispatch({
         type: 'updateProcessing',
-      payload: {
-        processingStatus: status,
-        processingMessage: message || '',
-        processingFileErrors: [],
-      },
-    });
+        payload: {
+          processingStatus: status,
+          processingMessage: message || '',
+          processingFileErrors: [],
+        },
+      });
       setCsvUploadsRefreshKey((prev) => prev + 1);
       if (status === 'complete') {
         detailDispatch({
