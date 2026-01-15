@@ -145,14 +145,13 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
     safeFileErrors.forEach((error) => add(error.fileName));
     return names;
   })();
-  const totalFileCount = safeUploadedFiles.length || orderedFiles.length;
+  const totalFileCount = Math.max(safeUploadedFiles.length, orderedFiles.length);
   const processedFileCount = safeProcessedFiles.length;
-  const completedFileCount = processedFileCount;
   const fileSummary = totalFileCount > 0 ? `${processedFileCount}/${totalFileCount} files processed` : null;
   const statusText = status === 'queued'
     ? 'Queued for processing...'
     : status === 'complete'
-      ? `Processed ${completedFileCount} file${completedFileCount === 1 ? '' : 's'}.`
+      ? `Processed ${processedFileCount} file${processedFileCount === 1 ? '' : 's'}.`
       : `Processing CSV: ${Math.round(safeProgress)}%`;
 
   return (
@@ -183,9 +182,6 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         </div>
         {message && (
           <span className="text-xs text-muted">{message}</span>
-        )}
-        {fileSummary && (
-          <span className="text-xs text-muted">{fileSummary}</span>
         )}
         {stageDetail && (
           <span className="text-xs text-muted">{stageDetail}</span>
