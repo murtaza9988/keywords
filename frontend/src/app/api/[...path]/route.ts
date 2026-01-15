@@ -30,6 +30,14 @@ function buildBackendUrls(request: NextRequest, pathParts: string[]): string[] {
 async function proxy(request: NextRequest, pathParts: string[]): Promise<NextResponse> {
   const urls = buildBackendUrls(request, pathParts);
 
+  // Debug logging - will appear in Vercel function logs
+  console.log('[API Proxy]', {
+    originalUrl: request.nextUrl.pathname + request.nextUrl.search,
+    pathParts,
+    backendBase: BACKEND_BASE,
+    targetUrls: urls,
+  });
+
   const headers = new Headers(request.headers);
   headers.delete('host');
   headers.delete('connection');
@@ -37,20 +45,40 @@ async function proxy(request: NextRequest, pathParts: string[]): Promise<NextRes
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
   const body = hasBody ? await request.arrayBuffer() : undefined;
 
-  let upstreamResponse = await fetch(urls[0], {
-    method: request.method,
-    headers,
-    body,
-    redirect: 'manual',
-  });
+  let upstreamResponse: Response;
+  try {
+    upstreamResponse = await fetch(urls[0], {
+      method: request.method,
+      headers,
+      body,
+      redirect: 'manual',
+    });
+    console.log('[API Proxy] First attempt:', urls[0], '→', upstreamResponse.status);
+  } catch (err) {
+    console.error('[API Proxy] First attempt FAILED:', urls[0], err);
+    if (urls.length > 1) {
+      console.log('[API Proxy] Trying fallback:', urls[1]);
+      upstreamResponse = await fetch(urls[1], {
+        method: request.method,
+        headers,
+        body,
+        redirect: 'manual',
+      });
+      console.log('[API Proxy] Fallback result:', upstreamResponse.status);
+    } else {
+      throw err;
+    }
+  }
 
   if (upstreamResponse.status === 404 && urls.length > 1) {
+    console.log('[API Proxy] Got 404, trying fallback:', urls[1]);
     upstreamResponse = await fetch(urls[1], {
       method: request.method,
       headers,
       body,
       redirect: 'manual',
     });
+    console.log('[API Proxy] Fallback result:', upstreamResponse.status);
   }
 
   const responseHeaders = new Headers(upstreamResponse.headers);
