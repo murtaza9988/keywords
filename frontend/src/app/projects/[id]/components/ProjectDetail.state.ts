@@ -1,5 +1,12 @@
 import { ProjectDetailTab } from './ProjectDetailTabs';
-import { ActiveKeywordView, PaginationInfo, ProcessingStatus, SnackbarMessage, SortParams } from './types';
+import {
+  ActiveKeywordView,
+  PaginationInfo,
+  ProcessingFileError,
+  ProcessingStatus,
+  SnackbarMessage,
+  SortParams,
+} from './types';
 
 export interface FiltersState {
   selectedTokens: string[];
@@ -44,6 +51,7 @@ export interface ProcessingState {
   processingStageDetail?: string | null;
   processingCurrentFile: string | null;
   processingQueue: string[];
+  processingFileErrors: ProcessingFileError[];
   displayProgress: number;
   isExportingParent: boolean;
   isImportingParent: boolean;
@@ -145,6 +153,7 @@ export const initialProjectDetailState: ProjectDetailState = {
     processingStageDetail: null,
     processingCurrentFile: null,
     processingQueue: [],
+    processingFileErrors: [],
     displayProgress: 0,
     isExportingParent: false,
     isImportingParent: false,

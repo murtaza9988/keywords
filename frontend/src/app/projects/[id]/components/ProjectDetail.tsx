@@ -38,7 +38,10 @@ import {
   projectDetailReducer,
 } from './ProjectDetail.state';
 import {
-  ProcessingStatus, ActiveKeywordView, SortParams,
+  ProcessingFileError,
+  ProcessingStatus,
+  ActiveKeywordView,
+  SortParams,
   Keyword
 } from './types';
 import { 
@@ -220,6 +223,7 @@ export default function ProjectDetail(): React.ReactElement {
   const processingStageDetail = processing.processingStageDetail ?? null;
   const processingCurrentFile = processing.processingCurrentFile;
   const processingQueue = processing.processingQueue;
+  const processingFileErrors = processing.processingFileErrors;
   const displayProgress = processing.displayProgress;
   const minVolume = filters.minVolume;
   const maxVolume = filters.maxVolume;
@@ -2142,6 +2146,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingStageDetail: data.stageDetail ?? null,
           processingCurrentFile: data.currentFileName ?? null,
           processingQueue: data.queuedFiles ?? [],
+          processingFileErrors: data.fileErrors ?? [],
         },
       });
 
@@ -2396,6 +2401,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
             currentFileName?: string | null;
             queuedFiles?: string[];
             uploadedFiles?: string[];
+            fileErrors?: ProcessingFileError[];
           };
           detailDispatch({
             type: 'updateProcessing',
@@ -2405,6 +2411,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               processingMessage: processingStatus.message || '',
               processingCurrentFile: processingStatus.currentFileName ?? null,
               processingQueue: processingStatus.queuedFiles ?? [],
+              processingFileErrors: processingStatus.fileErrors ?? [],
             },
           });
           if (
@@ -2438,6 +2445,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         processingStatus: 'uploading',
         processingProgress: 0,
         processingMessage: 'Uploading CSV...',
+        processingFileErrors: [],
       },
     });
     setCsvUploadsRefreshKey((prev) => prev + 1);
@@ -2458,6 +2466,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         payload: {
           processingStatus: status,
           processingMessage: message || '',
+          processingFileErrors: [],
         },
       });
       setCsvUploadsRefreshKey((prev) => prev + 1);
@@ -2508,6 +2517,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingProgress: 0,
           displayProgress: 0,
           processingMessage: message,
+          processingFileErrors: [],
         },
       });
       setCsvUploadsRefreshKey((prev) => prev + 1);
@@ -2908,6 +2918,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     displayProgress={displayProgress}
                     processingCurrentFile={processingCurrentFile}
                     processingQueue={processingQueue}
+                    processingFileErrors={processingFileErrors}
                     csvUploadsRefreshKey={csvUploadsRefreshKey}
                     onUploadStart={handleUploadStart}
                     onUploadBatchStart={handleUploadBatchStart}

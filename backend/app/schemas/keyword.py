@@ -151,6 +151,7 @@ class ProcessingStatus(BaseModel):
     uploaded_file_count: int = Field(0, alias="uploadedFileCount")
     processed_file_count: int = Field(0, alias="processedFileCount")
     validation_error: Optional[str] = Field(None, alias="validationError")
+    file_errors: List[Dict[str, Any]] = Field([], alias="fileErrors")
     
     model_config = {
         "populate_by_name": True,

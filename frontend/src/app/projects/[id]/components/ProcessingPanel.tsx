@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 import FileUploader from './FileUploader';
 import CSVUploadDropdown from './CSVUploadDropdown';
 import ProcessingProgressBar from './ProcessingProgressBar';
-import { ProcessingStatus } from './types';
+import { ProcessingFileError, ProcessingStatus } from './types';
 
 interface ProcessingPanelProps {
   projectId: string;
@@ -15,6 +15,7 @@ interface ProcessingPanelProps {
   displayProgress: number;
   processingCurrentFile: string | null;
   processingQueue: string[];
+  processingFileErrors: ProcessingFileError[];
   processingStage?: string | null;
   processingStageDetail?: string | null;
   csvUploadsRefreshKey?: number;
@@ -32,6 +33,7 @@ export function ProcessingPanel({
   displayProgress,
   processingCurrentFile,
   processingQueue,
+  processingFileErrors,
   processingStage,
   processingStageDetail,
   csvUploadsRefreshKey,
@@ -83,6 +85,7 @@ export function ProcessingPanel({
         progress={displayProgress}
         currentFileName={processingCurrentFile}
         queuedFiles={processingQueue}
+        fileErrors={processingFileErrors}
         message={processingMessage}
         stage={processingStage}
         stageDetail={processingStageDetail}

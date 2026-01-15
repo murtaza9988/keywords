@@ -242,6 +242,7 @@ class MockProcessingResults(dict):
             state.complete = value.get("complete", False)
             state.uploaded_files = value.get("uploaded_files", [])
             state.processed_files = value.get("processed_files", [])
+            state.file_errors = value.get("file_errors", [])
             self._service._save_state_to_disk(project_id)
     
     def get(self, project_id, default=None):

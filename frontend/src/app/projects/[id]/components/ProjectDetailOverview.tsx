@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ProcessingPanel } from './ProcessingPanel';
-import { ProcessingStatus } from './types';
+import { ProcessingFileError, ProcessingStatus } from './types';
 import apiClient from '@/lib/apiClient';
 import { Button } from '@/components/ui/Button';
 
@@ -29,6 +29,7 @@ interface ProjectDetailOverviewProps {
   displayProgress: number;
   processingCurrentFile: string | null;
   processingQueue: string[];
+  processingFileErrors: ProcessingFileError[];
   csvUploadsRefreshKey?: number;
   onUploadStart: () => void;
   onUploadBatchStart: (files: File[]) => void;
@@ -48,6 +49,7 @@ export function ProjectDetailOverview({
   displayProgress,
   processingCurrentFile,
   processingQueue,
+  processingFileErrors,
   csvUploadsRefreshKey,
   onUploadStart,
   onUploadBatchStart,
@@ -80,6 +82,7 @@ export function ProjectDetailOverview({
         displayProgress={displayProgress}
         processingCurrentFile={processingCurrentFile}
         processingQueue={processingQueue}
+        processingFileErrors={processingFileErrors}
         csvUploadsRefreshKey={csvUploadsRefreshKey}
         onUploadStart={onUploadStart}
         onUploadBatchStart={onUploadBatchStart}

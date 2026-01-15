@@ -75,6 +75,7 @@ class ProjectState:
     stage_detail: Optional[str] = None
     keywords: List[Dict[str, Any]] = field(default_factory=list)
     complete: bool = False
+    file_errors: List[Dict[str, Any]] = field(default_factory=list)
     
     # File tracking for validation
     uploaded_files: List[str] = field(default_factory=list)
@@ -106,6 +107,7 @@ class ProjectState:
         self.stage_detail = None
         self.keywords = []
         self.complete = False
+        self.file_errors = []
     
     def to_result_dict(self) -> Dict[str, Any]:
         """Convert to the result dictionary format expected by the API."""
@@ -123,6 +125,7 @@ class ProjectState:
             "uploaded_files": list(self.uploaded_files),
             "processed_files": list(self.processed_files),
             "validation_error": None,
+            "file_errors": list(self.file_errors),
         }
 
     def to_dict(self) -> Dict[str, Any]:
@@ -158,6 +161,7 @@ class ProjectState:
             "complete": self.complete,
             "uploaded_files": self.uploaded_files,
             "processed_files": self.processed_files,
+            "file_errors": self.file_errors,
             "batches": {
                 batch_id: {
                     "total_files": batch.total_files,
@@ -219,6 +223,7 @@ class ProjectState:
         state.complete = data.get("complete", False)
         state.uploaded_files = data.get("uploaded_files", [])
         state.processed_files = data.get("processed_files", [])
+        state.file_errors = data.get("file_errors", [])
         batches: Dict[str, BatchInfo] = {}
         for batch_id, batch_data in data.get("batches", {}).items():
             batch = BatchInfo(total_files=batch_data.get("total_files", 0))
@@ -649,6 +654,42 @@ class ProcessingQueueService:
         self.mark_file_processed(project_id, file_name, file_names)
         state = self._get_or_create(project_id)
         
+        names = []
+        if file_names:
+            names.extend([name for name in file_names if name])
+        elif file_name:
+            names.append(file_name)
+        elif state.current_file and state.current_file.file_name:
+            names.append(state.current_file.file_name)
+
+        if names:
+            existing_keys = {
+                (
+                    entry.get("file_name"),
+                    entry.get("message"),
+                    entry.get("stage"),
+                    entry.get("stage_detail"),
+                )
+                for entry in state.file_errors
+                if isinstance(entry, dict)
+            }
+            for name in names:
+                error_entry = {
+                    "file_name": name,
+                    "message": message,
+                    "stage": state.stage,
+                    "stage_detail": state.stage_detail,
+                }
+                entry_key = (
+                    error_entry["file_name"],
+                    error_entry["message"],
+                    error_entry["stage"],
+                    error_entry["stage_detail"],
+                )
+                if entry_key not in existing_keys:
+                    state.file_errors.append(error_entry)
+                    existing_keys.add(entry_key)
+
         state.status = "error"
         state.message = message
         state.stage = "error"
@@ -798,6 +839,7 @@ class ProcessingQueueService:
             "uploaded_files": [],
             "processed_files": [],
             "validation_error": None,
+            "file_errors": [],
         }
     
     def _touch(self, project_id: int) -> None:

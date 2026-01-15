@@ -1,6 +1,6 @@
 // ProcessingProgressBar.tsx
 import React, { useState } from 'react';
-import { ProcessingStatus } from './types';
+import { ProcessingFileError, ProcessingStatus } from './types';
 import { CheckCircle2, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 
@@ -9,6 +9,7 @@ interface ProcessingProgressBarProps {
   progress: number;
   currentFileName?: string | null;
   queuedFiles?: string[];
+  fileErrors?: ProcessingFileError[];
   message?: string;
   stage?: string | null;
   stageDetail?: string | null;
@@ -21,6 +22,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   progress,
   currentFileName,
   queuedFiles,
+  fileErrors,
   message,
   stage,
   stageDetail,
@@ -96,6 +98,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
     return 0;
   })();
   const queuedCount = queuedFiles?.length ?? 0;
+  const safeFileErrors = fileErrors?.filter((error) => error && (error.fileName || error.message)) ?? [];
   const queueItems = [
     ...(currentFileName ? [{ name: currentFileName, status: 'current' as const }] : []),
     ...(queuedFiles ?? []).map((file) => ({ name: file, status: 'queued' as const })),
@@ -169,6 +172,26 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
               </li>
             ))}
           </ol>
+        </div>
+      )}
+      {safeFileErrors.length > 0 && (
+        <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-red-600">
+            File errors
+          </div>
+          <ul className="mt-2 space-y-1">
+            {safeFileErrors.map((error, index) => (
+              <li key={`${error.fileName ?? 'unknown'}-${index}`} className="flex flex-col">
+                <span className="font-medium text-red-700">
+                  {error.fileName ?? 'Unknown file'}
+                </span>
+                <span className="text-red-600">{error.message ?? 'Unknown error'}</span>
+                {error.stageDetail && (
+                  <span className="text-red-500">{error.stageDetail}</span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

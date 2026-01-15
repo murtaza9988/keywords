@@ -53,6 +53,19 @@ def _rel_upload_path(path: str) -> str:
         return path
 
 
+def _format_file_errors(file_errors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [
+        {
+            "fileName": entry.get("file_name"),
+            "message": entry.get("message"),
+            "stage": entry.get("stage"),
+            "stageDetail": entry.get("stage_detail"),
+        }
+        for entry in file_errors
+        if isinstance(entry, dict)
+    ]
+
+
 def _resolve_csv_upload_path(project_id: int, upload: CSVUpload) -> Optional[str]:
     """
     Resolve the stored file path for a CSVUpload.
@@ -254,6 +267,7 @@ async def get_processing_status(
     queued_files = [item.get("file_name") for item in queue] if queue else []
     uploaded_files = result.get("uploaded_files", [])
     processed_files = result.get("processed_files", [])
+    formatted_file_errors = _format_file_errors(result.get("file_errors", []))
     uploaded_count = len(uploaded_files)
     processed_count = len(processed_files)
     validation_error = None
@@ -290,6 +304,7 @@ async def get_processing_status(
             "uploadedFileCount": uploaded_count,
             "processedFileCount": processed_count,
             "validationError": validation_error,
+            "fileErrors": formatted_file_errors,
         }
 
     if status == "complete" and uploaded_count == processed_count:
@@ -314,6 +329,7 @@ async def get_processing_status(
             "uploadedFileCount": uploaded_count,
             "processedFileCount": processed_count,
             "validationError": validation_error,
+            "fileErrors": formatted_file_errors,
         }
     return {
         "status": status,
@@ -335,6 +351,7 @@ async def get_processing_status(
         "uploadedFileCount": uploaded_count,
         "processedFileCount": processed_count,
         "validationError": validation_error,
+        "fileErrors": formatted_file_errors,
     }
 @router.post("/projects/{project_id}/upload", status_code=status.HTTP_202_ACCEPTED)
 async def upload_keywords(
@@ -1409,6 +1426,8 @@ async def get_project_initial_data(
     if pages == 0:
         pages = 1
     current_view_responses = [KeywordResponse.model_validate(kw) for kw in current_view_keywords]
+    processing_result = processing_queue_service.get_result(project_id)
+    formatted_file_errors = _format_file_errors(processing_result.get("file_errors", []))
     response = {
         "project": project.to_dict(),
         "stats": {
@@ -1443,9 +1462,9 @@ async def get_project_initial_data(
             "status": "idle"
             if processing_queue_service.get_status(project_id) == "not_started"
             else processing_queue_service.get_status(project_id),
-            "progress": processing_queue_service.get_result(project_id).get("progress", 100.0),
-            "complete": processing_queue_service.get_result(project_id).get("complete", True),
-            "message": processing_queue_service.get_result(project_id).get("message", ""),
+            "progress": processing_result.get("progress", 100.0),
+            "complete": processing_result.get("complete", True),
+            "message": processing_result.get("message", ""),
             "currentFileName": processing_queue_service.get_current_file(project_id).get("file_name")
             if processing_queue_service.get_current_file(project_id)
             else None,
@@ -1453,15 +1472,16 @@ async def get_project_initial_data(
                 item.get("file_name") for item in processing_queue_service.get_queue(project_id)
             ],
             "queueLength": len(processing_queue_service.get_queue(project_id)),
-            "uploadedFiles": processing_queue_service.get_result(project_id).get("uploaded_files", []),
-            "processedFiles": processing_queue_service.get_result(project_id).get("processed_files", []),
+            "uploadedFiles": processing_result.get("uploaded_files", []),
+            "processedFiles": processing_result.get("processed_files", []),
             "uploadedFileCount": len(
-                processing_queue_service.get_result(project_id).get("uploaded_files", [])
+                processing_result.get("uploaded_files", [])
             ),
             "processedFileCount": len(
-                processing_queue_service.get_result(project_id).get("processed_files", [])
+                processing_result.get("processed_files", [])
             ),
-            "validationError": processing_queue_service.get_result(project_id).get("validation_error"),
+            "validationError": processing_result.get("validation_error"),
+            "fileErrors": formatted_file_errors,
         }
     }
     
