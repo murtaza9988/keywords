@@ -107,54 +107,48 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   // Build a comprehensive list of all CSV files with their processing status
   const processedFilesSet = new Set(processedFiles ?? []);
   const errorFilesSet = new Set(safeFileErrors.map(e => e.fileName).filter(Boolean) as string[]);
-  const queuedFilesSet = new Set(queuedFiles ?? []);
   
   // Combine all files into one list with status
   const allFiles: { name: string; fileStatus: 'completed' | 'processing' | 'queued' | 'error' }[] = [];
+  const addedFiles = new Set<string>();
+  
+  // Helper to add a file if not already added
+  const addFile = (name: string, status: 'completed' | 'processing' | 'queued' | 'error') => {
+    if (!addedFiles.has(name)) {
+      allFiles.push({ name, fileStatus: status });
+      addedFiles.add(name);
+    }
+  };
   
   // Add processed files (completed)
   (processedFiles ?? []).forEach(file => {
     if (!errorFilesSet.has(file)) {
-      allFiles.push({ name: file, fileStatus: 'completed' });
+      addFile(file, 'completed');
     }
   });
   
   // Add current file (processing)
   if (currentFileName && !processedFilesSet.has(currentFileName)) {
-    allFiles.push({ name: currentFileName, fileStatus: 'processing' });
+    addFile(currentFileName, 'processing');
   }
   
   // Add queued files
   (queuedFiles ?? []).forEach(file => {
     if (!processedFilesSet.has(file) && file !== currentFileName) {
-      allFiles.push({ name: file, fileStatus: 'queued' });
+      addFile(file, 'queued');
     }
   });
   
   // Add error files
   safeFileErrors.forEach(error => {
-    if (error.fileName && !allFiles.some(f => f.name === error.fileName)) {
-      allFiles.push({ name: error.fileName, fileStatus: 'error' });
+    if (error.fileName) {
+      addFile(error.fileName, 'error');
     }
   });
   
-  // Also add uploaded files that aren't in any category yet
+  // Add any uploaded files not yet categorized (treat as queued)
   (uploadedFiles ?? []).forEach(file => {
-    if (!allFiles.some(f => f.name === file)) {
-      // Check if it's processed
-      if (processedFilesSet.has(file)) {
-        allFiles.push({ name: file, fileStatus: 'completed' });
-      } else if (file === currentFileName) {
-        // Skip - already added
-      } else if (queuedFilesSet.has(file)) {
-        // Skip - already added
-      } else if (errorFilesSet.has(file)) {
-        // Skip - already added
-      } else {
-        // Uploaded but not yet queued - treat as queued
-        allFiles.push({ name: file, fileStatus: 'queued' });
-      }
-    }
+    addFile(file, 'queued');
   });
   
   const completedCount = allFiles.filter(f => f.fileStatus === 'completed').length;
@@ -238,7 +232,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                   {file.name}
                 </span>
                 <span className="text-[10px] text-muted">
-                  {file.fileStatus === 'completed' ? '✓ Done' :
+                  {file.fileStatus === 'completed' ? 'Done' :
                    file.fileStatus === 'processing' ? 'Processing...' :
                    file.fileStatus === 'error' ? 'Failed' :
                    'Queued'}

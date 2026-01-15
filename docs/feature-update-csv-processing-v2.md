@@ -473,8 +473,8 @@ The backend already returns `uploadedFiles` and `processedFiles` arrays in the p
 
 ### 11.3) Remaining Frontend Tasks
 
-* [ ] Add checkmark indicators for processed CSVs in ProcessingProgressBar
-* [ ] Show uploaded vs processed file counts in the UI
+* [x] Add checkmark indicators for processed CSVs in ProcessingProgressBar
+* [x] Show uploaded vs processed file counts in the UI
 * [ ] Ensure UI auto-refreshes reliably when processing completes
 * [ ] Add lock indicator to Grouping tab/header  
 * [ ] Disable interactions when locked
