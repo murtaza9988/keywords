@@ -3,7 +3,9 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.routes import keyword_processing
+from app.routes.keyword_routes import _find_duplicate_csv_upload
 from app.routes.keyword_processing import process_csv_file
+from app.models.csv_upload import CSVUpload
 from app.services.project import ProjectService
 from app.services.keyword import KeywordService
 from app.models.keyword import KeywordStatus
@@ -223,6 +225,51 @@ def test_upload_keywords_multi_file_request_enqueues_all_files(
     assert mock_processing_tasks[1] == "processing"
     assert 1 in mock_processing_queue
     assert len(list(mock_processing_queue[1])) == 2
+
+
+@pytest.mark.asyncio
+async def test_find_duplicate_csv_upload_matches_same_content_different_name(
+    mock_db,
+    tmp_path,
+):
+    existing_path = tmp_path / "existing.csv"
+    existing_path.write_text("Keyword,Volume\nalpha,10\n", encoding="utf-8")
+    candidate_path = tmp_path / "candidate.csv"
+    candidate_path.write_text("Keyword,Volume\nalpha,10\n", encoding="utf-8")
+
+    project_id = 1
+    existing_upload_id = 101
+    existing_upload = CSVUpload(
+        id=existing_upload_id,
+        project_id=project_id,
+        file_name="original.csv",
+        storage_path=str(existing_path),
+    )
+
+    class FakeScalarResult:
+        def __init__(self, items):
+            self._items = items
+
+        def all(self):
+            return self._items
+
+    class FakeResult:
+        def __init__(self, items):
+            self._items = items
+
+        def scalars(self):
+            return FakeScalarResult(self._items)
+
+    mock_db.execute = AsyncMock(return_value=FakeResult([existing_upload]))
+
+    duplicate_info = await _find_duplicate_csv_upload(
+        mock_db,
+        project_id=project_id,
+        file_name="renamed.csv",
+        candidate_path=str(candidate_path),
+    )
+
+    assert duplicate_info == (existing_upload_id, str(existing_path))
 
 
 def test_processing_status_idle_does_not_force_complete(
