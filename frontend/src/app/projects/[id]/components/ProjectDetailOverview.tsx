@@ -30,6 +30,10 @@ interface ProjectDetailOverviewProps {
   processingCurrentFile: string | null;
   processingQueue: string[];
   processingFileErrors: ProcessingFileError[];
+  uploadedFileCount: number;
+  processedFileCount: number;
+  uploadedFiles: string[];
+  processedFiles: string[];
   csvUploadsRefreshKey?: number;
   onUploadStart: () => void;
   onUploadBatchStart: (files: File[]) => void;
@@ -50,6 +54,10 @@ export function ProjectDetailOverview({
   processingCurrentFile,
   processingQueue,
   processingFileErrors,
+  uploadedFileCount,
+  processedFileCount,
+  uploadedFiles,
+  processedFiles,
   csvUploadsRefreshKey,
   onUploadStart,
   onUploadBatchStart,
@@ -83,6 +91,10 @@ export function ProjectDetailOverview({
         processingCurrentFile={processingCurrentFile}
         processingQueue={processingQueue}
         processingFileErrors={processingFileErrors}
+        uploadedFileCount={uploadedFileCount}
+        processedFileCount={processedFileCount}
+        uploadedFiles={uploadedFiles}
+        processedFiles={processedFiles}
         csvUploadsRefreshKey={csvUploadsRefreshKey}
         onUploadStart={onUploadStart}
         onUploadBatchStart={onUploadBatchStart}

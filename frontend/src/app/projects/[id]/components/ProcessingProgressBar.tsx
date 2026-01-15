@@ -10,6 +10,10 @@ interface ProcessingProgressBarProps {
   currentFileName?: string | null;
   queuedFiles?: string[];
   fileErrors?: ProcessingFileError[];
+  uploadedFileCount?: number;
+  processedFileCount?: number;
+  uploadedFiles?: string[];
+  processedFiles?: string[];
   message?: string;
   stage?: string | null;
   stageDetail?: string | null;
@@ -23,6 +27,10 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   currentFileName,
   queuedFiles,
   fileErrors,
+  uploadedFileCount,
+  processedFileCount,
+  uploadedFiles,
+  processedFiles,
   message,
   stage,
   stageDetail,
@@ -99,6 +107,12 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   })();
   const queuedCount = queuedFiles?.length ?? 0;
   const safeFileErrors = fileErrors?.filter((error) => error && (error.fileName || error.message)) ?? [];
+  const safeUploadedFiles = uploadedFiles ?? [];
+  const safeProcessedFiles = processedFiles ?? [];
+  const processedSet = new Set(safeProcessedFiles);
+  const totalFiles = uploadedFileCount ?? safeUploadedFiles.length;
+  const processedCount = processedFileCount ?? safeProcessedFiles.length;
+  const showUploadSummary = totalFiles > 0 || safeUploadedFiles.length > 0 || safeProcessedFiles.length > 0;
   const queueItems = [
     ...(currentFileName ? [{ name: currentFileName, status: 'current' as const }] : []),
     ...(queuedFiles ?? []).map((file) => ({ name: file, status: 'queued' as const })),
@@ -152,7 +166,43 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         {queuedCount > 0 && (
           <span className="text-xs text-muted">Queued files: {queuedCount}</span>
         )}
+        {showUploadSummary && (
+          <span className="text-xs text-muted">
+            Processed {processedCount}/{totalFiles} CSVs
+          </span>
+        )}
       </div>
+      {showUploadSummary && (
+        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-muted">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <span>Uploads</span>
+            <span className="text-[11px] font-medium text-muted">
+              Processed {processedCount}/{totalFiles} CSVs
+            </span>
+          </div>
+          {safeUploadedFiles.length > 0 ? (
+            <ul className="mt-2 space-y-1">
+              {safeUploadedFiles.map((file) => {
+                const isProcessed = processedSet.has(file);
+                return (
+                  <li key={file} className="flex items-center gap-2">
+                    {isProcessed ? (
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <span className="h-3 w-3 rounded-full border border-gray-300" />
+                    )}
+                    <span className={isProcessed ? 'text-foreground' : 'text-muted'}>
+                      {file}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="mt-2 text-xs text-muted">No uploaded files yet.</div>
+          )}
+        </div>
+      )}
       {queueItems.length > 0 && (
         <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-muted">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">

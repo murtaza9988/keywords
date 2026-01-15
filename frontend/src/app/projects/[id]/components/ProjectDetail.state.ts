@@ -53,6 +53,10 @@ export interface ProcessingState {
   processingCurrentFile: string | null;
   processingQueue: string[];
   processingFileErrors: ProcessingFileError[];
+  uploadedFileCount: number;
+  processedFileCount: number;
+  uploadedFiles: string[];
+  processedFiles: string[];
   displayProgress: number;
   isExportingParent: boolean;
   isImportingParent: boolean;
@@ -156,6 +160,10 @@ export const initialProjectDetailState: ProjectDetailState = {
     processingCurrentFile: null,
     processingQueue: [],
     processingFileErrors: [],
+    uploadedFileCount: 0,
+    processedFileCount: 0,
+    uploadedFiles: [],
+    processedFiles: [],
     displayProgress: 0,
     isExportingParent: false,
     isImportingParent: false,

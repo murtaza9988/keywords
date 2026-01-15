@@ -16,6 +16,10 @@ interface ProcessingPanelProps {
   processingCurrentFile: string | null;
   processingQueue: string[];
   processingFileErrors: ProcessingFileError[];
+  uploadedFileCount: number;
+  processedFileCount: number;
+  uploadedFiles: string[];
+  processedFiles: string[];
   processingStage?: string | null;
   processingStageDetail?: string | null;
   csvUploadsRefreshKey?: number;
@@ -34,6 +38,10 @@ export function ProcessingPanel({
   processingCurrentFile,
   processingQueue,
   processingFileErrors,
+  uploadedFileCount,
+  processedFileCount,
+  uploadedFiles,
+  processedFiles,
   processingStage,
   processingStageDetail,
   csvUploadsRefreshKey,
@@ -86,6 +94,10 @@ export function ProcessingPanel({
         currentFileName={processingCurrentFile}
         queuedFiles={processingQueue}
         fileErrors={processingFileErrors}
+        uploadedFileCount={uploadedFileCount}
+        processedFileCount={processedFileCount}
+        uploadedFiles={uploadedFiles}
+        processedFiles={processedFiles}
         message={processingMessage}
         stage={processingStage}
         stageDetail={processingStageDetail}
