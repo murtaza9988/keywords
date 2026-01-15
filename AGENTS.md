@@ -169,6 +169,10 @@ python -m app.scripts.backfill_compounds --project-id <id>
 - Keep this file updated with new failure modes observed in CI/Vercel.
 - When a production incident is fixed, document the root cause and prevention steps here.
 
+## Skills & Agents
+- **Processing Pipeline Steward**: Keep the Project Detail → Process tab and related docs aligned with the backend pipeline (chunk upload sizes, duplicate detection, sequential queue, normalization steps, grouping passes).
+- **Queue State Monitor**: When processing statuses or stages change (idle, uploading, combining, queued, processing, complete, error; stages like db_prepare/read_csv/import_rows/persist/group), update the UI labels and documentation to match.
+
 ## Incident log
 - 2026-01-15: "No children found or failed to load" appeared under every parent keyword because Pydantic schemas were missing `serialize_by_alias=True`. The backend returned snake_case keys (is_parent, group_id) instead of camelCase (isParent, groupId) that the frontend expected. Prevention: Always add `serialize_by_alias=True` to Pydantic model_config when using Field aliases, especially for response models.
 - 2026-01-15: Multi-CSV upload showed validation error "X file(s) did not finish processing" even when uploads succeeded. Cause: Empty CSV files and failed CSV files were not being marked as processed, causing uploaded_count > processed_count. Prevention: Always call mark_file_processed (or pass file_name to mark_error/mark_complete) so upload/processed counts match.
