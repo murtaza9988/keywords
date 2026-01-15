@@ -60,17 +60,19 @@ class ProjectCsvRunnerService:
 
                 file_path = cast(str, job.storage_path or "")
                 file_name = cast(Optional[str], job.source_filename or None)
+                display_name = file_name or "CSV file"
 
-                next_item = processing_queue_service.start_next(project_id)
-                if not next_item:
-                    processing_queue_service.enqueue(project_id, file_path, file_name or "CSV file")
-                    processing_queue_service.start_next(project_id)
+                processing_queue_service.set_current_file(
+                    project_id,
+                    file_path=file_path,
+                    file_name=display_name,
+                )
 
                 try:
                     await process_csv_file(
                         file_path,
                         project_id,
-                        file_name,
+                        display_name,
                         run_grouping=False,
                         finalize_project=False,
                     )

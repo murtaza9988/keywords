@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Iterable, Optional
 
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -20,7 +20,7 @@ class CsvProcessingJobService:
         storage_path: Optional[str],
         source_filename: Optional[str],
         idempotency_key: str,
-    ) -> CsvProcessingJob:
+    ) -> tuple[CsvProcessingJob, bool]:
         stmt = (
             insert(CsvProcessingJob)
             .values(
@@ -40,10 +40,10 @@ class CsvProcessingJobService:
             existing = await db.execute(
                 select(CsvProcessingJob).where(CsvProcessingJob.idempotency_key == idempotency_key)
             )
-            return existing.scalar_one()
+            return existing.scalar_one(), False
         await db.commit()
         created = await db.execute(select(CsvProcessingJob).where(CsvProcessingJob.id == job_id))
-        return created.scalar_one()
+        return created.scalar_one(), True
 
     @staticmethod
     async def has_pending_jobs(db: AsyncSession, project_id: int) -> bool:
@@ -143,6 +143,75 @@ class CsvProcessingJobService:
             "succeeded": counts.get("succeeded", 0),
             "failed": counts.get("failed", 0),
         }
+
+    @staticmethod
+    async def get_running_job(
+        db: AsyncSession,
+        project_id: int,
+    ) -> Optional[CsvProcessingJob]:
+        result = await db.execute(
+            select(CsvProcessingJob)
+            .where(
+                and_(
+                    CsvProcessingJob.project_id == project_id,
+                    CsvProcessingJob.status == CsvProcessingJobStatus.running,
+                )
+            )
+            .order_by(CsvProcessingJob.started_at.desc(), CsvProcessingJob.created_at.asc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def list_file_names_by_status(
+        db: AsyncSession,
+        project_id: int,
+        statuses: Iterable[CsvProcessingJobStatus],
+    ) -> list[str]:
+        result = await db.execute(
+            select(CsvProcessingJob.source_filename, CsvProcessingJob.storage_path)
+            .where(
+                and_(
+                    CsvProcessingJob.project_id == project_id,
+                    CsvProcessingJob.status.in_(list(statuses)),
+                )
+            )
+            .order_by(CsvProcessingJob.created_at.asc())
+        )
+        names: list[str] = []
+        for source_filename, storage_path in result.all():
+            candidate = source_filename or storage_path
+            if candidate:
+                names.append(candidate)
+        return names
+
+    @staticmethod
+    async def list_failed_jobs(db: AsyncSession, project_id: int) -> list[dict[str, str]]:
+        result = await db.execute(
+            select(
+                CsvProcessingJob.source_filename,
+                CsvProcessingJob.storage_path,
+                CsvProcessingJob.error,
+            )
+            .where(
+                and_(
+                    CsvProcessingJob.project_id == project_id,
+                    CsvProcessingJob.status == CsvProcessingJobStatus.failed,
+                )
+            )
+            .order_by(CsvProcessingJob.finished_at.asc())
+        )
+        failures: list[dict[str, str]] = []
+        for source_filename, storage_path, error in result.all():
+            candidate = source_filename or storage_path
+            if candidate:
+                failures.append(
+                    {
+                        "file_name": candidate,
+                        "message": error or "Processing failed.",
+                    }
+                )
+        return failures
 
     @staticmethod
     async def recovery_sweep(db: AsyncSession, project_id: int, *, max_attempts: int) -> int:

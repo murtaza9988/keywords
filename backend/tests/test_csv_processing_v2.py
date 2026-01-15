@@ -102,8 +102,21 @@ def test_processing_status_includes_lock_counts(monkeypatch):
             "file_errors": [],
         },
     )
-    monkeypatch.setattr(processing_queue_service, "get_queue", lambda _project_id: [])
-    monkeypatch.setattr(processing_queue_service, "get_current_file", lambda _project_id: None)
+    monkeypatch.setattr(
+        CsvProcessingJobService,
+        "list_file_names_by_status",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        CsvProcessingJobService,
+        "list_failed_jobs",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        CsvProcessingJobService,
+        "get_running_job",
+        AsyncMock(return_value=None),
+    )
 
     client = TestClient(app)
     response = client.get("/api/projects/1/processing-status")
@@ -173,8 +186,7 @@ async def test_runner_processes_jobs_in_order(monkeypatch):
     monkeypatch.setattr(CsvProcessingJobService, "mark_succeeded", AsyncMock())
     monkeypatch.setattr(CsvProcessingJobService, "mark_failed", AsyncMock())
     monkeypatch.setattr(CsvProcessingJobService, "has_pending_jobs", AsyncMock(return_value=False))
-    monkeypatch.setattr(processing_queue_service, "start_next", lambda _project_id: {"file_path": "x"})
-    monkeypatch.setattr(processing_queue_service, "enqueue", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(processing_queue_service, "set_current_file", lambda *_args, **_kwargs: None)
     monkeypatch.setattr("app.routes.keyword_processing.process_csv_file", process_mock)
     monkeypatch.setattr("app.routes.keyword_processing.group_remaining_ungrouped_keywords", group_mock)
 

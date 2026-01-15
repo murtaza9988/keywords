@@ -26,6 +26,7 @@ from app.schemas.keyword import (
 )
 from app.services.project_processing_lease import ProjectProcessingLeaseService
 from app.utils.security import get_current_user
+from app.models.csv_processing_job import CsvProcessingJobStatus
 from app.models.keyword import Keyword, KeywordStatus
 from app.routes.keyword_processing import (
     enqueue_processing_file,
@@ -284,23 +285,54 @@ async def get_processing_status(
     result = processing_queue_service.get_result(project_id)
 
     progress = max(0, min(100, result.get("progress", 0.0)))
-    if os.getenv("TESTING") == "True":
+    testing_mode = os.getenv("TESTING") == "True"
+    if testing_mode:
         counts = {"queued": 0, "running": 0, "succeeded": 0, "failed": 0}
         locked = False
+        queue = processing_queue_service.get_queue(project_id)
+        current_file = processing_queue_service.get_current_file(project_id)
+        queued_files = [item.get("file_name") for item in queue] if queue else []
+        processed_files = result.get("processed_files", [])
+        formatted_file_errors = _format_file_errors(result.get("file_errors", []))
     else:
         counts = await CsvProcessingJobService.counts_by_status(db, project_id)
         locked = await CsvProcessingJobService.has_pending_jobs(db, project_id)
         if not locked:
             locked = await ProjectProcessingLeaseService.is_locked(db, project_id=project_id)
-    queue = processing_queue_service.get_queue(project_id)
-    current_file = processing_queue_service.get_current_file(project_id)
-    queued_files = [item.get("file_name") for item in queue] if queue else []
+        running_job = await CsvProcessingJobService.get_running_job(db, project_id)
+        current_file = (
+            {"file_name": running_job.source_filename or running_job.storage_path}
+            if running_job
+            else None
+        )
+        queued_files = await CsvProcessingJobService.list_file_names_by_status(
+            db,
+            project_id,
+            statuses=[CsvProcessingJobStatus.queued],
+        )
+        processed_files = await CsvProcessingJobService.list_file_names_by_status(
+            db,
+            project_id,
+            statuses=[CsvProcessingJobStatus.succeeded, CsvProcessingJobStatus.failed],
+        )
+        formatted_file_errors = _format_file_errors(
+            await CsvProcessingJobService.list_failed_jobs(db, project_id)
+        )
     uploaded_files = result.get("uploaded_files", [])
-    processed_files = result.get("processed_files", [])
-    formatted_file_errors = _format_file_errors(result.get("file_errors", []))
     uploaded_count = len(uploaded_files)
     processed_count = len(processed_files)
     validation_error = None
+
+    if not testing_mode:
+        if counts["running"] > 0:
+            status = "processing"
+        elif counts["queued"] > 0:
+            status = "queued"
+        elif status in {"processing", "queued"}:
+            if uploaded_count > 0 and processed_count == uploaded_count:
+                status = "complete"
+            else:
+                status = "idle"
 
     if (
         status in {"complete", "idle"}

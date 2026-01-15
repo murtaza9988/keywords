@@ -545,6 +545,26 @@ class ProcessingQueueService:
             "file_name": file_info.file_name,
             "file_names": file_info.file_names,
         }
+
+    def set_current_file(
+        self,
+        project_id: int,
+        *,
+        file_path: str,
+        file_name: str,
+        file_names: Optional[List[str]] = None,
+    ) -> None:
+        """Set the current file based on an external source of truth (DB job)."""
+        state = self._get_or_create(project_id)
+        state.current_file = FileInfo(
+            file_path=file_path,
+            file_name=file_name,
+            file_names=list(file_names) if file_names else None,
+        )
+        state.status = "processing"
+        state.touch()
+        self._ensure_invariants(project_id)
+        self._save_state_to_disk(project_id)
     
     def start_file_processing(
         self, project_id: int, *, message: Optional[str] = None
