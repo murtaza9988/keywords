@@ -166,7 +166,11 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
             </>
           ) : (
             <>
-              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              {status === 'complete' ? (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              ) : (
+                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              )}
               <span>
                 {status === 'queued'
                   ? 'Queued for processing...'
