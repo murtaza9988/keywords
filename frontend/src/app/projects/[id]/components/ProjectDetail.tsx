@@ -225,6 +225,10 @@ export default function ProjectDetail(): React.ReactElement {
   const processingCurrentFile = processing.processingCurrentFile;
   const processingQueue = processing.processingQueue;
   const processingFileErrors = processing.processingFileErrors;
+  const uploadedFileCount = processing.uploadedFileCount;
+  const processedFileCount = processing.processedFileCount;
+  const uploadedFiles = processing.uploadedFiles;
+  const processedFiles = processing.processedFiles;
   const displayProgress = processing.displayProgress;
   const minVolume = filters.minVolume;
   const maxVolume = filters.maxVolume;
@@ -2174,6 +2178,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingCurrentFile: data.currentFileName ?? null,
           processingQueue: data.queuedFiles ?? [],
           processingFileErrors: data.fileErrors ?? [],
+          uploadedFileCount: data.uploadedFileCount ?? 0,
+          processedFileCount: data.processedFileCount ?? 0,
+          uploadedFiles: data.uploadedFiles ?? [],
+          processedFiles: data.processedFiles ?? [],
           processingLocked: Boolean(data.locked),
         },
       });
@@ -2953,6 +2961,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                     processingCurrentFile={processingCurrentFile}
                     processingQueue={processingQueue}
                     processingFileErrors={processingFileErrors}
+                    uploadedFileCount={uploadedFileCount}
+                    processedFileCount={processedFileCount}
+                    uploadedFiles={uploadedFiles}
+                    processedFiles={processedFiles}
                     csvUploadsRefreshKey={csvUploadsRefreshKey}
                     onUploadStart={handleUploadStart}
                     onUploadBatchStart={handleUploadBatchStart}
