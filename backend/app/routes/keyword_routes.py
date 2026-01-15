@@ -117,12 +117,12 @@ async def _find_duplicate_csv_upload(
     except Exception:
         return None
 
-    # Only compare against recent uploads with same display filename.
+    # Compare against recent uploads for this project (same content, even if renamed).
     result = await db.execute(
         select(CSVUpload)
-        .where(CSVUpload.project_id == project_id, CSVUpload.file_name == file_name)
+        .where(CSVUpload.project_id == project_id)
         .order_by(CSVUpload.uploaded_at.desc())
-        .limit(25)
+        .limit(50)
     )
     # SQLAlchemy returns a synchronous ScalarResult for .scalars(), but in tests
     # we often use AsyncMock objects where .scalars() may itself be awaitable.
