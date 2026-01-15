@@ -103,8 +103,8 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   })();
   const queuedCount = queuedFiles?.length ?? 0;
   const safeFileErrors = fileErrors?.filter((error) => error && (error.fileName || error.message)) ?? [];
-  const safeUploadedFiles = uploadedFiles?.filter(Boolean) ?? [];
-  const safeProcessedFiles = processedFiles?.filter(Boolean) ?? [];
+  const safeUploadedFiles = uploadedFiles ?? [];
+  const safeProcessedFiles = processedFiles ?? [];
   const processedFileSet = new Set(safeProcessedFiles);
   const queuedFileSet = new Set(queuedFiles ?? []);
   const errorMap = new Map(
@@ -129,9 +129,12 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
 
   const orderedFiles = (() => {
     const names: string[] = [];
+    const seen = new Set<string>();
     const add = (name?: string | null) => {
       if (!name) return;
-      if (!names.includes(name)) names.push(name);
+      if (seen.has(name)) return;
+      seen.add(name);
+      names.push(name);
     };
     if (safeUploadedFiles.length > 0) {
       safeUploadedFiles.forEach(add);

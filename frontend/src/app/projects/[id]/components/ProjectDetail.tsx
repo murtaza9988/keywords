@@ -243,6 +243,7 @@ export default function ProjectDetail(): React.ReactElement {
   const targetProgressRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
   const displayProgressRef = useRef(displayProgress);
+  const uploadedFilesRef = useRef<string[]>([]);
   const filterParams = useMemo(() => ({
     tokens: selectedTokens,
     include: includeFilter,
@@ -331,6 +332,10 @@ export default function ProjectDetail(): React.ReactElement {
   useEffect(() => {
     displayProgressRef.current = displayProgress;
   }, [displayProgress]);
+
+  useEffect(() => {
+    uploadedFilesRef.current = processingUploadedFiles;
+  }, [processingUploadedFiles]);
 
   useEffect(() => {
     targetProgressRef.current = processingProgress;
@@ -2479,7 +2484,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         payload: {
           processingStatus: status,
           processingMessage: message || '',
-          processingProcessedFiles: status === 'complete' ? processingUploadedFiles : [],
+          processingProcessedFiles: status === 'complete' ? uploadedFilesRef.current : [],
           processingFileErrors: [],
         },
       });
@@ -2517,7 +2522,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     [
       addSnackbarMessage, startProcessingCheck, stopProcessingCheck, bumpLogsRefresh,
       fetchKeywords, pagination.limit, activeView, sortParams,
-      filterParams, fetchProjectStats, processingUploadedFiles, processingProcessedFiles
+      filterParams, fetchProjectStats
     ]
   );
 
