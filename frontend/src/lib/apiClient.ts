@@ -99,6 +99,7 @@ interface ApiInitialDataResponse {
   };
   processingStatus?: {
     status?: ProcessingStatus;
+    locked?: boolean;
     progress?: number;
     complete?: boolean;
     message?: string;
@@ -110,6 +111,10 @@ interface ApiInitialDataResponse {
     uploadedFileCount?: number;
     processedFileCount?: number;
     validationError?: string | null;
+    queuedJobs?: number;
+    runningJobs?: number;
+    succeededJobs?: number;
+    failedJobs?: number;
   };
 }
 

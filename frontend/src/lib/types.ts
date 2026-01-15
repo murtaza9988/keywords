@@ -117,6 +117,7 @@ export interface ProcessingFileError {
 export interface ProcessingStatusResponse {
   message?: string;
   status: ProcessingStatus;
+  locked?: boolean;
   keywordCount: number;
   processedCount?: number;
   skippedCount?: number;
@@ -133,6 +134,10 @@ export interface ProcessingStatusResponse {
   processedFiles?: string[];
   uploadedFileCount?: number;
   processedFileCount?: number;
+  queuedJobs?: number;
+  runningJobs?: number;
+  succeededJobs?: number;
+  failedJobs?: number;
   validationError?: string | null;
   fileErrors?: ProcessingFileError[];
 }
@@ -166,12 +171,17 @@ export interface InitialDataResponse {
   };
   processingStatus?: {
     status?: ProcessingStatus;
+    locked?: boolean;
     progress?: number;
     complete?: boolean;
     message?: string;
     currentFileName?: string | null;
     queuedFiles?: string[];
     fileErrors?: ProcessingFileError[];
+    queuedJobs?: number;
+    runningJobs?: number;
+    succeededJobs?: number;
+    failedJobs?: number;
   };
 }
 

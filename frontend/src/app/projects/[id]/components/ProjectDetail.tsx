@@ -215,6 +215,7 @@ export default function ProjectDetail(): React.ReactElement {
   const isLoadingData = processing.isLoadingData;
   const isUploading = processing.isUploading;
   const processingStatus = processing.processingStatus;
+  const processingLocked = processing.processingLocked;
   const isProcessingAction = processing.isProcessingAction;
   const snackbarMessages = processing.snackbarMessages;
   const processingProgress = processing.processingProgress;
@@ -293,6 +294,17 @@ export default function ProjectDetail(): React.ReactElement {
       detailDispatch({ type: 'removeSnackbarMessage', payload: id });
     }, 3000);
   }, []);
+
+  const guardGroupingAction = useCallback(() => {
+    if (!processingLocked) {
+      return true;
+    }
+    addSnackbarMessage(
+      'CSV processing in progress. Grouping is temporarily locked until import completes.',
+      'error'
+    );
+    return false;
+  }, [addSnackbarMessage, processingLocked]);
 
   const removeSnackbarMessage = useCallback((id: number) => {
     detailDispatch({ type: 'removeSnackbarMessage', payload: id });
@@ -1465,6 +1477,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   }, [projectIdStr, childrenCache, dispatch, addSnackbarMessage, expandedGroups, loadingChildren, fetchChildren]);
 
   const handleConfirmKeywords = useCallback(async () => {
+    if (!guardGroupingAction()) {
+      return;
+    }
     const keywordIds = Array.from(selectedKeywordIds);
     if (keywordIds.length === 0 || activeView !== 'grouped' || !projectIdStr) {
       addSnackbarMessage('Select grouped keywords to confirm', 'error');
@@ -1541,9 +1556,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         payload: { isProcessingAction: false, isTableLoading: false },
       });
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh, guardGroupingAction]);
 
   const handleUnconfirmKeywords = useCallback(async () => {
+    if (!guardGroupingAction()) {
+      return;
+    }
     const keywordIds = Array.from(selectedKeywordIds);
     if (keywordIds.length === 0 || activeView !== 'confirmed' || !projectIdStr) {
       addSnackbarMessage('Select confirmed keywords to unconfirm', 'error');
@@ -1620,9 +1638,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         payload: { isProcessingAction: false, isTableLoading: false },
       });
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh, guardGroupingAction]);
 
   const handleGroupKeywords = useCallback(async (overrideGroupName?: string) => {
+    if (!guardGroupingAction()) {
+      return;
+    }
     const keywordIds = Array.from(selectedKeywordIds);
     const trimmedGroupName = overrideGroupName && typeof overrideGroupName === 'string' 
       ? overrideGroupName.trim() 
@@ -1799,7 +1820,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         payload: { isProcessingAction: false, isTableLoading: false },
       });
     }
-  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, filterParams, bumpLogsRefresh]);
+  }, [selectedKeywordIds, groupName, projectIdStr, calculateMaintainedPage, pagination.page, pagination.limit, pagination.total, addSnackbarMessage, activeView, apiCache, childrenCache, filteredAndSortedKeywords, dispatch, fetchKeywords, sortParams, filterParams, bumpLogsRefresh, guardGroupingAction]);
 
   useEffect(() => {
       const blurActiveCheckboxes = () => {
@@ -1923,6 +1944,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     setGroupName,
   ]);
   const handleUngroupKeywords = useCallback(async () => {
+    if (!guardGroupingAction()) {
+      return;
+    }
     const keywordIds = Array.from(selectedKeywordIds);
     if (keywordIds.length === 0 || activeView !== 'grouped' || !projectIdStr) {
       addSnackbarMessage('Select grouped keywords to ungroup', 'error');
@@ -1988,7 +2012,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         payload: { isProcessingAction: false, isTableLoading: false },
       });
     }
-  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
+  }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, dispatch, childrenCache, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh, guardGroupingAction]);
 
   const handleUnblockKeywords = useCallback(async () => {
     const keywordIds = Array.from(selectedKeywordIds);
@@ -2043,6 +2067,9 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   }, [selectedKeywordIds, activeView, projectIdStr, addSnackbarMessage, fetchKeywords, pagination.limit, pagination.total, pagination.page, sortParams, filterParams, fetchProjectStats, calculateMaintainedPage, bumpLogsRefresh]);
     
     const handleMiddleClickGroup = useCallback(async (keywordIds: number[]) => {
+    if (!guardGroupingAction()) {
+      return;
+    }
     if (activeView !== 'ungrouped') {
       addSnackbarMessage('Middle-click grouping only works in View 1 (Ungrouped)', 'error');
       return;
@@ -2115,7 +2142,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       });
     }
   }, [activeView, groupName, projectIdStr, ungroupedKeywords, addSnackbarMessage, setGroupName,
-      fetchKeywords, pagination, sortParams, filterParams, fetchProjectStats, bumpLogsRefresh]);
+      fetchKeywords, pagination, sortParams, filterParams, fetchProjectStats, bumpLogsRefresh, guardGroupingAction]);
       
   const stopProcessingCheck = useCallback(() => {
     if (statusCheckIntervalRef.current) {
@@ -2147,6 +2174,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingCurrentFile: data.currentFileName ?? null,
           processingQueue: data.queuedFiles ?? [],
           processingFileErrors: data.fileErrors ?? [],
+          processingLocked: Boolean(data.locked),
         },
       });
 
@@ -2396,6 +2424,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         if (initialData.processingStatus?.status) {
           const processingStatus = initialData.processingStatus as {
             status?: ProcessingStatus;
+            locked?: boolean;
             progress?: number;
             message?: string;
             currentFileName?: string | null;
@@ -2412,6 +2441,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               processingCurrentFile: processingStatus.currentFileName ?? null,
               processingQueue: processingStatus.queuedFiles ?? [],
               processingFileErrors: processingStatus.fileErrors ?? [],
+              processingLocked: Boolean(processingStatus.locked),
             },
           });
           if (
