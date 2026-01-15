@@ -107,6 +107,7 @@ class ProjectState:
         self.stage_detail = None
         self.keywords = []
         self.complete = False
+        self.file_errors = []
     
     def to_result_dict(self) -> Dict[str, Any]:
         """Convert to the result dictionary format expected by the API."""
@@ -653,6 +654,25 @@ class ProcessingQueueService:
         self.mark_file_processed(project_id, file_name, file_names)
         state = self._get_or_create(project_id)
         
+        names = []
+        if file_names:
+            names.extend([name for name in file_names if name])
+        elif file_name:
+            names.append(file_name)
+        elif state.current_file and state.current_file.file_name:
+            names.append(state.current_file.file_name)
+
+        if names:
+            for name in names:
+                error_entry = {
+                    "file_name": name,
+                    "message": message,
+                    "stage": state.stage,
+                    "stage_detail": state.stage_detail,
+                }
+                if error_entry not in state.file_errors:
+                    state.file_errors.append(error_entry)
+
         state.status = "error"
         state.message = message
         state.stage = "error"
@@ -802,6 +822,7 @@ class ProcessingQueueService:
             "uploaded_files": [],
             "processed_files": [],
             "validation_error": None,
+            "file_errors": [],
         }
     
     def _touch(self, project_id: int) -> None:

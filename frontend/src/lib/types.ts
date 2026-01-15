@@ -107,6 +107,13 @@ export interface ProcessingKeyword {
   serp_features?: string[] | string;
 }
 
+export interface ProcessingFileError {
+  fileName?: string | null;
+  message?: string | null;
+  stage?: string | null;
+  stageDetail?: string | null;
+}
+
 export interface ProcessingStatusResponse {
   message?: string;
   status: ProcessingStatus;
@@ -127,6 +134,7 @@ export interface ProcessingStatusResponse {
   uploadedFileCount?: number;
   processedFileCount?: number;
   validationError?: string | null;
+  fileErrors?: ProcessingFileError[];
 }
 
 export interface InitialProjectStats {
@@ -163,6 +171,7 @@ export interface InitialDataResponse {
     message?: string;
     currentFileName?: string | null;
     queuedFiles?: string[];
+    fileErrors?: ProcessingFileError[];
   };
 }
 

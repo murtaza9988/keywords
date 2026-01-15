@@ -2,6 +2,7 @@ export type {
   Keyword, 
   GroupedKeywordsDisplay, 
   ProcessingStatus, 
+  ProcessingFileError,
   SnackbarMessage, 
   SortParams
 } from '@/lib/types';

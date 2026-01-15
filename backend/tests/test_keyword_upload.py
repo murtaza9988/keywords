@@ -258,6 +258,39 @@ def test_processing_status_idle_does_not_force_complete(
     assert payload["progress"] == 40.0
 
 
+def test_processing_status_includes_file_errors(
+    test_api_client,
+    mock_processing_tasks,
+    mock_processing_results,
+):
+    mock_processing_tasks[1] = "error"
+    mock_processing_results[1] = {
+        "processed_count": 0,
+        "skipped_count": 0,
+        "keywords": [],
+        "complete": True,
+        "total_rows": 0,
+        "progress": 0.0,
+        "file_errors": [
+            {"file_name": "bad.csv", "message": "Parse failed", "stage": "read_csv"}
+        ],
+    }
+
+    response = test_api_client.get("/api/projects/1/processing-status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "error"
+    assert payload["fileErrors"] == [
+        {
+            "fileName": "bad.csv",
+            "message": "Parse failed",
+            "stage": "read_csv",
+            "stageDetail": None,
+        }
+    ]
+
+
 @pytest.mark.asyncio
 async def test_process_csv_file_parses_and_dedupes(
     mock_processing_tasks,
