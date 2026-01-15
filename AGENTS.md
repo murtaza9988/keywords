@@ -173,6 +173,21 @@ python -m app.scripts.backfill_compounds --project-id <id>
 - **Processing Pipeline Steward**: Keep the Project Detail → Process tab and related docs aligned with the backend pipeline (chunk upload sizes, duplicate detection, sequential queue, normalization steps, grouping passes).
 - **Queue State Monitor**: When processing statuses or stages change (idle, uploading, combining, queued, processing, complete, error; stages like db_prepare/read_csv/import_rows/persist/group), update the UI labels and documentation to match.
 
+### Overlap guardrails
+- **Processing/Queue/UI**: Prefer one lead agent for processing status work; others only verify alignment.
+- **Feature/Bug/Refactor**: Scope by intent: new capability vs regression fix vs behavior-preserving changes.
+
+### First-principles mind mapping (required)
+Before implementation, build a short, explicit mind map from first principles:
+1. **Goal**: What user/system outcome must be true?
+2. **Inputs**: What data enters the system? Where is it validated?
+3. **Transformations**: What steps change that data (services, background jobs)?
+4. **Outputs**: What is returned or rendered (schemas, UI, logs)?
+5. **Constraints**: Performance, security, data integrity, and UX rules.
+6. **Risks**: What can break? How do we detect or test it?
+7. **Proof**: What tests or checks confirm the outcome?
+Use this map to choose the right subagent and to avoid drifting scope.
+
 ## Custom Copilot Agent Profiles
 - **API Contract Auditor**: Mission/scope: confirm request/response shapes stay aligned across backend + frontend changes. Key files: `backend/app/schemas/`, `backend/app/routes/`, `frontend/src/**/api*.ts`. Handoff: list any renamed fields and the affected components/services.
 - **Processing UI Sync**: Mission/scope: ensure processing status labels, stages, and progress UI match backend pipeline changes. Key files: `frontend/src/app/**/ProjectDetail*`, `backend/app/services/processing*`, `docs/`. Handoff: summarize UI label updates and any missing docs.
@@ -182,6 +197,44 @@ python -m app.scripts.backfill_compounds --project-id <id>
 - **Feature Implementation**: Mission/scope: deliver scoped product features end-to-end with correct data flow and UI state. Key files: `backend/app/routes/`, `backend/app/services/`, `frontend/src/app/`, `frontend/src/components/`. Handoff: summarize changes, new endpoints, and UI touchpoints to validate.
 - **Bug Finder**: Mission/scope: isolate regressions and confirm fixes with minimal diffs. Key files: `backend/app/`, `frontend/src/`, `docs/`. Handoff: list root cause, fix location, and any follow-up tests or monitoring.
 - **Refactor Steward**: Mission/scope: improve structure without changing behavior or contracts. Key files: `backend/app/`, `frontend/src/`, `docs/`. Handoff: note moved files, renamed symbols, and any behavior invariants to re-verify.
+- **Security Auditor**: Mission/scope: verify auth coverage, secrets handling, and injection risks; enforce `Depends(get_current_user)` on protected routes. Key files: `backend/app/routes/`, `backend/app/utils/security.py`, `backend/app/config.py`, `backend/app/schemas/`. Handoff: list risks, affected endpoints, and recommended mitigations.
+- **Test Harness Builder**: Mission/scope: add/extend tests per feature template and guardrail regressions. Key files: `backend/tests/`, `frontend/src/**/__tests__/**`, `pytest.ini`, `jest.config.mjs`. Handoff: tests added/updated, gaps remaining, and any flaky areas.
+- **Performance Tuner**: Mission/scope: profile hot paths (CSV ingestion, keyword queries, UI lists) and reduce latency. Key files: `backend/app/services/`, `backend/app/routes/keyword_routes.py`, `frontend/src/app/**/ProjectDetail*`. Handoff: hotspots, optimizations, and any caching/index proposals.
+- **Infra/CI Steward**: Mission/scope: keep lint/typecheck/test pipelines green and resolve config drift. Key files: `package.json`, `frontend/eslint.config.mjs`, `backend/pyproject.toml`, `backend/pytest.ini`. Handoff: failures found, fixes applied, and remaining risks.
+- **Documentation & UX Copy Curator**: Mission/scope: keep docs, UI copy, and processing status terminology consistent. Key files: `docs/`, `AGENTS.md`, `frontend/src/app/**`. Handoff: copy updates and mismatches resolved.
+- **Data Consistency & Backfill Agent**: Mission/scope: validate migrations, identify required backfills, and ensure data invariants. Key files: `backend/alembic/versions/`, `backend/app/models/`, `backend/app/scripts/backfill_compounds.py`. Handoff: migration status, backfill needs, and run notes.
+- **Accessibility Auditor**: Mission/scope: ensure UI meets accessibility requirements (keyboard, focus, ARIA, contrast). Key files: `frontend/src/app/`, `frontend/src/components/`. Handoff: list a11y gaps and fixes or follow-ups.
+- **Observability & Logging Steward**: Mission/scope: keep logs, metrics, and error reporting consistent and actionable. Key files: `backend/app/services/`, `backend/app/routes/`, `backend/app/models/activity_log.py`. Handoff: logging changes, missing signals, and suggested dashboards/alerts.
+- **Data Privacy & Compliance Agent**: Mission/scope: identify PII handling, retention risks, and safe logging/storage. Key files: `backend/app/schemas/`, `backend/app/services/`, `frontend/src/lib/`. Handoff: privacy risks, redaction needs, and policy gaps.
+- **Release & Deployment Manager**: Mission/scope: validate release readiness and deployment steps. Key files: `README.md`, `backend/README.md`, `frontend/README.md`, `vercel.json`. Handoff: release checklist, required migrations, and rollout notes.
+- **Dependency & License Auditor**: Mission/scope: track dependency upgrades and license risks. Key files: `package.json`, `frontend/package.json`, `backend/requirements.txt`. Handoff: dependency changes, known CVEs, and license flags.
+- **Localization & i18n Curator**: Mission/scope: ensure copy is externalized and localization-safe. Key files: `frontend/src/app/`, `frontend/src/components/`. Handoff: hardcoded strings, pluralization issues, and i18n readiness.
+
+## Agent runbooks (detailed playbooks)
+For thorough execution, each agent has a dedicated runbook with entry/exit criteria, required checks, and expected artifacts:
+- `docs/agents/README.md`
+- `docs/agents/accessibility-auditor.md`
+- `docs/agents/api-contract-auditor.md`
+- `docs/agents/bug-finder.md`
+- `docs/agents/data-consistency-backfill-agent.md`
+- `docs/agents/data-privacy-compliance-agent.md`
+- `docs/agents/dependency-license-auditor.md`
+- `docs/agents/documentation-ux-copy-curator.md`
+- `docs/agents/feature-implementation.md`
+- `docs/agents/infra-ci-steward.md`
+- `docs/agents/keyword-ux-curator.md`
+- `docs/agents/localization-i18n-curator.md`
+- `docs/agents/migration-gatekeeper.md`
+- `docs/agents/observability-logging-steward.md`
+- `docs/agents/performance-tuner.md`
+- `docs/agents/processing-pipeline-steward.md`
+- `docs/agents/processing-ui-sync.md`
+- `docs/agents/queue-state-monitor.md`
+- `docs/agents/queue-state-referee.md`
+- `docs/agents/refactor-steward.md`
+- `docs/agents/release-deployment-manager.md`
+- `docs/agents/security-auditor.md`
+- `docs/agents/test-harness-builder.md`
 
 ### Copilot Agent Efficiency Tips
 - [ ] Define the agent mission in one sentence and the exact files to touch.
