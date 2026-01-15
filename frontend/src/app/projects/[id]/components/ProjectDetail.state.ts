@@ -43,6 +43,7 @@ export interface ProcessingState {
   isUploading: boolean;
   uploadSuccess: boolean;
   processingStatus: ProcessingStatus;
+  processingLocked: boolean;
   isProcessingAction: boolean;
   snackbarMessages: SnackbarMessage[];
   processingProgress: number;
@@ -145,6 +146,7 @@ export const initialProjectDetailState: ProjectDetailState = {
     isUploading: false,
     uploadSuccess: false,
     processingStatus: 'idle',
+    processingLocked: false,
     isProcessingAction: false,
     snackbarMessages: [],
     processingProgress: 0,

@@ -18,11 +18,13 @@ from app.services.merge_token import TokenMergeService
 from app.services.project import ProjectService
 from app.services.keyword import KeywordService
 from app.services.activity_log import ActivityLogService
+from app.services.csv_processing_job import CsvProcessingJobService
 from app.schemas.keyword import (
     KeywordListResponse, GroupRequest, ProcessingStatus,
     BlockTokenRequest,  UnblockRequest, KeywordResponse,
     KeywordChildrenResponse, KeywordsCacheResponse
 )
+from app.services.project_processing_lease import ProjectProcessingLeaseService
 from app.utils.security import get_current_user
 from app.models.keyword import Keyword, KeywordStatus
 from app.routes.keyword_processing import (
@@ -64,6 +66,25 @@ def _format_file_errors(file_errors: List[Dict[str, Any]]) -> List[Dict[str, Any
         for entry in file_errors
         if isinstance(entry, dict)
     ]
+
+
+async def _ensure_grouping_unlocked(db: AsyncSession, project_id: int) -> None:
+    if os.getenv("TESTING") == "True":
+        return
+    locked = await CsvProcessingJobService.has_pending_jobs(db, project_id)
+    if not locked:
+        locked = await ProjectProcessingLeaseService.is_locked(db, project_id=project_id)
+    if locked:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "processing_locked",
+                "message": (
+                    "CSV processing in progress. Grouping is temporarily locked until import completes."
+                ),
+                "project_id": project_id,
+            },
+        )
 
 
 def _resolve_csv_upload_path(project_id: int, upload: CSVUpload) -> Optional[str]:
@@ -207,6 +228,7 @@ async def run_manual_grouping(
     Manually trigger keyword grouping for a project.
     Use this if processing got stuck before grouping completed.
     """
+    await _ensure_grouping_unlocked(db, project_id)
     from app.routes.keyword_processing import group_remaining_ungrouped_keywords
     
     project = await ProjectService.get_by_id(db, project_id)
@@ -262,6 +284,14 @@ async def get_processing_status(
     result = processing_queue_service.get_result(project_id)
 
     progress = max(0, min(100, result.get("progress", 0.0)))
+    if os.getenv("TESTING") == "True":
+        counts = {"queued": 0, "running": 0, "succeeded": 0, "failed": 0}
+        locked = False
+    else:
+        counts = await CsvProcessingJobService.counts_by_status(db, project_id)
+        locked = await CsvProcessingJobService.has_pending_jobs(db, project_id)
+        if not locked:
+            locked = await ProjectProcessingLeaseService.is_locked(db, project_id=project_id)
     queue = processing_queue_service.get_queue(project_id)
     current_file = processing_queue_service.get_current_file(project_id)
     queued_files = [item.get("file_name") for item in queue] if queue else []
@@ -286,6 +316,7 @@ async def get_processing_status(
     if validation_error:
         return {
             "status": "error",
+            "locked": locked,
             "keywordCount": result.get("processed_count", 0),
             "processedCount": result.get("processed_count", 0),
             "skippedCount": result.get("skipped_count", 0),
@@ -303,6 +334,10 @@ async def get_processing_status(
             "processedFiles": processed_files,
             "uploadedFileCount": uploaded_count,
             "processedFileCount": processed_count,
+            "queuedJobs": counts["queued"],
+            "runningJobs": counts["running"],
+            "succeededJobs": counts["succeeded"],
+            "failedJobs": counts["failed"],
             "validationError": validation_error,
             "fileErrors": formatted_file_errors,
         }
@@ -311,6 +346,7 @@ async def get_processing_status(
         keyword_count = await KeywordService.count_total_by_project(db, project_id)
         return {
             "status": "complete",
+            "locked": locked,
             "keywordCount": keyword_count,
             "processedCount": result.get("processed_count", 0),
             "skippedCount": result.get("skipped_count", 0),
@@ -328,11 +364,16 @@ async def get_processing_status(
             "processedFiles": processed_files,
             "uploadedFileCount": uploaded_count,
             "processedFileCount": processed_count,
+            "queuedJobs": counts["queued"],
+            "runningJobs": counts["running"],
+            "succeededJobs": counts["succeeded"],
+            "failedJobs": counts["failed"],
             "validationError": validation_error,
             "fileErrors": formatted_file_errors,
         }
     return {
         "status": status,
+        "locked": locked,
         "keywordCount": result.get("processed_count", 0),
         "processedCount": result.get("processed_count", 0),
         "skippedCount": result.get("skipped_count", 0),
@@ -350,6 +391,10 @@ async def get_processing_status(
         "processedFiles": processed_files,
         "uploadedFileCount": uploaded_count,
         "processedFileCount": processed_count,
+        "queuedJobs": counts["queued"],
+        "runningJobs": counts["running"],
+        "succeededJobs": counts["succeeded"],
+        "failedJobs": counts["failed"],
         "validationError": validation_error,
         "fileErrors": formatted_file_errors,
     }
@@ -499,8 +544,14 @@ async def upload_keywords(
             await db.commit()
 
             processing_queue_service.register_upload(project_id, upload_file.filename)
+            idempotency_key = _sha256_file(file_path) if os.path.exists(file_path) else None
             processable_entries.append(
-                {"file_path": file_path, "file_name": upload_file.filename}
+                {
+                    "file_path": file_path,
+                    "file_name": upload_file.filename,
+                    "csv_upload_id": csv_upload.id,
+                    "idempotency_key": idempotency_key,
+                }
             )
 
         if not processable_entries:
@@ -525,10 +576,13 @@ async def upload_keywords(
         await db.commit()
 
         for entry in processable_entries:
-            enqueue_processing_file(
+            await enqueue_processing_file(
+                db,
                 project_id,
                 entry["file_path"],
                 entry.get("file_name") or "CSV file",
+                csv_upload_id=entry.get("csv_upload_id"),
+                idempotency_key=entry.get("idempotency_key"),
             )
         await start_next_processing(project_id)
 
@@ -734,10 +788,14 @@ async def upload_keywords(
 
                 # Enqueue each file separately to ensure sequential processing.
                 for entry in processable_entries:
-                    enqueue_processing_file(
+                    entry_path = entry["file_path"]
+                    idempotency_key = _sha256_file(entry_path) if os.path.exists(entry_path) else None
+                    await enqueue_processing_file(
+                        db,
                         project_id,
-                        entry["file_path"],
+                        entry_path,
                         entry.get("file_name") or "CSV file",
+                        idempotency_key=idempotency_key,
                     )
                 await start_next_processing(project_id)
 
@@ -758,7 +816,14 @@ async def upload_keywords(
                 }
 
             if originalFilename and not duplicate_info:
-                enqueue_processing_file(project_id, final_path, originalFilename)
+                idempotency_key = _sha256_file(final_path) if os.path.exists(final_path) else None
+                await enqueue_processing_file(
+                    db,
+                    project_id,
+                    final_path,
+                    originalFilename,
+                    idempotency_key=idempotency_key,
+                )
                 await start_next_processing(project_id)
             
             return {
@@ -892,10 +957,14 @@ async def upload_keywords(
                 }
             # Enqueue each file separately to avoid brittle header-combine failures.
             for entry in processable_entries:
-                enqueue_processing_file(
+                entry_path = entry["file_path"]
+                idempotency_key = _sha256_file(entry_path) if os.path.exists(entry_path) else None
+                await enqueue_processing_file(
+                    db,
                     project_id,
-                    entry["file_path"],
+                    entry_path,
                     entry.get("file_name") or "CSV file",
+                    idempotency_key=idempotency_key,
                 )
             await start_next_processing(project_id)
             return {
@@ -913,7 +982,15 @@ async def upload_keywords(
                 "file_name": file.filename,
             }
 
-        enqueue_processing_file(project_id, file_path, file.filename)
+        idempotency_key = _sha256_file(file_path) if os.path.exists(file_path) else None
+        await enqueue_processing_file(
+            db,
+            project_id,
+            file_path,
+            file.filename,
+            csv_upload_id=csv_upload.id if not duplicate_info else None,
+            idempotency_key=idempotency_key,
+        )
         await start_next_processing(project_id)
         
         return {
@@ -1534,6 +1611,7 @@ async def group_keywords(
     """
     Group selected keywords into a new group or add them to an existing group.
     """
+    await _ensure_grouping_unlocked(db, project_id)
     if not group_request.keyword_ids:
         raise HTTPException(status_code=400, detail="No keywords selected")
     if not group_request.group_name or len(group_request.group_name.strip()) == 0:
@@ -1730,6 +1808,7 @@ async def regroup_keywords(
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
     """Regroup selected keywords from multiple groups into a new or existing group."""
+    await _ensure_grouping_unlocked(db, project_id)
     if not group_request.keyword_ids:
         raise HTTPException(status_code=400, detail="No keywords selected")
     
@@ -2018,6 +2097,7 @@ async def ungroup_keywords(
     """
     Ungroup only the specifically selected keywords and restore their original parent-child relationships, prioritizing merged_token over original tokens.
     """
+    await _ensure_grouping_unlocked(db, project_id)
     if not unblock_request.keyword_ids:
         raise HTTPException(status_code=400, detail="No keywords selected")
     
@@ -2620,6 +2700,7 @@ async def confirm_keywords(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
+    await _ensure_grouping_unlocked(db, project_id)
     if not confirm_request.keyword_ids:
         raise HTTPException(status_code=400, detail="No keywords selected")
     
@@ -2680,6 +2761,7 @@ async def unconfirm_keywords(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
+    await _ensure_grouping_unlocked(db, project_id)
     if not unconfirm_request.keyword_ids:
         raise HTTPException(status_code=400, detail="No keywords selected")
     

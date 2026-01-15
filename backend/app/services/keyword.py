@@ -38,7 +38,11 @@ class KeywordService:
             for kw in keywords_data
         ]
 
-        stmt = insert(Keyword).values(values)
+        stmt = (
+            insert(Keyword)
+            .values(values)
+            .on_conflict_do_nothing(index_elements=["project_id", "keyword"])
+        )
         await db.execute(stmt)
         await db.commit()
 
