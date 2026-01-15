@@ -69,6 +69,10 @@ class ProjectState:
     skipped_count: int = 0
     duplicate_count: int = 0
     total_rows: int = 0
+    current_processed_count: int = 0
+    current_skipped_count: int = 0
+    current_duplicate_count: int = 0
+    current_total_rows: int = 0
     progress: float = 0.0
     message: str = ""
     stage: Optional[str] = None
@@ -97,10 +101,10 @@ class ProjectState:
     
     def reset_results(self) -> None:
         """Reset processing results but keep file tracking."""
-        self.processed_count = 0
-        self.skipped_count = 0
-        self.duplicate_count = 0
-        self.total_rows = 0
+        self.current_processed_count = 0
+        self.current_skipped_count = 0
+        self.current_duplicate_count = 0
+        self.current_total_rows = 0
         self.progress = 0.0
         self.message = ""
         self.stage = None
@@ -118,6 +122,10 @@ class ProjectState:
             "keywords": self.keywords,
             "complete": self.complete,
             "total_rows": self.total_rows,
+            "current_processed_count": self.current_processed_count,
+            "current_skipped_count": self.current_skipped_count,
+            "current_duplicate_count": self.current_duplicate_count,
+            "current_total_rows": self.current_total_rows,
             "progress": self.progress,
             "message": self.message,
             "stage": self.stage,
@@ -153,6 +161,10 @@ class ProjectState:
             "skipped_count": self.skipped_count,
             "duplicate_count": self.duplicate_count,
             "total_rows": self.total_rows,
+            "current_processed_count": self.current_processed_count,
+            "current_skipped_count": self.current_skipped_count,
+            "current_duplicate_count": self.current_duplicate_count,
+            "current_total_rows": self.current_total_rows,
             "progress": self.progress,
             "message": self.message,
             "stage": self.stage,
@@ -215,6 +227,10 @@ class ProjectState:
         state.skipped_count = data.get("skipped_count", 0)
         state.duplicate_count = data.get("duplicate_count", 0)
         state.total_rows = data.get("total_rows", 0)
+        state.current_processed_count = data.get("current_processed_count", 0)
+        state.current_skipped_count = data.get("current_skipped_count", 0)
+        state.current_duplicate_count = data.get("current_duplicate_count", 0)
+        state.current_total_rows = data.get("current_total_rows", 0)
         state.progress = data.get("progress", 0.0)
         state.message = data.get("message", "")
         state.stage = data.get("stage")
@@ -560,12 +576,20 @@ class ProcessingQueueService:
     ) -> None:
         """Update processing progress."""
         state = self._get_or_create(project_id)
-        state.processed_count = processed_count
-        state.skipped_count = skipped_count
-        state.duplicate_count = duplicate_count
+        processed_delta = processed_count - state.current_processed_count
+        skipped_delta = skipped_count - state.current_skipped_count
+        duplicate_delta = duplicate_count - state.current_duplicate_count
+        state.processed_count += max(processed_delta, 0)
+        state.skipped_count += max(skipped_delta, 0)
+        state.duplicate_count += max(duplicate_delta, 0)
+        state.current_processed_count = processed_count
+        state.current_skipped_count = skipped_count
+        state.current_duplicate_count = duplicate_count
         state.progress = progress
         if total_rows is not None:
-            state.total_rows = total_rows
+            if state.current_total_rows == 0 and total_rows > 0:
+                state.total_rows += total_rows
+            state.current_total_rows = total_rows
         if keywords is not None:
             state.keywords = keywords
         if message is not None:

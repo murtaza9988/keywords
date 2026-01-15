@@ -2934,7 +2934,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           <div className="flex flex-col xl:flex-row gap-4">
             <main className="w-full xl:basis-4/5 xl:flex-[4] min-w-0 flex flex-col">
               <div className="bg-white shadow border border-border rounded-lg p-4 sm:p-6 flex flex-col flex-grow h-full">
-                <ProjectDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
+                <ProjectDetailTabs
+                  activeTab={activeTab}
+                  processingLocked={processingLocked}
+                  onTabChange={setActiveTab}
+                />
                 {activeTab === 'overview' && (
                   <ProjectDetailOverview
                     projectId={projectIdStr}
@@ -2967,6 +2971,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                       selectedKeywordIds={selectedKeywordIds}
                       isProcessingAction={isProcessingAction}
                       isUploading={isUploading}
+                      processingLocked={processingLocked}
                       processingStatus={processingStatus}
                       processingMessage={processingMessage}
                       selectedTokens={selectedTokens}

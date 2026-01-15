@@ -6,11 +6,13 @@ export type ProjectDetailTab = 'overview' | 'process' | 'group' | 'notes' | 'log
 
 interface ProjectDetailTabsProps {
   activeTab: ProjectDetailTab;
+  processingLocked: boolean;
   onTabChange: (tab: ProjectDetailTab) => void;
 }
 
 export function ProjectDetailTabs({
   activeTab,
+  processingLocked,
   onTabChange,
 }: ProjectDetailTabsProps): React.ReactElement {
   return (
@@ -31,7 +33,16 @@ export function ProjectDetailTabs({
             : tab === 'process'
             ? 'Process'
             : tab === 'group'
-            ? 'Group'
+            ? (
+              <span className="flex items-center gap-1.5">
+                <span>Group</span>
+                {processingLocked && (
+                  <span className="text-[10px] uppercase tracking-wide text-amber-200/90">
+                    🔒 Processing…
+                  </span>
+                )}
+              </span>
+            )
             : tab === 'notes'
             ? 'Notes'
             : 'Logs'}
