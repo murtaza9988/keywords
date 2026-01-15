@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import FileUploader from './FileUploader';
 import CSVUploadDropdown from './CSVUploadDropdown';
 import ProcessingProgressBar from './ProcessingProgressBar';
@@ -50,11 +49,8 @@ export function ProcessingPanel({
   onUploadSuccess,
   onUploadError,
 }: ProcessingPanelProps): React.ReactElement {
-  const isProcessing = processingStatus === 'queued' || processingStatus === 'processing';
-  const showUploadLoader = isUploading || isProcessing;
-
   return (
-    <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-3">
+    <div className="rounded-xl border border-border bg-white px-4 py-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-4">
         <div className="min-w-[220px] flex flex-col gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">Upload CSVs</span>
@@ -70,23 +66,10 @@ export function ProcessingPanel({
             </div>
             <CSVUploadDropdown projectId={projectId} refreshKey={csvUploadsRefreshKey} />
           </div>
+          {isUploading && (
+            <span className="text-xs text-blue-600">Uploading files...</span>
+          )}
         </div>
-      </div>
-      <div className="flex items-center h-6 mt-3">
-        {showUploadLoader ? (
-          <div className="flex items-center text-blue-600">
-            <Loader2 size={16} className="animate-spin mr-2" />
-            <span className="text-xs">
-              {isUploading ? "Uploading..." : "Processing..."}
-            </span>
-          </div>
-        ) : processingStatus === 'error' && !isUploading ? (
-          <div className="text-red-600 text-xs">
-            {processingMessage || 'Processing failed. Try uploading again.'}
-          </div>
-        ) : (
-          <span className="text-xs text-transparent">Status</span>
-        )}
       </div>
       <ProcessingProgressBar
         status={processingStatus}
