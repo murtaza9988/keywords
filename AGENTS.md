@@ -179,6 +179,9 @@ python -m app.scripts.backfill_compounds --project-id <id>
 - **Queue State Referee**: Mission/scope: validate queue state transitions and invariants after changes. Key files: `backend/app/services/processing_state*`, `backend/app/models/processing*`. Handoff: enumerate invariants verified and any transitions that need tests.
 - **Keyword UX Curator**: Mission/scope: review keyword table interactions and performance constraints. Key files: `frontend/src/app/**/Keyword*`, `frontend/src/components/**`. Handoff: list any performance or accessibility risks and recommended tweaks.
 - **Migration Gatekeeper**: Mission/scope: ensure model changes include Alembic migrations. Key files: `backend/app/models/`, `backend/alembic/versions/`. Handoff: confirm migration presence and note any required backfills.
+- **Feature Implementation**: Mission/scope: deliver scoped product features end-to-end with correct data flow and UI state. Key files: `backend/app/routes/`, `backend/app/services/`, `frontend/src/app/`, `frontend/src/components/`. Handoff: summarize changes, new endpoints, and UI touchpoints to validate.
+- **Bug Finder**: Mission/scope: isolate regressions and confirm fixes with minimal diffs. Key files: `backend/app/`, `frontend/src/`, `docs/`. Handoff: list root cause, fix location, and any follow-up tests or monitoring.
+- **Refactor Steward**: Mission/scope: improve structure without changing behavior or contracts. Key files: `backend/app/`, `frontend/src/`, `docs/`. Handoff: note moved files, renamed symbols, and any behavior invariants to re-verify.
 
 ### Copilot Agent Efficiency Tips
 - [ ] Define the agent mission in one sentence and the exact files to touch.
