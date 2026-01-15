@@ -458,6 +458,68 @@ Process visualization requirements:
 
 ## 11) Known Issues & Remaining Work
 
+### 11.0) Major Remaining Gaps (Source-of-Truth + Per-File UX)
+
+**Problem:** The system currently maintains **two** sequencing views: the DB job queue (durable) and the in-memory/disk `processing_queue_service` (progress). When these diverge, **per-file UX becomes incorrect**, and files can appear “stuck” or “missing” even though the DB queue is correct.
+
+**Observed mismatch patterns:**
+- **Queue/Job divergence:** The runner may advance `processing_queue_service` independently of the DB job it actually processes. This can mark a file as “processed” in UI without a matching DB job completion (or vice versa).
+- **Idempotency conflict:** DB jobs are deduped by `idempotency_key`, but UI progress entries can still be enqueued for duplicates, inflating `uploadedFiles` and leaving `processedFiles` short.
+
+**Why this breaks per-file UX:** The UI must show **each individual CSV’s status**, not just the batch overall. When the progress queue and DB job queue disagree, the UI cannot reliably show which specific file is:
+- queued
+- currently processing
+- completed
+- failed
+
+**Required resolution (documented, not optional):**
+1. **DB job queue is the sole source of truth for sequencing.**
+2. `processing_queue_service` is **progress-only** and must be updated **only** by the runner **after** DB job transitions (queued → running → succeeded/failed).
+3. The **UI must map per-file states to DB job statuses**, not just batch status.
+
+**Justification:** The DB job table is durable and concurrency-safe; it is the only reliable sequencer across restarts, multiple workers, and concurrent uploads. The in-memory queue is not.
+
+### 11.0.1) Per-File UX Requirements (Non-Negotiable)
+
+The UI must render per-file status **for every CSV** in a batch, using these rules:
+
+- **uploadedFiles**: list of *all* files uploaded for the project (server authoritative).
+- **processedFiles**: list of files that completed a **DB job** (success or failure as appropriate).
+- **currentFileName**: must reflect the **currently running DB job**, not a queue placeholder.
+- **queuedFiles**: must reflect DB jobs in `queued` state (derived server-side).
+
+**Display logic:**
+- For each uploaded file:
+  - **✓ Completed** if file is in `processedFiles`
+  - **⏳ Processing** if it matches `currentFileName`
+  - **🕒 Queued** if it is in `queuedFiles`
+  - **⚠️ Error** if it appears in `fileErrors`
+
+**Stop polling only when:**
+- `queuedJobs == 0` AND `runningJobs == 0`, and
+- `processedFileCount == uploadedFileCount`
+
+If any of the above is not true, the UI must continue polling and show processing in progress.
+
+### 11.0.2) Remaining Partial-Migration Work (Must Be Completed)
+
+The following items represent **partial migrations** where the system still behaves as if
+`processing_queue_service` is authoritative. Each item must be fully aligned to DB job
+state to avoid “only one file processed” regressions:
+
+1. **Runner must not advance progress queue independently of DB jobs.**
+   - The runner should set `currentFileName` **from the claimed DB job**, and only mark
+     progress after DB state transitions. It must not pop a different queue entry.
+2. **Do not enqueue progress entries for deduped jobs.**
+   - If `idempotency_key` already exists and no new DB job is created, **skip** adding
+     progress queue entries or mark the file as a duplicate immediately.
+3. **`/processing-status` must be computed from DB job state.**
+   - `queuedJobs`, `runningJobs`, `processedFiles`, and `currentFileName` should be derived
+     from DB job rows and their statuses, not from the progress queue.
+4. **Per-file errors must map to DB job failures.**
+   - `fileErrors` should reflect jobs marked `failed` (with the same `source_filename`),
+     and those files must be considered “processed” for count parity.
+
 ### 11.1) Auto-Update After Processing Completes
 
 **Status**: Partially Working
@@ -478,29 +540,35 @@ The frontend polls the backend for processing status every 1 second when process
 
 ### 11.2) CSV File Processing Visualization
 
-**Status**: Needs Enhancement
+**Status**: Implemented (Verify in UI)
 
-The ProcessingProgressBar shows:
-- Current file being processed
-- Queued files waiting to be processed
-- File errors if any occurred
+The ProcessingProgressBar should display **per-file** status for each uploaded CSV:
+- Checkmark (✓) for files in `processedFiles`
+- Spinner for `currentFileName`
+- Pending indicator for `queuedFiles`
+- Error indicator for `fileErrors`
 
-**Missing**: Visual indicator showing which files have been successfully processed with checkmarks.
-
-The backend already returns `uploadedFiles` and `processedFiles` arrays in the processing status response. The frontend needs to:
-- Display a list of all uploaded CSV files
-- Show a checkmark (✓) next to files that have completed processing
-- Show a spinner next to the currently processing file
-- Show pending indicator for queued files
+If any of the indicators are missing in the UI, treat it as a regression and re-audit
+the component against the per-file UX rules in **11.0.1**.
 
 ### 11.3) Remaining Frontend Tasks
 
-* [x] Add checkmark indicators for processed CSVs in ProcessingProgressBar
-* [x] Show uploaded vs processed file counts in the UI
+* [x] Add checkmark indicators for processed CSVs in ProcessingProgressBar (verify UI)
+* [x] Show uploaded vs processed file counts in the UI (verify UI)
 * [ ] Ensure UI auto-refreshes reliably when processing completes
 * [ ] Add lock indicator to Grouping tab/header  
 * [ ] Disable interactions when locked
 * [ ] Keep tab viewable
+
+### 11.4) Root Cause Why This Wasn’t Identified Earlier
+
+**Reason:** The system migrated to a DB-backed job queue for correctness, but the progress queue remained partially authoritative in several paths. This **creates a “works for 1 file” illusion**, because single-file workflows rarely reveal mismatches between the two queues. The problem becomes visible only when:
+
+- multiple files are uploaded in a single batch,
+- files are uploaded back-to-back while a job is already running, or
+- duplicate uploads are deduped at the DB layer but still counted in the UI.
+
+**Lesson:** Per-file UX must be validated against **DB job state**, not in-memory progress state. Any feature tests must include multi-file batch uploads + immediate follow-up uploads to surface queue divergence early.
 
 ***
 
