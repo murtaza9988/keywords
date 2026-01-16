@@ -92,7 +92,7 @@ function debounce<T extends (...args: unknown[]) => unknown>(
     if (options.immediate && !timeout) {
       func.apply(this, args);
     }
-  
+
     if (timeout) {
       clearTimeout(timeout);
       timeout = null;
