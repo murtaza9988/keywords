@@ -57,7 +57,7 @@ const Pagination: React.FC<PaginationProps> = memo(({ total, page, pages, onPage
             disabled={disabled}
             className={`px-3 py-1 border rounded-md transition-all duration-300 ease-in-out ${
               pageNum === page
-                ? 'bg-blue-600 text-xs text-white border-blue-600 cursor-pointer'
+                ? 'bg-accent/80 text-xs text-white border-transparent cursor-pointer shadow-sm'
                 : 'text-muted text-xs border-border hover:bg-surface-muted cursor-pointer disabled:text-muted disabled:border-border disabled:cursor-not-allowed'
             }`}
           >

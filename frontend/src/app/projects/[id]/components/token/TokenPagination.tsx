@@ -70,9 +70,9 @@ export function TokenPagination({
             key={page}
             onClick={() => onPageChange(page)}
             disabled={isLoading}
-            className={`px-2 py-1 border rounded-md ${
+            className={`px-2 py-1 border rounded-md transition-colors duration-200 ${
               page === currentPage
-                ? 'bg-blue-600 text-white border-blue-600 cursor-pointer'
+                ? 'bg-accent/80 text-white border-transparent cursor-pointer shadow-sm'
                 : 'border-border text-muted hover:bg-surface-muted cursor-pointer'
             } disabled:opacity-50`}
             aria-label={`Page ${page}`}
