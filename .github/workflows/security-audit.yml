@@ -23,8 +23,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pip-audit bandit
 
-      - name: pip-audit (high/critical)
-        run: pip-audit -r backend/requirements.txt --severity high
+      - name: pip-audit
+        run: pip-audit -r backend/requirements.txt
 
       - name: bandit (high/critical)
         run: bandit -r backend/app --severity-level high
