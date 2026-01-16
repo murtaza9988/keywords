@@ -2,85 +2,8 @@
 import React from 'react';
 import Header from '@/app/projects/components/Header';
 import { Card } from '@/components/ui/Card';
-
-const backlogItems = [
-  {
-    name: 'Compound normalization rules',
-    problemStatement:
-      'Compound keywords and multi-token phrases normalize inconsistently, causing duplicate clusters and unstable rollups when users compare grouped vs. ungrouped views.',
-    definitionOfDone:
-      'Compound normalization applies deterministic token ordering, preserves semantic modifiers, and ships with regression tests covering clustered keyword rollups and UI counts.',
-    scope: {
-      type: 'Full stack',
-      why: 'Requires backend normalization logic, persisted field updates, and front-end display consistency checks.',
-    },
-    impactedAreas: [
-      'backend keyword normalization pipeline',
-      'keyword grouping + cluster score modules',
-      'frontend keyword table aggregation logic',
-    ],
-    dependencies: ['Normalization rules approved by SEO team', 'Test fixtures from sample projects'],
-    risks: ['May change existing cluster IDs', 'Requires careful communication to avoid user confusion'],
-    status: 'Planned',
-  },
-  {
-    name: 'Numeric normalization for volume & difficulty',
-    problemStatement:
-      'Volume and difficulty values are inconsistent (string vs. number), leading to sorting inaccuracies and display drift across tables and exports.',
-    definitionOfDone:
-      'All numeric inputs are parsed, validated, and stored as numbers with consistent rounding rules; UI tables sort and format identically.',
-    scope: {
-      type: 'Back-end + Front-end',
-      why: 'Needs backend parsing + schema updates and frontend formatting/sorting updates.',
-    },
-    impactedAreas: [
-      'backend ingestion + validation layer',
-      'database schema numeric fields',
-      'frontend keyword/token table renderers',
-    ],
-    dependencies: ['Schema migration plan', 'Updated export formatting requirements'],
-    risks: ['Potential mismatch with historical exports', 'Migration errors if invalid legacy values exist'],
-    status: 'In discovery',
-  },
-  {
-    name: 'Upload notification staging',
-    problemStatement:
-      'Users do not receive clear feedback during large uploads, which causes double submissions and uncertainty around processing.',
-    definitionOfDone:
-      'Upload events emit staged notifications (queued → processing → completed/failed) with timestamps and clear retry paths.',
-    scope: {
-      type: 'Full stack',
-      why: 'Requires job queue hooks, API status endpoints, and UI notification rendering.',
-    },
-    impactedAreas: [
-      'backend upload job worker',
-      'notifications/event status API',
-      'frontend upload flow + toast/notification surface',
-    ],
-    dependencies: ['Queue event taxonomy finalized', 'Notification design tokens'],
-    risks: ['Notification spam if debounce rules are missing', 'State mismatch on refresh'],
-    status: 'Planned',
-  },
-  {
-    name: 'Backfill + migration playbook',
-    problemStatement:
-      'Normalization changes require a safe backfill and migration path; without a playbook, historical data consistency cannot be guaranteed.',
-    definitionOfDone:
-      'Documented, automated backfill steps exist with dry-run mode, verification reports, and rollback procedures.',
-    scope: {
-      type: 'Back-end',
-      why: 'Focuses on data migrations, backfill scripts, and operational checks.',
-    },
-    impactedAreas: [
-      'migration scripts',
-      'data verification reports',
-      'operations runbook',
-    ],
-    dependencies: ['Normalized schema finalized', 'Access to staging data snapshots'],
-    risks: ['Long-running migrations', 'Unexpected data drift across environments'],
-    status: 'Proposed',
-  },
-];
+import { Input } from '@/components/ui/Input';
+import { backlogItems, type BacklogItem, type BacklogPriority, type BacklogStatus } from './backlogData';
 
 const renderList = (items: string[]) => (
   <ul className="list-disc pl-4 text-[13px] text-muted space-y-1">
@@ -90,7 +13,91 @@ const renderList = (items: string[]) => (
   </ul>
 );
 
+const priorities: BacklogPriority[] = ['P0', 'P1', 'P2'];
+const statuses: BacklogStatus[] = ['Proposed', 'Planned', 'In discovery'];
+
+function getCounts(items: BacklogItem[]) {
+  return {
+    total: items.length,
+    byPriority: priorities.reduce(
+      (acc, p) => {
+        acc[p] = items.filter((i) => i.priority === p).length;
+        return acc;
+      },
+      {} as Record<BacklogPriority, number>,
+    ),
+    byStatus: statuses.reduce(
+      (acc, s) => {
+        acc[s] = items.filter((i) => i.status === s).length;
+        return acc;
+      },
+      {} as Record<BacklogStatus, number>,
+    ),
+  };
+}
+
+function Pill({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+        active
+          ? 'bg-accent text-white border-accent shadow-sm'
+          : 'text-muted border-border hover:text-foreground hover:bg-surface-muted'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function BacklogPage() {
+  const [query, setQuery] = React.useState('');
+  const [priorityFilter, setPriorityFilter] = React.useState<BacklogPriority | 'All'>('All');
+  const [statusFilter, setStatusFilter] = React.useState<BacklogStatus | 'All'>('All');
+
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return backlogItems
+      .filter((item) => {
+        if (priorityFilter !== 'All' && item.priority !== priorityFilter) return false;
+        if (statusFilter !== 'All' && item.status !== statusFilter) return false;
+        if (!q) return true;
+
+        const haystack = [
+          item.name,
+          item.category,
+          item.area,
+          item.type,
+          item.problemStatement,
+          item.definitionOfDone,
+          ...item.impactedAreas,
+          ...item.dependencies,
+          ...item.risks,
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        return haystack.includes(q);
+      })
+      .sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority.localeCompare(b.priority);
+        if (b.impact !== a.impact) return b.impact - a.impact;
+        return a.complexity - b.complexity;
+      });
+  }, [query, priorityFilter, statusFilter]);
+
+  const counts = React.useMemo(() => getCounts(backlogItems), []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
@@ -99,24 +106,115 @@ export default function BacklogPage() {
           <header className="space-y-2">
             <h2 className="text-2xl font-semibold text-foreground">Backlog</h2>
             <p className="text-[13px] text-muted">
-              Structured feature backlog capturing scope, risks, and dependencies for upcoming normalization and upload work.
+              Review-friendly list of remaining features, fixes, and product improvements.
             </p>
           </header>
 
+          <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-foreground font-semibold">Summary</div>
+              <div className="text-xs text-muted">Total: {counts.total}</div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs text-muted">
+              <div className="rounded-lg border border-border bg-background px-3 py-2">
+                <span className="font-semibold text-foreground">Priorities:</span>{' '}
+                P0 {counts.byPriority.P0} · P1 {counts.byPriority.P1} · P2 {counts.byPriority.P2}
+              </div>
+              <div className="rounded-lg border border-border bg-background px-3 py-2">
+                <span className="font-semibold text-foreground">Statuses:</span>{' '}
+                Proposed {counts.byStatus.Proposed} · Planned {counts.byStatus.Planned} · In discovery{' '}
+                {counts.byStatus['In discovery']}
+              </div>
+              <div className="rounded-lg border border-border bg-background px-3 py-2">
+                <span className="font-semibold text-foreground">Showing:</span> {filtered.length}
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="md:col-span-2">
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search backlog (name, category, notes…)"
+                  aria-label="Search backlog"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Pill
+                  label="All priorities"
+                  active={priorityFilter === 'All'}
+                  onClick={() => setPriorityFilter('All')}
+                />
+                {priorities.map((p) => (
+                  <Pill
+                    key={p}
+                    label={p}
+                    active={priorityFilter === p}
+                    onClick={() => setPriorityFilter(p)}
+                  />
+                ))}
+              </div>
+              <div className="md:col-span-3 flex flex-wrap items-center gap-2">
+                <Pill
+                  label="All statuses"
+                  active={statusFilter === 'All'}
+                  onClick={() => setStatusFilter('All')}
+                />
+                {statuses.map((s) => (
+                  <Pill
+                    key={s}
+                    label={s}
+                    active={statusFilter === s}
+                    onClick={() => setStatusFilter(s)}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+
           <div className="space-y-6">
-            {backlogItems.map((item) => (
+            {filtered.map((item) => (
               <section
-                key={item.name}
+                key={item.id}
                 className="rounded-xl border border-border bg-surface p-6 shadow-sm space-y-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-foreground">{item.name}</h3>
-                  <span className="text-[11px] uppercase tracking-wider font-semibold text-accent bg-accent/10 border border-accent/30 px-2 py-1 rounded-full">
-                    {item.status}
-                  </span>
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-semibold text-foreground">
+                      <span className="text-muted mr-2">#{item.id}</span>
+                      {item.name}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
+                      <span className="rounded-full border border-border bg-background px-2 py-0.5">
+                        {item.category}
+                      </span>
+                      <span className="rounded-full border border-border bg-background px-2 py-0.5">
+                        {item.area}
+                      </span>
+                      <span className="rounded-full border border-border bg-background px-2 py-0.5">
+                        {item.type}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-white bg-accent border border-accent px-2 py-1 rounded-full">
+                      {item.priority}
+                    </span>
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-accent bg-accent/10 border border-accent/30 px-2 py-1 rounded-full">
+                      {item.status}
+                    </span>
+                  </div>
                 </div>
 
                 <dl className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <dt className="text-[11px] uppercase tracking-wider text-muted">Scores</dt>
+                    <dd className="text-[13px] text-foreground">
+                      Impact <span className="font-semibold">{item.impact}/10</span> · Complexity{' '}
+                      <span className="font-semibold">{item.complexity}/10</span>
+                    </dd>
+                  </div>
                   <div className="space-y-1">
                     <dt className="text-[11px] uppercase tracking-wider text-muted">Problem statement</dt>
                     <dd className="text-[13px] text-foreground">{item.problemStatement}</dd>

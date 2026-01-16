@@ -146,7 +146,7 @@ export const KeywordRow: React.FC<{
           )}
           {!showCheckbox && <span className="w-6 inline-block"></span>}
         </td>
-        <td className={`w-[46%] py-1 text-[13px] font-light text-foreground sticky left-[44px] z-10 ${stickyBgClass}`}>
+        <td className={`w-[36%] py-1 text-[13px] font-light text-foreground sticky left-[44px] z-10 ${stickyBgClass}`}>
           <div className={`flex items-start gap-x-0.5 ${keywordPaddingClass}`}>
             <span className="break-words leading-tight" title={displayText}>{displayText}</span>
             <span className="w-5 h-5 inline-flex items-center justify-center flex-shrink-0 flex-shrink-0" onClick={handleRowClick}>
@@ -164,7 +164,7 @@ export const KeywordRow: React.FC<{
             </span>
           </div>
         </td>
-        <td className="w-[34%] py-1 text-[13px] text-foreground whitespace-nowrap">
+        <td className="w-[44%] py-1 text-[13px] text-foreground whitespace-nowrap">
           <div className="flex flex-wrap gap-1 items-center">
             {orderedTokens.length > 0 ? (
               orderedTokens.map((token, index) => (
