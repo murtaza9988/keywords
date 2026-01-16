@@ -481,6 +481,14 @@ async def upload_keywords(
     if not project: 
         raise HTTPException(status_code=404, detail="Project not found")
     
+    # Check if processing is already active
+    current_status = processing_queue_service.get_status(project_id)
+    if current_status in ("processing", "queued"):
+        raise HTTPException(
+            status_code=409,
+            detail="A file is already being processed for this project. Please wait for processing to complete before uploading more files."
+        )
+    
     # Signal upload starting - this handles all state reset logic internally
     # If there's stale/error state, it will be cleared automatically
     processing_queue_service.begin_upload(project_id)

@@ -62,6 +62,7 @@ export function ProcessingPanel({
                 onUploadBatchStart={onUploadBatchStart}
                 onUploadSuccess={onUploadSuccess}
                 onUploadError={onUploadError}
+                disabled={isProcessing}
               />
             </div>
             <CSVUploadDropdown projectId={projectId} refreshKey={csvUploadsRefreshKey} />
