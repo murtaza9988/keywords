@@ -15,41 +15,41 @@ export const Snackbar: React.FC<SnackbarProps> = ({ messages, onClose }) => {
           icon: CheckCircle2,
           iconColor: 'text-emerald-600',
           border: 'border-emerald-200',
-          background: 'bg-emerald-50/80'
+          background: 'bg-emerald-50/95'
         };
       case 'error':
         return {
           icon: AlertTriangle,
           iconColor: 'text-red-600',
           border: 'border-red-200',
-          background: 'bg-red-50/80'
+          background: 'bg-red-50/95'
         };
       default:
         return {
           icon: Info,
           iconColor: 'text-blue-600',
           border: 'border-blue-200',
-          background: 'bg-blue-50/80'
+          background: 'bg-blue-50/95'
         };
     }
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm">
+    <div className="fixed top-24 right-4 z-50 flex max-w-sm flex-col gap-3 pointer-events-none sm:right-6 lg:top-20">
       {messages.map((msg) => {
         const styles = getVariantStyles(msg.type);
         const Icon = styles.icon;
         return (
           <div
             key={msg.id}
-            className={`flex items-start gap-3 rounded-lg border ${styles.border} ${styles.background} px-4 py-3 shadow-lg text-sm text-foreground animate-fade-in-out`}
+            className={`pointer-events-auto flex items-start gap-3 rounded-lg border ${styles.border} ${styles.background} px-4 py-3 shadow-xl ring-1 ring-black/5 backdrop-blur-sm text-sm text-foreground animate-fade-in-out`}
           >
             <Icon className={`mt-0.5 h-4 w-4 ${styles.iconColor}`} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold">{msg.text}</span>
                 {msg.stage && (
-                  <span className="rounded-full border border-border bg-white px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted">
+                  <span className="rounded-full border border-border bg-white/90 px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted">
                     {msg.stage}
                   </span>
                 )}
@@ -60,7 +60,7 @@ export const Snackbar: React.FC<SnackbarProps> = ({ messages, onClose }) => {
             </div>
             <button
               onClick={() => onClose(msg.id)}
-              className="text-muted transition hover:text-foreground"
+              className="-mr-1 -mt-1 rounded-md p-1 text-muted transition hover:bg-white/60 hover:text-foreground"
               aria-label="Dismiss notification"
               type="button"
             >
