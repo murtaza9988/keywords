@@ -1,7 +1,7 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BarChart3, Calendar, Edit2, Trash2, Loader2, ArrowUpDown } from 'lucide-react';
+import { BarChart3, Calendar, Edit2, Trash2, Loader2, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Project, ProjectWithStats } from '@/lib/types';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -78,6 +78,8 @@ export default function ProjectsTable({
   setSortConfig,
 }: ProjectsTableProps) {
   const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -104,6 +106,17 @@ export default function ProjectsTable({
         return 0;
     }
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedProjects.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProjects = sortedProjects.slice(startIndex, endIndex);
+
+  // Reset to first page when search term changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const handleSort = (key: string) => {
     setSortConfig({
@@ -259,7 +272,7 @@ export default function ProjectsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {sortedProjects.map((project, index) => {
+              {paginatedProjects.map((project, index) => {
                 const rowBgClass = index % 2 === 0 ? 'bg-table-row' : 'bg-table-row-alt';
                 const isCurrentlyEditing = editingProject?.id === project.id;
                 const isSelected = selectedIds.includes(project.id);
@@ -396,6 +409,38 @@ export default function ProjectsTable({
               })}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 bg-surface-muted border-t border-border">
+              <div className="text-ui-meta">
+                Showing {startIndex + 1} to {Math.min(endIndex, sortedProjects.length)} of {sortedProjects.length} projects
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft size={16} />
+                  Previous
+                </Button>
+                <span className="text-ui-body px-3 py-1 bg-background rounded border">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1"
+                >
+                  Next
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {showDeleteModal && projectsToDelete.length > 0 && (

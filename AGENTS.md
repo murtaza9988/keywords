@@ -45,18 +45,42 @@ AI agents and contributors MUST:
 Even for "urgent hotfixes":
 - Create a branch: `git checkout -b fix/urgent-hotfix`
 - Push the branch: `git push origin fix/urgent-hotfix`
-- Create a PR: `gh pr create --base main`
+- **Create a PR on GitHub**: `gh pr create --base main --title "fix: urgent hotfix description"`
+- **Use the PR template**: Fill out all sections in `.github/PULL_REQUEST_TEMPLATE.md`
 - Merge via GitHub (not locally)
+
+**After creating a PR, always notify the user with this template:**
+
+```
+✅ **PR Created**: [PR Title](PR_URL)
+
+**Changes Made:**
+- Bullet point description of changes
+- Another bullet point
+- Final bullet point
+
+**Ready for Review**: The PR includes all requested changes and passes local validation.
+```
+
+### PR Template Usage
+All PRs must use the repository's PR template (`.github/PULL_REQUEST_TEMPLATE.md`) which includes:
+- **Description**: Brief overview of changes
+- **Changes Made**: Detailed bullet points
+- **Type of Change**: Categorization checkboxes
+- **Testing**: Validation checklist
+- **Screenshots**: For UI changes
+- **Related Issues**: Issue links
 
 **If an AI agent pushes directly to main, it has violated this repository's core workflow.**
 
 ### ⛔ HARD RULES FOR AI AGENTS ⛔
 
 1. **Never push directly to main** - Always use PRs (see above)
-2. **Always read files before editing** - Never assume content; use read_file first
-3. **Run `npm run lint && npm run typecheck` before committing** - Fix errors, don't ignore them
-4. **One concern per PR** - Don't bundle unrelated changes
-5. **Verify the build passes locally before pushing** - `npm run build` must succeed
+2. **Always create a PR on GitHub after pushing** - Use `gh pr create` and notify the user with the template above
+3. **Always read files before editing** - Never assume content; use read_file first
+4. **Run `npm run lint && npm run typecheck` before committing** - Fix errors, don't ignore them
+5. **One concern per PR** - Don't bundle unrelated changes
+6. **Verify the build passes locally before pushing** - `npm run build` must succeed
 
 ### Pre-Commit Checklist
 Before submitting a PR, ensure:
