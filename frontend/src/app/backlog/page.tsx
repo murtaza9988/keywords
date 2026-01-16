@@ -3,6 +3,7 @@ import React from 'react';
 import Header from '@/app/projects/components/Header';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { backlogItems, type BacklogItem, type BacklogPriority, type BacklogStatus } from './backlogData';
 
 const renderList = (items: string[]) => (
@@ -64,6 +65,9 @@ export default function BacklogPage() {
   const [query, setQuery] = React.useState('');
   const [priorityFilter, setPriorityFilter] = React.useState<BacklogPriority | 'All'>('All');
   const [statusFilter, setStatusFilter] = React.useState<BacklogStatus | 'All'>('All');
+  const [complexityFilter, setComplexityFilter] = React.useState<'All' | 'Low' | 'Medium' | 'High'>('All');
+  const [impactFilter, setImpactFilter] = React.useState<'All' | 'Low' | 'Medium' | 'High'>('All');
+  const [selectedItem, setSelectedItem] = React.useState<BacklogItem | null>(null);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();

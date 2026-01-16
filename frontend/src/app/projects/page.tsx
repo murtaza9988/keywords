@@ -178,9 +178,34 @@ export default function Projects() {
                 <div>
                   <h2 className="text-ui-page">Projects</h2>
                   <p className="text-ui-muted mt-1">
-                    Manage your [{filteredProjectCount}] SEO keyword projects
+                    Manage your SEO keyword projects
                   </p>
                 </div>
+                
+                {/* Stats Cards */}
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Card className="p-4 bg-surface border-border">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-accent">{projects.length}</div>
+                      <div className="text-ui-meta">Total Projects</div>
+                    </div>
+                  </Card>
+                  <Card className="p-4 bg-surface border-border">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-accent">{filteredProjectCount}</div>
+                      <div className="text-ui-meta">Filtered Projects</div>
+                    </div>
+                  </Card>
+                  <Card className="p-4 bg-surface border-border">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-accent">
+                        {projects.reduce((sum, p) => sum + (p.keyword_count || 0), 0)}
+                      </div>
+                      <div className="text-ui-meta">Total Keywords</div>
+                    </div>
+                  </Card>
+                </div>
+
                 <Input
                   type="text"
                   value={searchTerm}

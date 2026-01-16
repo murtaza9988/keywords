@@ -10,6 +10,7 @@ interface FileUploaderProps {
   onUploadBatchStart: (files: File[]) => void;
   onUploadSuccess: (backendStatus: ProcessingStatus, message?: string) => void;
   onUploadError: (message: string) => void;
+  disabled?: boolean;
 }
 
 interface ApiError {
@@ -38,6 +39,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   onUploadBatchStart,
   onUploadSuccess,
   onUploadError,
+  disabled = false,
 }) => {
   const [isUploadingInternal, setIsUploadingInternal] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState(false);
@@ -266,7 +268,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           multiple
           className="hidden"
           onChange={handleFileChange}
-          disabled={isUploadingInternal}
+          disabled={isUploadingInternal || disabled}
         />
         <label
           htmlFor="input-file-upload"
@@ -274,7 +276,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             dragActive
               ? 'border-blue-500 bg-blue-50'
               : 'border-border bg-white hover:bg-surface-muted'
-          } ${isUploadingInternal ? 'opacity-70 cursor-not-allowed' : ''}`}
+          } ${(isUploadingInternal || disabled) ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           <div className="flex items-center gap-1 w-full justify-center">
             {isUploadingInternal ? (
