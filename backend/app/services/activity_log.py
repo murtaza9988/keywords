@@ -23,6 +23,8 @@ class ActivityLogService:
             user=user or "admin",
         )
         db.add(log)
+        await db.commit()
+        await db.refresh(log)
         return log
 
     @staticmethod
