@@ -345,7 +345,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                   <button
                     onClick={handleConfirmKeywords}
                     disabled={selectedKeywordIds.size === 0 || groupingLocked}
-                    className="bg-green-600 cursor-pointer text-white px-3 py-1 rounded-md text-ui-body shadow-sm hover:bg-green-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                    className="bg-success/80 cursor-pointer text-white px-3 py-1 rounded-md text-ui-body shadow-sm hover:bg-success transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
                   >
                     Confirm
                   </button>
@@ -361,7 +361,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                           : undefined
                   }
                   disabled={(!isUngroupButtonVisible && !isUnconfirmButtonVisible && !isUnblockButtonVisible) || selectedKeywordIds.size === 0 || groupingLocked}
-                  className="bg-yellow-500 cursor-pointer text-white px-3 py-1 rounded-md text-ui-body shadow-sm hover:bg-yellow-600 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                  className="bg-warning/80 cursor-pointer text-white px-3 py-1 rounded-md text-ui-body shadow-sm hover:bg-warning transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
                 >
                   {isProcessingAction && (isUngroupButtonVisible || isUnconfirmButtonVisible || isUnblockButtonVisible) ? (
                     "Processing..."
@@ -410,12 +410,12 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
             </span>
           ))}
           {includeFilter && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-ui-body bg-green-100 text-green-800 m-0.5 shadow-sm">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-ui-body bg-success/15 text-success m-0.5 shadow-sm">
               Inc ({includeMatchType}): {includeFilter} <button onClick={clearIncludeFilter} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
             </span>
           )}
           {excludeFilter && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-ui-body bg-red-100 text-red-800 m-0.5 shadow-sm">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-ui-body bg-danger/15 text-danger m-0.5 shadow-sm">
               Exc ({excludeMatchType}): {excludeFilter} <button onClick={clearExcludeFilter} className="cursor-pointer ml-1.5 opacity-70 hover:opacity-100">×</button>
             </span>
           )}
