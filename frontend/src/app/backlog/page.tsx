@@ -75,6 +75,16 @@ export default function BacklogPage() {
       .filter((item) => {
         if (priorityFilter !== 'All' && item.priority !== priorityFilter) return false;
         if (statusFilter !== 'All' && item.status !== statusFilter) return false;
+        if (complexityFilter !== 'All') {
+          if (complexityFilter === 'Low' && item.complexity > 3) return false;
+          if (complexityFilter === 'Medium' && (item.complexity <= 3 || item.complexity > 7)) return false;
+          if (complexityFilter === 'High' && item.complexity <= 7) return false;
+        }
+        if (impactFilter !== 'All') {
+          if (impactFilter === 'Low' && item.impact > 3) return false;
+          if (impactFilter === 'Medium' && (item.impact <= 3 || item.impact > 7)) return false;
+          if (impactFilter === 'High' && item.impact <= 7) return false;
+        }
         if (!q) return true;
 
         const haystack = [
@@ -98,7 +108,7 @@ export default function BacklogPage() {
         if (b.impact !== a.impact) return b.impact - a.impact;
         return a.complexity - b.complexity;
       });
-  }, [query, priorityFilter, statusFilter]);
+  }, [query, priorityFilter, statusFilter, complexityFilter, impactFilter]);
 
   const counts = React.useMemo(() => getCounts(backlogItems), []);
 
@@ -114,141 +124,221 @@ export default function BacklogPage() {
             </p>
           </header>
 
-          <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-ui-title font-semibold">Summary</div>
-              <div className="text-ui-meta">Total: {counts.total}</div>
+          <section className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card className="p-6 bg-surface border-border">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-accent">{counts.total}</div>
+                  <div className="text-ui-meta mt-1">Total Backlog Items</div>
+                </div>
+              </Card>
+              <Card className="p-6 bg-surface border-border">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-accent">{filtered.length}</div>
+                  <div className="text-ui-meta mt-1">Filtered Items</div>
+                </div>
+              </Card>
+              <Card className="p-6 bg-surface border-border">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-accent">
+                    {Math.round(backlogItems.reduce((sum, item) => sum + item.impact, 0) / backlogItems.length * 10) / 10}
+                  </div>
+                  <div className="text-ui-meta mt-1">Avg Impact Score</div>
+                </div>
+              </Card>
+              <Card className="p-6 bg-surface border-border">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-accent">
+                    {Math.round(backlogItems.reduce((sum, item) => sum + item.complexity, 0) / backlogItems.length * 10) / 10}
+                  </div>
+                  <div className="text-ui-meta mt-1">Avg Complexity Score</div>
+                </div>
+              </Card>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-ui-meta">
-              <div className="rounded-lg border border-border bg-background px-3 py-2">
-                <span className="font-semibold text-foreground">Priorities:</span>{' '}
-                P0 {counts.byPriority.P0} · P1 {counts.byPriority.P1} · P2 {counts.byPriority.P2}
+            <Card className="p-6 bg-surface border-border space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-ui-title font-semibold">Filters</div>
               </div>
-              <div className="rounded-lg border border-border bg-background px-3 py-2">
-                <span className="font-semibold text-foreground">Statuses:</span>{' '}
-                Proposed {counts.byStatus.Proposed} · Planned {counts.byStatus.Planned} · In discovery{' '}
-                {counts.byStatus['In discovery']}
-              </div>
-              <div className="rounded-lg border border-border bg-background px-3 py-2">
-                <span className="font-semibold text-foreground">Showing:</span> {filtered.length}
-              </div>
-            </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="md:col-span-2">
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search backlog (name, category, notes…)"
-                  aria-label="Search backlog"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Pill
-                  label="All priorities"
-                  active={priorityFilter === 'All'}
-                  onClick={() => setPriorityFilter('All')}
-                />
-                {priorities.map((p) => (
-                  <Pill
-                    key={p}
-                    label={p}
-                    active={priorityFilter === p}
-                    onClick={() => setPriorityFilter(p)}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search backlog (name, category, notes…)"
+                    aria-label="Search backlog"
                   />
-                ))}
-              </div>
-              <div className="md:col-span-3 flex flex-wrap items-center gap-2">
-                <Pill
-                  label="All statuses"
-                  active={statusFilter === 'All'}
-                  onClick={() => setStatusFilter('All')}
-                />
-                {statuses.map((s) => (
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-ui-label text-sm">Priority:</span>
                   <Pill
-                    key={s}
-                    label={s}
-                    active={statusFilter === s}
-                    onClick={() => setStatusFilter(s)}
+                    label="All"
+                    active={priorityFilter === 'All'}
+                    onClick={() => setPriorityFilter('All')}
                   />
-                ))}
+                  {priorities.map((p) => (
+                    <Pill
+                      key={p}
+                      label={p}
+                      active={priorityFilter === p}
+                      onClick={() => setPriorityFilter(p)}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-ui-label text-sm">Status:</span>
+                  <Pill
+                    label="All"
+                    active={statusFilter === 'All'}
+                    onClick={() => setStatusFilter('All')}
+                  />
+                  {statuses.map((s) => (
+                    <Pill
+                      key={s}
+                      label={s}
+                      active={statusFilter === s}
+                      onClick={() => setStatusFilter(s)}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-ui-label text-sm">Complexity:</span>
+                  {(['All', 'Low', 'Medium', 'High'] as const).map((level) => (
+                    <Pill
+                      key={level}
+                      label={level}
+                      active={complexityFilter === level}
+                      onClick={() => setComplexityFilter(level)}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-ui-label text-sm">Impact:</span>
+                  {(['All', 'Low', 'Medium', 'High'] as const).map((level) => (
+                    <Pill
+                      key={level}
+                      label={level}
+                      active={impactFilter === level}
+                      onClick={() => setImpactFilter(level)}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            </Card>
           </section>
 
-          <div className="space-y-6">
-            {filtered.map((item) => (
-              <section
-                key={item.id}
-                className="rounded-xl border border-border bg-surface p-6 shadow-sm space-y-4"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <h3 className="text-ui-heading">
-                      <span className="text-muted mr-2">#{item.id}</span>
-                      {item.name}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-2 text-ui-meta">
-                      <span className="rounded-full border border-border bg-background px-2 py-0.5">
-                        {item.category}
-                      </span>
-                      <span className="rounded-full border border-border bg-background px-2 py-0.5">
-                        {item.area}
-                      </span>
-                      <span className="rounded-full border border-border bg-background px-2 py-0.5">
-                        {item.type}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-ui-label text-white bg-accent border border-accent px-2 py-1 rounded-full">
-                      {item.priority}
-                    </span>
-                    <span className="text-ui-label text-accent bg-accent/10 border border-accent/30 px-2 py-1 rounded-full">
-                      {item.status}
-                    </span>
-                  </div>
+          <Card className="p-6 bg-surface border-border">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="pb-3 text-ui-label font-semibold">ID</th>
+                    <th className="pb-3 text-ui-label font-semibold">Name</th>
+                    <th className="pb-3 text-ui-label font-semibold">Category</th>
+                    <th className="pb-3 text-ui-label font-semibold">Priority</th>
+                    <th className="pb-3 text-ui-label font-semibold">Status</th>
+                    <th className="pb-3 text-ui-label font-semibold">Impact</th>
+                    <th className="pb-3 text-ui-label font-semibold">Complexity</th>
+                    <th className="pb-3 text-ui-label font-semibold">Area</th>
+                    <th className="pb-3 text-ui-label font-semibold">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-b border-border hover:bg-background cursor-pointer transition-colors"
+                      onClick={() => setSelectedItem(item)}
+                    >
+                      <td className="py-3 text-ui-meta">#{item.id}</td>
+                      <td className="py-3 text-ui-body font-medium">{item.name}</td>
+                      <td className="py-3 text-ui-meta">{item.category}</td>
+                      <td className="py-3">
+                        <span className="text-ui-label text-white bg-accent border border-accent px-2 py-1 rounded-full text-xs">
+                          {item.priority}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <span className="text-ui-label text-accent bg-accent/10 border border-accent/30 px-2 py-1 rounded-full text-xs">
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="py-3 text-ui-body">{item.impact}/10</td>
+                      <td className="py-3 text-ui-body">{item.complexity}/10</td>
+                      <td className="py-3 text-ui-meta">{item.area}</td>
+                      <td className="py-3 text-ui-meta">{item.type}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {selectedItem && (
+            <Modal
+              open={!!selectedItem}
+              onClose={() => setSelectedItem(null)}
+            >
+              <div className="space-y-4">
+                <h3 className="text-ui-heading">{selectedItem.name} (#{selectedItem.id})</h3>
+                
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-border bg-background px-2 py-1 text-sm">
+                    {selectedItem.category}
+                  </span>
+                  <span className="rounded-full border border-border bg-background px-2 py-1 text-sm">
+                    {selectedItem.area}
+                  </span>
+                  <span className="rounded-full border border-border bg-background px-2 py-1 text-sm">
+                    {selectedItem.type}
+                  </span>
+                  <span className="text-white bg-accent border border-accent px-2 py-1 rounded-full text-sm">
+                    {selectedItem.priority}
+                  </span>
+                  <span className="text-accent bg-accent/10 border border-accent/30 px-2 py-1 rounded-full text-sm">
+                    {selectedItem.status}
+                  </span>
                 </div>
 
                 <dl className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-1">
                     <dt className="text-ui-label">Scores</dt>
                     <dd className="text-ui-body">
-                      Impact <span className="font-semibold">{item.impact}/10</span> · Complexity{' '}
-                      <span className="font-semibold">{item.complexity}/10</span>
+                      Impact <span className="font-semibold">{selectedItem.impact}/10</span> · Complexity{' '}
+                      <span className="font-semibold">{selectedItem.complexity}/10</span>
                     </dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-ui-label">Problem statement</dt>
-                    <dd className="text-ui-body">{item.problemStatement}</dd>
+                    <dd className="text-ui-body">{selectedItem.problemStatement}</dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-ui-label">Definition of done</dt>
-                    <dd className="text-ui-body">{item.definitionOfDone}</dd>
+                    <dd className="text-ui-body">{selectedItem.definitionOfDone}</dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-ui-label">Scope</dt>
                     <dd className="text-ui-body">
-                      <span className="font-semibold">{item.scope.type}</span> — {item.scope.why}
+                      <span className="font-semibold">{selectedItem.scope.type}</span> — {selectedItem.scope.why}
                     </dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-ui-label">Impacted areas</dt>
-                    <dd>{renderList(item.impactedAreas)}</dd>
+                    <dd>{renderList(selectedItem.impactedAreas)}</dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-ui-label">Dependencies</dt>
-                    <dd>{renderList(item.dependencies)}</dd>
+                    <dd>{renderList(selectedItem.dependencies)}</dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-ui-label">Risks</dt>
-                    <dd>{renderList(item.risks)}</dd>
+                    <dd>{renderList(selectedItem.risks)}</dd>
                   </div>
                 </dl>
-              </section>
-            ))}
-          </div>
+              </div>
+            </Modal>
+          )}
         </Card>
       </main>
     </div>

@@ -199,7 +199,7 @@ export default function Projects() {
                   <Card className="p-4 bg-surface border-border">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-accent">
-                        {projects.reduce((sum, p) => sum + (p.keyword_count || 0), 0)}
+                        {projects.reduce((sum, p) => sum + (p.stats?.totalKeywords || 0), 0)}
                       </div>
                       <div className="text-ui-meta">Total Keywords</div>
                     </div>
