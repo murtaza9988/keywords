@@ -50,26 +50,21 @@ export default function CreateProjectForm({
           </div>
         </div>
       )}
-      <form onSubmit={handleCreateProject} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          <label htmlFor="newProjectName" className="text-ui-body font-medium">
-            Create New Project
-          </label>
-          <Input
-            id="newProjectName"
-            type="text"
-            value={newProjectName}
-            onChange={(e) => setNewProjectName(e.target.value)}
-            placeholder="Enter project name"
-            className="mt-2 w-full"
-            required
-            disabled={isCreating}
-          />
-        </div>
+      <form onSubmit={handleCreateProject} className="flex gap-3 items-end">
+        <Input
+          id="newProjectName"
+          type="text"
+          value={newProjectName}
+          onChange={(e) => setNewProjectName(e.target.value)}
+          placeholder="Enter project name"
+          className="flex-1"
+          required
+          disabled={isCreating}
+        />
         <Button
           type="submit"
           disabled={isCreating || !newProjectName.trim()}
-          className="w-full sm:w-auto"
+          className="w-auto"
         >
           {isCreating ? (
             <>
