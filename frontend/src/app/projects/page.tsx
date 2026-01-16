@@ -206,22 +206,24 @@ export default function Projects() {
                   </Card>
                 </div>
 
-                <Input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search projects..."
-                  className="w-full max-w-[240px] text-ui-body"
-                />
+                <div className="flex flex-row gap-4 items-end">
+                  <Input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search projects..."
+                    className="w-full max-w-[240px] text-ui-body"
+                  />
+                  <CreateProjectForm
+                    newProjectName={newProjectName}
+                    setNewProjectName={setNewProjectName}
+                    isCreating={isCreating}
+                    handleCreateProject={handleCreateProject}
+                    error={error}
+                    setError={setError}
+                  />
+                </div>
               </div>
-              <CreateProjectForm
-                newProjectName={newProjectName}
-                setNewProjectName={setNewProjectName}
-                isCreating={isCreating}
-                handleCreateProject={handleCreateProject}
-                error={error}
-                setError={setError}
-              />
             </div>
             <ProjectsTable
               projects={projects}
