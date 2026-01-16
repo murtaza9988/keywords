@@ -3,6 +3,20 @@ import { NextRequest, NextResponse } from 'next/server';
 const RAW_BACKEND_BASE = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const BACKEND_BASE = RAW_BACKEND_BASE.replace(/\/$/, '');
 
+const API_PROXY_DEBUG = process.env.API_PROXY_DEBUG === 'true';
+
+function debugLog(...args: unknown[]): void {
+  if (API_PROXY_DEBUG) {
+    console.log(...args);
+  }
+}
+
+function debugError(...args: unknown[]): void {
+  if (API_PROXY_DEBUG) {
+    console.error(...args);
+  }
+}
+
 type RouteContext = {
   // In newer Next.js versions, dynamic route params are provided as a Promise.
   params: Promise<{ path?: string[] }>;
@@ -34,8 +48,7 @@ function buildBackendUrls(request: NextRequest, pathParts: string[]): string[] {
 async function proxy(request: NextRequest, pathParts: string[]): Promise<NextResponse> {
   const urls = buildBackendUrls(request, pathParts);
 
-  // Debug logging - will appear in Vercel function logs
-  console.log('[API Proxy] Request:', {
+  debugLog('[API Proxy] Request:', {
     originalUrl: request.nextUrl.pathname + request.nextUrl.search,
     pathParts,
     BACKEND_BASE,
@@ -59,9 +72,9 @@ async function proxy(request: NextRequest, pathParts: string[]): Promise<NextRes
       body,
       redirect: 'manual',
     });
-    console.log('[API Proxy] First try:', urls[0], '→', upstreamResponse.status);
+    debugLog('[API Proxy] First try:', urls[0], '→', upstreamResponse.status);
   } catch (err) {
-    console.error('[API Proxy] First try FAILED:', urls[0], err);
+    debugError('[API Proxy] First try FAILED:', urls[0], err);
     if (urls.length > 1) {
       upstreamResponse = await fetch(urls[1], {
         method: request.method,
@@ -69,21 +82,21 @@ async function proxy(request: NextRequest, pathParts: string[]): Promise<NextRes
         body,
         redirect: 'manual',
       });
-      console.log('[API Proxy] Fallback result:', urls[1], '→', upstreamResponse.status);
+      debugLog('[API Proxy] Fallback result:', urls[1], '→', upstreamResponse.status);
     } else {
       throw err;
     }
   }
 
   if (upstreamResponse.status === 404 && urls.length > 1) {
-    console.log('[API Proxy] Got 404, trying fallback:', urls[1]);
+    debugLog('[API Proxy] Got 404, trying fallback:', urls[1]);
     upstreamResponse = await fetch(urls[1], {
       method: request.method,
       headers,
       body,
       redirect: 'manual',
     });
-    console.log('[API Proxy] Fallback result:', upstreamResponse.status);
+    debugLog('[API Proxy] Fallback result:', upstreamResponse.status);
   }
 
   const responseHeaders = new Headers(upstreamResponse.headers);
