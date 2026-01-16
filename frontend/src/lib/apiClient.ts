@@ -379,10 +379,24 @@ class ApiClient {
     return data;
   }
 
-  async fetchProjectLogs(projectId: string): Promise<ActivityLog[]> {
+  async fetchProjectLogs(
+    projectId: string,
+    options: { page?: number; limit?: number } = {}
+  ): Promise<ActivityLog[]> {
+    const params = new URLSearchParams();
+    if (options.page) {
+      params.set('page', String(options.page));
+    }
+    if (options.limit) {
+      params.set('limit', String(options.limit));
+    }
+    const query = params.toString();
+    const url = query
+      ? `/api/projects/${projectId}/logs?${query}`
+      : `/api/projects/${projectId}/logs`;
     const data = await this.request<ApiActivityLog[]>(
       'get',
-      `/api/projects/${projectId}/logs`,
+      url,
       undefined,
       undefined,
       false

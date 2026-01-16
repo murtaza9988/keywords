@@ -47,36 +47,36 @@ export function LogsTable({
 
     const fetchLogs = async () => {
       if (!isActive) return;
-      if (scope === 'project' && !projectId) return;
+      if (scope === 'project' && !projectId) {
+        if (isMounted) {
+          setIsLoading(false);
+          setErrorMessage('Project id is missing. Unable to load activity logs.');
+        }
+        return;
+      }
       if (isFetchingRef.current) return;
       isFetchingRef.current = true;
       setIsLoading(true);
       setErrorMessage('');
       try {
         if (scope === 'project' && projectId) {
-          const projectIdNumber = Number(projectId);
           const collectedLogs: ActivityLog[] = [];
           let page = 1;
-          let totalPages = 1;
-          let total = 0;
-          while (page <= totalPages) {
-            const data = await apiClient.fetchAllActivityLogs({
-              projectId: projectIdNumber,
+          while (true) {
+            const data = await apiClient.fetchProjectLogs(projectId, {
               page,
               limit: pageSize,
             });
             if (!isMounted) return;
-            collectedLogs.push(...data.logs);
-            total = data.pagination.total;
-            totalPages = data.pagination.pages || 1;
-            page += 1;
-            if (data.logs.length === 0) {
+            collectedLogs.push(...data);
+            if (data.length < pageSize) {
               break;
             }
+            page += 1;
           }
           if (isMounted) {
             setLogs(collectedLogs);
-            setTotalCount(total);
+            setTotalCount(null);
           }
         } else {
           const data = await apiClient.fetchAllActivityLogs({ page: 1, limit: pageSize });
