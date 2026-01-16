@@ -173,6 +173,21 @@ body {
     font-weight: 500;
     color: var(--muted);
   }
+  .text-ui-size-body {
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 400;
+  }
+  .text-ui-size-meta {
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 500;
+  }
+  .text-ui-size-page {
+    font-size: 18px;
+    line-height: 1.2;
+    font-weight: 600;
+  }
   .bg-white {
     background-color: var(--surface);
   }

@@ -60,7 +60,7 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
     <div className="relative">
       <button
         onClick={toggleDropdown}
-        className="flex items-center gap-2 cursor-pointer text-foreground px-3 py-2 text-xs font-medium rounded-md border border-border bg-white shadow-sm hover:bg-surface-muted transition-colors"
+        className="flex items-center gap-2 cursor-pointer text-foreground px-3 py-2 text-ui-size-meta font-medium rounded-md border border-border bg-white shadow-sm hover:bg-surface-muted transition-colors"
         disabled={isLoading}
       >
         <FileText className="h-4 w-4 text-muted" />
@@ -71,7 +71,7 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
         <div className="absolute mt-2 w-64 bg-white shadow-lg border border-border rounded-lg z-10">
           <div className="p-2 max-h-60 overflow-y-auto">
             {csvUploads.length === 0 ? (
-              <p className="text-muted text-[13px] p-2">No CSV uploads yet.</p>
+              <p className="text-ui-muted p-2">No CSV uploads yet.</p>
             ) : (
               csvUploads.map((upload) => (
                 <div
@@ -79,8 +79,8 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
                   className="flex items-start justify-between gap-3 p-2 hover:bg-surface-muted rounded-md"
                 >
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-foreground truncate">{upload.file_name}</p>
-                    <p className="text-[13px] text-muted">
+                    <p className="text-ui-body font-medium text-foreground truncate">{upload.file_name}</p>
+                    <p className="text-ui-muted">
                       Uploaded: {new Date(upload.uploaded_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -88,7 +88,7 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
                     type="button"
                     onClick={() => handleDownload(upload)}
                     disabled={downloadingId === upload.id}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1 text-[11px] font-medium text-foreground hover:bg-surface-muted disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1 text-ui-size-meta font-medium text-foreground hover:bg-surface-muted disabled:opacity-50"
                     title="Download this CSV"
                   >
                     <Download className="h-3.5 w-3.5" />

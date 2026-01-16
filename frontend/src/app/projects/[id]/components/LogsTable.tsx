@@ -218,21 +218,21 @@ export function LogsTable({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">Search logs</label>
+          <label className="text-ui-label">Search logs</label>
           <input
             type="text"
             placeholder="Filter by user, action, details, or ID"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            className="w-72 max-w-full rounded-md border border-border bg-white px-3 py-1.5 text-[13px] text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
+            className="w-72 max-w-full rounded-md border border-border bg-white px-3 py-1.5 text-ui-body text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">Action</label>
+          <label className="text-ui-label">Action</label>
           <select
             value={actionFilter}
             onChange={(event) => setActionFilter(event.target.value)}
-            className="rounded-md border border-border bg-white px-3 py-1.5 text-[13px] text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
+            className="rounded-md border border-border bg-white px-3 py-1.5 text-ui-body text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
           >
             {actionOptions.map((action) => (
               <option key={action} value={action}>
@@ -241,19 +241,19 @@ export function LogsTable({
             ))}
           </select>
         </div>
-        <div className="text-xs text-muted ml-auto">
+        <div className="text-ui-meta text-muted ml-auto">
           Showing {sortedLogs.length.toLocaleString()} of {(totalCount ?? logs.length).toLocaleString()} entries
         </div>
       </div>
 
       <div className="rounded-lg border border-border bg-white shadow-sm overflow-hidden">
         <div className="max-h-[420px] overflow-auto">
-          <table className="min-w-full table-fixed text-[13px]">
+          <table className="min-w-full table-fixed text-ui-body">
             <thead className="bg-surface-muted sticky top-0 z-10">
               <tr>
                 <th
                   scope="col"
-                  className="px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted cursor-pointer"
+                  className="px-3 py-2 text-left text-ui-label cursor-pointer"
                   onClick={() => handleSort('createdAt')}
                 >
                   <div className="flex items-center gap-1">
@@ -263,7 +263,7 @@ export function LogsTable({
                 </th>
                 <th
                   scope="col"
-                  className="px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted cursor-pointer"
+                  className="px-3 py-2 text-left text-ui-label cursor-pointer"
                   onClick={() => handleSort('user')}
                 >
                   <div className="flex items-center gap-1">
@@ -273,7 +273,7 @@ export function LogsTable({
                 </th>
                 <th
                   scope="col"
-                  className="px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted cursor-pointer"
+                  className="px-3 py-2 text-left text-ui-label cursor-pointer"
                   onClick={() => handleSort('action')}
                 >
                   <div className="flex items-center gap-1">
@@ -283,7 +283,7 @@ export function LogsTable({
                 </th>
                 <th
                   scope="col"
-                  className="px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted cursor-pointer"
+                  className="px-3 py-2 text-left text-ui-label cursor-pointer"
                   onClick={() => handleSort('projectId')}
                 >
                   <div className="flex items-center gap-1">
@@ -293,7 +293,7 @@ export function LogsTable({
                 </th>
                 <th
                   scope="col"
-                  className="px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted cursor-pointer"
+                  className="px-3 py-2 text-left text-ui-label cursor-pointer"
                   onClick={() => handleSort('id')}
                 >
                   <div className="flex items-center gap-1">
@@ -301,7 +301,7 @@ export function LogsTable({
                     {renderSortIcon('id')}
                   </div>
                 </th>
-                <th scope="col" className="px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted">
+                <th scope="col" className="px-3 py-2 text-left text-ui-label">
                   Details
                 </th>
               </tr>
@@ -309,7 +309,7 @@ export function LogsTable({
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={6} className="px-4 py-8 text-center text-ui-muted">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading activity logs...
@@ -318,13 +318,13 @@ export function LogsTable({
                 </tr>
               ) : errorMessage ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-red-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-ui-body text-red-500">
                     {errorMessage}
                   </td>
                 </tr>
               ) : sortedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
+                  <td colSpan={6} className="px-4 py-8 text-center text-ui-muted">
                     {scope === 'project'
                       ? 'No activity logs for this project yet.'
                       : 'No activity logs match your filters.'}

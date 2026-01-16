@@ -90,6 +90,10 @@ export default function DesignGuidelinesPage() {
                   <p className="text-ui-meta">UI Tabs (11px, 500)</p>
                   <div className="text-ui-tab">View 1 (UG; 3,413/100.00%)</div>
                 </div>
+                <div className="space-y-1">
+                  <p className="text-ui-meta">Size-only tokens (for colored badges/buttons)</p>
+                  <div className="text-ui-size-meta text-foreground">text-ui-size-meta</div>
+                </div>
                 <ul className="list-disc pl-5 text-ui-muted space-y-2">
                   <li>Use 600 weight for headings, 500 for UI tabs, 400 for body, and 300 only for long-form secondary notes.</li>
                   <li>Bold emphasis is reserved for key values or callouts only (never whole paragraphs).</li>

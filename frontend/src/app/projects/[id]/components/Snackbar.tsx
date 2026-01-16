@@ -42,20 +42,20 @@ export const Snackbar: React.FC<SnackbarProps> = ({ messages, onClose }) => {
         return (
           <div
             key={msg.id}
-            className={`pointer-events-auto flex items-start gap-3 rounded-lg border ${styles.border} ${styles.background} px-4 py-3 shadow-xl ring-1 ring-black/5 backdrop-blur-sm text-sm text-foreground animate-fade-in-out`}
+            className={`pointer-events-auto flex items-start gap-3 rounded-lg border ${styles.border} ${styles.background} px-4 py-3 shadow-xl ring-1 ring-black/5 backdrop-blur-sm text-ui-body text-foreground animate-fade-in-out`}
           >
             <Icon className={`mt-0.5 h-4 w-4 ${styles.iconColor}`} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold">{msg.text}</span>
                 {msg.stage && (
-                  <span className="rounded-full border border-border bg-white/90 px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted">
+                  <span className="rounded-full border border-border bg-white/90 px-2 py-0.5 text-ui-size-meta uppercase tracking-wide text-muted">
                     {msg.stage}
                   </span>
                 )}
               </div>
               {msg.description && (
-                <p className="mt-1 text-xs text-muted">{msg.description}</p>
+                <p className="mt-1 text-ui-muted">{msg.description}</p>
               )}
             </div>
             <button

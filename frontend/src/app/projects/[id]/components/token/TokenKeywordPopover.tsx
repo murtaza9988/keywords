@@ -16,7 +16,7 @@ export function TokenKeywordPopover({ token, getTopKeywords, index }: TokenKeywo
         index < 4 ? 'top-full mt-1' : 'bottom-full mb-1'
       }`}
     >
-      <table className="text-xs">
+      <table className="text-ui-body">
         <thead>
           <tr>
             <th className="px-2 py-1 text-left font-medium text-muted">Keyword</th>
@@ -43,7 +43,7 @@ export function TokenKeywordPopover({ token, getTopKeywords, index }: TokenKeywo
             ))
           ) : (
             <tr>
-              <td colSpan={4} className="px-2 py-1 text-center text-muted">
+              <td colSpan={4} className="px-2 py-1 text-center text-ui-muted">
                 No keywords found
               </td>
             </tr>

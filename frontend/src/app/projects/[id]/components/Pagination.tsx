@@ -35,7 +35,7 @@ const Pagination: React.FC<PaginationProps> = memo(({ total, page, pages, onPage
 
   return (
     <div className="flex items-center justify-between mt-4 px-2">
-      <div className="text-[13px] text-foreground">
+      <div className="text-ui-body text-foreground">
         Showing page {page} of {pages} ({total.toLocaleString()} total)
       </div>
       <div className="flex space-x-2">
@@ -44,8 +44,8 @@ const Pagination: React.FC<PaginationProps> = memo(({ total, page, pages, onPage
           disabled={disabled || page === 1}
           className={`px-3 py-1 border rounded-md transition-all duration-300 ease-in-out ${
             page === 1 || disabled
-              ? 'text-muted text-xs border-border cursor-not-allowed'
-              : 'text-foreground text-xs border-border hover:bg-surface-muted cursor-pointer'
+              ? 'text-ui-muted text-ui-size-meta border-border cursor-not-allowed'
+              : 'text-foreground text-ui-size-meta border-border hover:bg-surface-muted cursor-pointer'
           }`}
         >
           Previous
@@ -57,8 +57,8 @@ const Pagination: React.FC<PaginationProps> = memo(({ total, page, pages, onPage
             disabled={disabled}
             className={`px-3 py-1 border rounded-md transition-all duration-300 ease-in-out ${
               pageNum === page
-                ? 'bg-blue-600 text-xs text-white border-blue-600 cursor-pointer'
-                : 'text-muted text-xs border-border hover:bg-surface-muted cursor-pointer disabled:text-muted disabled:border-border disabled:cursor-not-allowed'
+                ? 'bg-blue-600 text-ui-size-meta text-white border-blue-600 cursor-pointer'
+                : 'text-ui-muted text-ui-size-meta border-border hover:bg-surface-muted cursor-pointer disabled:text-muted disabled:border-border disabled:cursor-not-allowed'
             }`}
           >
             {pageNum}
@@ -69,8 +69,8 @@ const Pagination: React.FC<PaginationProps> = memo(({ total, page, pages, onPage
           disabled={disabled || page === pages}
           className={`px-3 py-1 border rounded-md transition-all duration-300 ease-in-out ${
             page === pages || disabled
-              ? 'text-muted text-xs border-border cursor-not-allowed'
-              : 'text-foreground border-border hover:bg-surface-muted cursor-pointer'
+              ? 'text-ui-muted text-ui-size-meta border-border cursor-not-allowed'
+              : 'text-foreground text-ui-size-meta border-border hover:bg-surface-muted cursor-pointer'
           }`}
         >
           Next

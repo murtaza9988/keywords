@@ -19,13 +19,13 @@ export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDiv
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h2 className={cn("text-lg font-semibold text-foreground", className)} {...props} />
+    <h2 className={cn("text-ui-heading", className)} {...props} />
   );
 }
 
 export function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p className={cn("text-sm text-muted", className)} {...props} />
+    <p className={cn("text-ui-muted", className)} {...props} />
   );
 }
 

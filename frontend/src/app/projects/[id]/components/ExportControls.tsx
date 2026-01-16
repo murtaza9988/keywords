@@ -58,7 +58,7 @@ export function ExportControls({
         onClick={handleExportParent}
         disabled={isExportingParent}
         size="sm"
-        className="px-2 py-1 text-[11px]"
+        className="px-2 py-1 text-ui-size-meta"
       >
         {isExportingParent ? (
           <>
@@ -71,7 +71,7 @@ export function ExportControls({
       </Button>
       <label className="inline-flex items-center">
         <span className="sr-only">Import Parent KWs</span>
-        <Button disabled={isImportingParent} size="sm" className="px-2 py-1 text-[11px]">
+        <Button disabled={isImportingParent} size="sm" className="px-2 py-1 text-ui-size-meta">
           {isImportingParent ? (
             <>
               <Spinner size="sm" className="border-white/40 border-t-white" />
