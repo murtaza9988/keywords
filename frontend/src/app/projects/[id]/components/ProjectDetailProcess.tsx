@@ -73,8 +73,8 @@ export function ProjectDetailProcess(): React.ReactElement {
       {/* Pipeline Overview */}
       <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">🧭 Processing Pipeline (UI-aligned)</h3>
-          <p className="text-xs text-muted">
+          <h3 className="text-ui-body font-semibold text-foreground">🧭 Processing Pipeline (UI-aligned)</h3>
+          <p className="text-ui-meta text-muted">
             Matches the progress bar steps, backend stages, and queue behavior shown in the app.
           </p>
         </div>
@@ -82,21 +82,21 @@ export function ProjectDetailProcess(): React.ReactElement {
           {pipelineSteps.map((step, index) => (
             <li key={step.title} className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
               <div className="flex items-start gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[11px] font-semibold text-white">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/85 text-[11px] font-semibold text-white">
                   {index + 1}
                 </span>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-foreground">{step.title}</span>
+                  <span className="text-ui-meta font-semibold text-foreground">{step.title}</span>
                   <span className="text-[11px] text-muted">{step.detail}</span>
                 </div>
               </div>
-              <span className="mt-2 inline-flex w-fit items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
+              <span className="mt-2 inline-flex w-fit items-center rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
                 {step.badge}
               </span>
             </li>
           ))}
         </ol>
-        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-ui-meta text-amber-900">
           🔒 Grouping is read-only while processing is queued or running. The UI disables controls and the API returns 409 until processing completes.
         </div>
       </div>
@@ -104,26 +104,26 @@ export function ProjectDetailProcess(): React.ReactElement {
       {/* Upload Flow */}
       <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">📤 Upload Flow</h3>
-          <p className="text-xs text-muted">
+          <h3 className="text-ui-body font-semibold text-foreground">📤 Upload Flow</h3>
+          <p className="text-ui-meta text-muted">
             How CSV files are uploaded and queued for processing.
           </p>
         </div>
-        <ol className="mt-3 space-y-2 text-xs text-foreground">
+        <ol className="mt-3 space-y-2 text-ui-meta text-foreground">
           <li className="flex gap-2">
-            <span className="font-semibold text-blue-600">1.</span>
+            <span className="font-semibold text-accent">1.</span>
             <div>
               <span className="font-medium">File Upload:</span> CSV files are uploaded in 1MB chunks (2MB for files larger than 20MB) for reliability. Multiple files can be uploaded together as a batch.
             </div>
           </li>
           <li className="flex gap-2">
-            <span className="font-semibold text-blue-600">2.</span>
+            <span className="font-semibold text-accent">2.</span>
             <div>
               <span className="font-medium">Chunk Assembly:</span> When the final chunk arrives, the backend assembles the file, records the upload for download, and de-dupes identical CSV content.
             </div>
           </li>
           <li className="flex gap-2">
-            <span className="font-semibold text-blue-600">3.</span>
+            <span className="font-semibold text-accent">3.</span>
             <div>
               <span className="font-medium">Queue Management:</span> Non-duplicate files are queued for sequential processing, with the progress bar showing the current file and queued files.
             </div>
@@ -134,44 +134,44 @@ export function ProjectDetailProcess(): React.ReactElement {
       {/* Token Generation */}
       <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">🔤 Token Generation (Normalization)</h3>
-          <p className="text-xs text-muted">
+          <h3 className="text-ui-body font-semibold text-foreground">🔤 Token Generation (Normalization)</h3>
+          <p className="text-ui-meta text-muted">
             How keywords are converted to tokens for clustering.
           </p>
         </div>
-        <ol className="mt-3 space-y-2 text-xs text-foreground">
+        <ol className="mt-3 space-y-2 text-ui-meta text-foreground">
           <li className="flex gap-2">
-            <span className="font-semibold text-green-600">1.</span>
+            <span className="font-semibold text-success">1.</span>
             <div>
               <span className="font-medium">Text Cleanup:</span> Smart quotes, dashes, currency symbols, and numeric formats are normalized (ex: &quot;$1,500&quot; → &quot;1500&quot;).
             </div>
           </li>
           <li className="flex gap-2">
-            <span className="font-semibold text-green-600">2.</span>
+            <span className="font-semibold text-success">2.</span>
             <div>
               <span className="font-medium">Tokenization:</span> Keywords are lowercased and split into words using NLTK. Example: &quot;best sba loans&quot; → [&quot;best&quot;, &quot;sba&quot;, &quot;loans&quot;]
             </div>
           </li>
           <li className="flex gap-2">
-            <span className="font-semibold text-green-600">3.</span>
+            <span className="font-semibold text-success">3.</span>
             <div>
               <span className="font-medium">Compound Normalization:</span> Open, closed, and hyphenated variants are normalized. Example: &quot;credit-card&quot; and &quot;credit card&quot; both become &quot;creditcard&quot;.
             </div>
           </li>
           <li className="flex gap-2">
-            <span className="font-semibold text-green-600">4.</span>
+            <span className="font-semibold text-success">4.</span>
             <div>
               <span className="font-medium">Lemmatization:</span> Tokens are cleaned of punctuation/non-English letters and reduced to root forms. Example: &quot;running&quot; → &quot;run&quot;, &quot;loans&quot; → &quot;loan&quot;.
             </div>
           </li>
           <li className="flex gap-2">
-            <span className="font-semibold text-green-600">5.</span>
+            <span className="font-semibold text-success">5.</span>
             <div>
               <span className="font-medium">Stop Word Removal:</span> Common words (the, a, of, etc.) are removed while question words (what, how, why) are kept.
             </div>
           </li>
           <li className="flex gap-2">
-            <span className="font-semibold text-green-600">6.</span>
+            <span className="font-semibold text-success">6.</span>
             <div>
               <span className="font-medium">Synonym Mapping & Sorting:</span> WordNet synonyms are collapsed to a base token, then tokens are de-duped and sorted for deterministic matching.
             </div>
@@ -182,12 +182,12 @@ export function ProjectDetailProcess(): React.ReactElement {
       {/* Auto-Clustering */}
       <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">🔗 Auto-Clustering (Grouping)</h3>
-          <p className="text-xs text-muted">
+          <h3 className="text-ui-body font-semibold text-foreground">🔗 Auto-Clustering (Grouping)</h3>
+          <p className="text-ui-meta text-muted">
             How keywords with identical tokens are automatically grouped together.
           </p>
         </div>
-        <ol className="mt-3 space-y-2 text-xs text-foreground">
+        <ol className="mt-3 space-y-2 text-ui-meta text-foreground">
           <li className="flex gap-2">
             <span className="font-semibold text-purple-600">1.</span>
             <div>
@@ -230,12 +230,12 @@ export function ProjectDetailProcess(): React.ReactElement {
       {/* Processing States */}
       <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">⚙️ Status & Stage Mapping</h3>
-          <p className="text-xs text-muted">
+          <h3 className="text-ui-body font-semibold text-foreground">⚙️ Status & Stage Mapping</h3>
+          <p className="text-ui-meta text-muted">
             Status badges shown in the progress bar, plus backend stages used while status is &quot;Processing&quot;.
           </p>
         </div>
-        <div className="mt-3 grid gap-4 lg:grid-cols-2 text-xs">
+        <div className="mt-3 grid gap-4 lg:grid-cols-2 text-ui-meta">
           <div className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">Status badges</div>
             <ul className="mt-2 space-y-2">
@@ -254,7 +254,7 @@ export function ProjectDetailProcess(): React.ReactElement {
             <ul className="mt-2 space-y-2">
               {stageLegend.map((item) => (
                 <li key={item.stage} className="flex items-center justify-between gap-2">
-                  <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
+                  <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
                     {item.stage}
                   </span>
                   <span className="text-muted">{item.description}</span>
@@ -268,16 +268,16 @@ export function ProjectDetailProcess(): React.ReactElement {
       {/* Per-File Status */}
       <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">📁 Per-File Status (Uploads)</h3>
-          <p className="text-xs text-muted">
+          <h3 className="text-ui-body font-semibold text-foreground">📁 Per-File Status (Uploads)</h3>
+          <p className="text-ui-meta text-muted">
             Each uploaded CSV gets its own status in the progress bar summary.
           </p>
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-ui-meta">
           {fileLegend.map((item) => (
             <div key={item.label} className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
               <div className="text-lg">{item.icon}</div>
-              <div className="mt-1 text-xs font-semibold text-foreground">{item.label}</div>
+              <div className="mt-1 text-ui-meta font-semibold text-foreground">{item.label}</div>
               <div className="text-[11px] text-muted">{item.detail}</div>
             </div>
           ))}
@@ -287,9 +287,9 @@ export function ProjectDetailProcess(): React.ReactElement {
       {/* Troubleshooting */}
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-amber-800">🔧 Troubleshooting</h3>
+          <h3 className="text-ui-body font-semibold text-amber-800">🔧 Troubleshooting</h3>
         </div>
-        <ul className="mt-2 space-y-2 text-xs text-amber-900">
+        <ul className="mt-2 space-y-2 text-ui-meta text-amber-900">
           <li>
             <span className="font-medium">Processing stuck?</span> Click the Reset button in the progress bar to clear the stuck state and try uploading again.
           </li>

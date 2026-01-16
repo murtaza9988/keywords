@@ -135,7 +135,7 @@ export const KeywordRow: React.FC<{
             <input
               type="checkbox"
               ref={checkboxRef}
-              className="h-6 w-4.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 cursor-pointer"
+              className="h-6 w-4.5 rounded border-gray-300 text-accent focus:ring-blue-500 disabled:opacity-50 cursor-pointer"
               checked={isSelected}
               onChange={handleCheckboxChange}
               onKeyDown={handleKeyDown}
@@ -152,7 +152,7 @@ export const KeywordRow: React.FC<{
             <span className="w-5 h-5 inline-flex items-center justify-center flex-shrink-0 flex-shrink-0" onClick={handleRowClick}>
               {expandable ? (
                 isLoadingThisGroupChildren ? (
-                  <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                  <Loader2 className="h-4 w-4 text-accent animate-spin" />
                 ) : (
                   isGroupExpanded ? (
                     <ChevronDown size={16} className="text-muted" />
@@ -173,7 +173,7 @@ export const KeywordRow: React.FC<{
                   onClick={(e) => handleTokenClick(token, e)}
                   className={`inline-block px-1.5 py-0.5 rounded text-ui-meta font-light cursor-pointer transition-colors duration-150 whitespace-nowrap ${
                     selectedTokens.includes(token)
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-accent/85 text-white'
                       : 'bg-gray-200 text-foreground hover:bg-gray-300 hover:shadow-sm'
                   }`}
                 >

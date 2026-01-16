@@ -114,7 +114,7 @@ export default function Login() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-500/10 text-red-200 px-4 py-3 rounded-lg mb-6 border border-red-500/30"
+              className="bg-danger/85/10 text-red-200 px-4 py-3 rounded-lg mb-6 border border-red-500/30"
               role="alert"
             >
               {error}
@@ -123,7 +123,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
-              <label htmlFor="username" className="block text-sm font-medium text-muted mb-2">
+              <label htmlFor="username" className="block text-ui-body font-medium text-muted mb-2">
                 Username
               </label>
               <Input
@@ -140,7 +140,7 @@ export default function Login() {
             </div>
 
             <div className="mb-8 relative">
-              <label htmlFor="password" className="block text-sm font-medium text-muted mb-2">
+              <label htmlFor="password" className="block text-ui-body font-medium text-muted mb-2">
                 Password
               </label>
               <Input

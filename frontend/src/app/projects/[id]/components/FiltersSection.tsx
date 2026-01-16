@@ -336,7 +336,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                   <button
                     onClick={handleGroupKeywords}
                     disabled={selectedKeywordIds.size === 0 || !groupName.trim() || groupingLocked}
-                    className="bg-blue-600 cursor-pointer text-white px-3 py-1 border border-transparent rounded-md text-ui-body shadow-sm hover:bg-blue-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                    className="bg-accent/85 cursor-pointer text-white px-3 py-1 border border-transparent rounded-md text-ui-body shadow-sm hover:bg-accent transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
                   >
                     Group
                   </button>
@@ -345,7 +345,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                   <button
                     onClick={handleConfirmKeywords}
                     disabled={selectedKeywordIds.size === 0 || groupingLocked}
-                    className="bg-green-600 cursor-pointer text-white px-3 py-1 rounded-md text-ui-body shadow-sm hover:bg-green-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                    className="bg-success/85 cursor-pointer text-white px-3 py-1 rounded-md text-ui-body shadow-sm hover:bg-success transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
                   >
                     Confirm
                   </button>
@@ -361,7 +361,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                           : undefined
                   }
                   disabled={(!isUngroupButtonVisible && !isUnconfirmButtonVisible && !isUnblockButtonVisible) || selectedKeywordIds.size === 0 || groupingLocked}
-                  className="bg-yellow-500 cursor-pointer text-white px-3 py-1 rounded-md text-ui-body shadow-sm hover:bg-yellow-600 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
+                  className="bg-warning/85 cursor-pointer text-white px-3 py-1 rounded-md text-ui-body shadow-sm hover:bg-warning transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
                 >
                   {isProcessingAction && (isUngroupButtonVisible || isUnconfirmButtonVisible || isUnblockButtonVisible) ? (
                     "Processing..."
@@ -388,14 +388,14 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
       <div className="flex flex-col gap-1">
         <div className="flex items-center h-5">
           {showLoader ? (
-            <div className="flex items-center text-blue-600">
+            <div className="flex items-center text-accent">
               <Loader2 size={16} className="animate-spin mr-2" />
               <span className="text-ui-meta">
                 {getStageLabel(isUploading ? 'uploading' : processingStatus)}
               </span>
             </div>
           ) : processingStatus === 'error' && !isUploading && !isProcessing ? (
-            <div className="text-red-600 text-ui-meta">
+            <div className="text-danger text-ui-meta">
               {processingMessage || 'Processing failed. Try uploading again.'}
             </div>
           ) : (
@@ -421,7 +421,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
           )}
           <button
             onClick={handleClearAllFilters}
-            className={`cursor-pointer text-ui-body text-blue-600 hover:underline ml-auto px-2 py-1 shrink-0 transition-all duration-200 hover:text-blue-800 ${selectedTokens.length > 0 || includeFilter || excludeFilter ? '' : 'invisible'}`}
+            className={`cursor-pointer text-ui-body text-accent hover:underline ml-auto px-2 py-1 shrink-0 transition-all duration-200 hover:text-blue-800 ${selectedTokens.length > 0 || includeFilter || excludeFilter ? '' : 'invisible'}`}
             disabled={selectedTokens.length === 0 && !includeFilter && !excludeFilter}
           >
             Clear All

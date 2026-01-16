@@ -60,7 +60,7 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
     <div className="relative">
       <button
         onClick={toggleDropdown}
-        className="flex items-center gap-2 cursor-pointer text-foreground px-3 py-2 text-xs font-medium rounded-md border border-border bg-white shadow-sm hover:bg-surface-muted transition-colors"
+        className="flex items-center gap-2 cursor-pointer text-foreground px-3 py-2 text-ui-meta font-medium rounded-md border border-border bg-white shadow-sm hover:bg-surface-muted transition-colors"
         disabled={isLoading}
       >
         <FileText className="h-4 w-4 text-muted" />

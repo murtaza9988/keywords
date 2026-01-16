@@ -30,7 +30,7 @@ export function TokenSearchBar({
             <>
               <button 
                 onClick={onCreateToken}
-                className="p-1 mr-1 text-blue-600 hover:text-blue-700 hover:cursor-pointer"
+                className="p-1 mr-1 text-accent hover:text-blue-700 hover:cursor-pointer"
                 title="Create token from search term"
               >
                 <PlusCircle className="h-4 w-4" />

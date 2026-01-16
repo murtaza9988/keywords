@@ -117,7 +117,7 @@ export function TokenTable({
               <th scope="col" className="px-1 py-1.5 text-left">
                 <input
                   type="checkbox"
-                  className="rounded border-border w-4 h-4 text-blue-600"
+                  className="rounded border-border w-4 h-4 text-accent"
                   checked={allSelected}
                   onChange={onSelectAll}
                   disabled={tokens.length === 0}
@@ -154,7 +154,7 @@ export function TokenTable({
                       <td className={`px-1 py-1 whitespace-nowrap ${isSelected ? 'bg-surface-muted' : rowBgClass}`}>
                         <input
                           type="checkbox"
-                          className="rounded border-border text-blue-600"
+                          className="rounded border-border text-accent"
                           checked={isSelected}
                           onChange={() => onToggleSelection(token.tokenName)}
                           disabled={isProcessingAction}
@@ -210,7 +210,7 @@ export function TokenTable({
                           <button
                             onClick={() => onUnblockToken(token.tokenName)}
                             disabled={isProcessingAction}
-                            className="w-3 h-3 rounded-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            className="w-3 h-3 rounded-full bg-success/85 hover:bg-success disabled:bg-muted/40 disabled:cursor-not-allowed"
                             title={`Unblock token "${token.tokenName}"`}
                             aria-label={`Unblock token "${token.tokenName}"`}
                           />
@@ -227,7 +227,7 @@ export function TokenTable({
                           <button
                             onClick={() => onBlockToken(token.tokenName)}
                             disabled={isProcessingAction}
-                            className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-600 cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            className="w-3 h-3 rounded-full bg-danger/85 hover:bg-danger/85 cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed"
                             aria-label={`Block token "${token.tokenName}"`}
                           />
                         )}

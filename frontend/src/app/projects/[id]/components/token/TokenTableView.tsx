@@ -26,7 +26,7 @@ export function TokenViewTabs({
               onClick={() => onViewChange(view)}
               className={`py-1.5 px-1 text-ui-tab font-medium cursor-pointer ${
                 activeView === view
-                  ? 'border-b-2 border-blue-500 text-blue-600'
+                  ? 'border-b-2 border-blue-500 text-accent'
                   : 'text-muted hover:text-foreground hover:border-border border-b-2 border-transparent'
               }`}
             >

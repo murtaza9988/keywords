@@ -732,7 +732,7 @@ export function TokenManagement({
         <div className="flex-1 overflow-y-auto overflow-x-hidden relative">
           {isLoading ? (
             <div className="flex justify-center items-center h-full w-full bg-white absolute inset-0 z-20">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-accent" />
             </div>
           ) : tokens.length > 0 ? (
             <TokenTable

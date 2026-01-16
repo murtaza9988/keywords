@@ -75,7 +75,7 @@ export const NoteEditor = memo(({
             />
           </div>
         </div>
-        <span className="ml-auto flex items-center gap-1 text-xs text-muted">
+        <span className="ml-auto flex items-center gap-1 text-ui-meta text-muted">
           {isSaving ? (
             <span className="inline-block w-3 h-3 border-2 border-green-400 border-t-green-700 rounded-full animate-spin" />
           ) : (

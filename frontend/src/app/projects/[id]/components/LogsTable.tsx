@@ -218,7 +218,7 @@ export function LogsTable({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">Search logs</label>
+          <label className="text-ui-meta font-semibold uppercase tracking-wide text-muted">Search logs</label>
           <input
             type="text"
             placeholder="Filter by user, action, details, or ID"
@@ -228,7 +228,7 @@ export function LogsTable({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">Action</label>
+          <label className="text-ui-meta font-semibold uppercase tracking-wide text-muted">Action</label>
           <select
             value={actionFilter}
             onChange={(event) => setActionFilter(event.target.value)}
@@ -241,7 +241,7 @@ export function LogsTable({
             ))}
           </select>
         </div>
-        <div className="text-xs text-muted ml-auto">
+        <div className="text-ui-meta text-muted ml-auto">
           Showing {sortedLogs.length.toLocaleString()} of {(totalCount ?? logs.length).toLocaleString()} entries
         </div>
       </div>
@@ -318,13 +318,13 @@ export function LogsTable({
                 </tr>
               ) : errorMessage ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-red-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-ui-body text-red-500">
                     {errorMessage}
                   </td>
                 </tr>
               ) : sortedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
+                  <td colSpan={6} className="px-4 py-8 text-center text-ui-body text-muted">
                     {scope === 'project'
                       ? 'No activity logs for this project yet.'
                       : 'No activity logs match your filters.'}

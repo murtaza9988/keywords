@@ -57,11 +57,11 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   
   // Custom color based on progress
   const getBarColor = () => {
-    if (status === 'error') return 'bg-red-500';
-    if (safeProgress < 30) return 'bg-blue-500';
-    if (safeProgress < 60) return 'bg-blue-600';
-    if (safeProgress < 90) return 'bg-green-500';
-    return 'bg-green-600';
+    if (status === 'error') return 'bg-danger/85';
+    if (safeProgress < 30) return 'bg-accent/85';
+    if (safeProgress < 60) return 'bg-accent/85';
+    if (safeProgress < 90) return 'bg-success/85';
+    return 'bg-success/85';
   };
 
   const steps = [
@@ -142,7 +142,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
           {status === 'error' ? (
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-red-600">Processing failed</span>
+              <span className="text-danger">Processing failed</span>
               {projectId && (
                 <button
                   onClick={handleReset}
@@ -249,7 +249,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                 ) : (
                   <span className="h-4 w-4 rounded-full border border-gray-300 flex-shrink-0" />
                 )}
-                <span className={file.status === 'current' ? 'text-blue-600' : 'text-ui-muted'}>
+                <span className={file.status === 'current' ? 'text-accent' : 'text-ui-muted'}>
                   {file.name}
                 </span>
                 <span className="text-ui-meta">
@@ -262,7 +262,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
       )}
       {safeFileErrors.length > 0 && (
         <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-ui-meta text-red-700">
-          <div className="text-ui-label text-red-600">
+          <div className="text-ui-label text-danger">
             File errors
           </div>
           <ul className="mt-2 space-y-1">
@@ -271,7 +271,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                 <span className="font-medium text-red-700">
                   {error.fileName ?? 'Unknown file'}
                 </span>
-                <span className="text-red-600">{error.message ?? 'Unknown error'}</span>
+                <span className="text-danger">{error.message ?? 'Unknown error'}</span>
                 {error.stageDetail && (
                   <span className="text-red-500">{error.stageDetail}</span>
                 )}
@@ -303,7 +303,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
               )}
               <span
                 className={`${
-                  isComplete ? 'text-foreground' : isActive ? 'text-blue-600' : isError ? 'text-red-600' : 'text-muted'
+                  isComplete ? 'text-foreground' : isActive ? 'text-accent' : isError ? 'text-danger' : 'text-muted'
                 }`}
               >
                 {step.label}

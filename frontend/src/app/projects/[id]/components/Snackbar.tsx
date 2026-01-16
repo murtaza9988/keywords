@@ -20,14 +20,14 @@ export const Snackbar: React.FC<SnackbarProps> = ({ messages, onClose }) => {
       case 'error':
         return {
           icon: AlertTriangle,
-          iconColor: 'text-red-600',
+          iconColor: 'text-danger',
           border: 'border-red-200',
           background: 'bg-red-50/95'
         };
       default:
         return {
           icon: Info,
-          iconColor: 'text-blue-600',
+          iconColor: 'text-accent',
           border: 'border-blue-200',
           background: 'bg-blue-50/95'
         };
@@ -42,7 +42,7 @@ export const Snackbar: React.FC<SnackbarProps> = ({ messages, onClose }) => {
         return (
           <div
             key={msg.id}
-            className={`pointer-events-auto flex items-start gap-3 rounded-lg border ${styles.border} ${styles.background} px-4 py-3 shadow-xl ring-1 ring-black/5 backdrop-blur-sm text-sm text-foreground animate-fade-in-out`}
+            className={`pointer-events-auto flex items-start gap-3 rounded-lg border ${styles.border} ${styles.background} px-4 py-3 shadow-xl ring-1 ring-black/5 backdrop-blur-sm text-ui-body text-foreground animate-fade-in-out`}
           >
             <Icon className={`mt-0.5 h-4 w-4 ${styles.iconColor}`} />
             <div className="flex-1">
@@ -55,7 +55,7 @@ export const Snackbar: React.FC<SnackbarProps> = ({ messages, onClose }) => {
                 )}
               </div>
               {msg.description && (
-                <p className="mt-1 text-xs text-muted">{msg.description}</p>
+                <p className="mt-1 text-ui-meta text-muted">{msg.description}</p>
               )}
             </div>
             <button

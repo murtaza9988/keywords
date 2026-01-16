@@ -24,7 +24,7 @@ export function TokenActionButtons({
         disabled={isProcessingAction || selectedTokensCount === 0}
         className={`px-3 py-2 border border-transparent rounded-md text-ui-body shadow-sm transition-all duration-200 ${
           selectedTokensCount > 0
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
+            ? 'bg-accent/85 text-white hover:bg-accent'
             : 'bg-gray-400 text-white shadow-none cursor-not-allowed'
         }`}
       >
@@ -36,7 +36,7 @@ export function TokenActionButtons({
         disabled={isProcessingAction || selectedTokensCount === 0 || !isBlockedView}
         className={`px-3 py-2 rounded-md text-ui-body shadow-sm transition-all duration-200 ${
           selectedTokensCount > 0 && isBlockedView
-            ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+            ? 'bg-warning/85 text-white hover:bg-warning'
             : 'bg-gray-400 text-white shadow-none cursor-not-allowed'
         }`}
       >
@@ -48,7 +48,7 @@ export function TokenActionButtons({
         disabled={isProcessingAction || selectedTokensCount < 2}
         className={`px-3 py-2 border border-transparent rounded-md text-ui-body shadow-sm transition-all duration-200 ${
           selectedTokensCount >= 2
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
+            ? 'bg-accent/85 text-white hover:bg-accent'
             : 'bg-gray-400 text-white shadow-none cursor-not-allowed'
         }`}
       >

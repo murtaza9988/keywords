@@ -24,7 +24,7 @@ export default function CreateProjectForm({
   return (
     <div className="flex flex-col gap-4">
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg">
+        <div className="bg-danger/85/10 border border-red-500/30 p-4 rounded-lg">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-300" viewBox="0 0 20 20" fill="currentColor">
@@ -41,7 +41,7 @@ export default function CreateProjectForm({
                   onClick={() => setError('')}
                   variant="outline"
                   size="sm"
-                  className="border-red-500/40 text-red-100 hover:bg-red-500/20"
+                  className="border-red-500/40 text-red-100 hover:bg-danger/85/20"
                 >
                   Dismiss
                 </Button>

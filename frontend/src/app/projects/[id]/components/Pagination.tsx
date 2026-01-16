@@ -44,8 +44,8 @@ const Pagination: React.FC<PaginationProps> = memo(({ total, page, pages, onPage
           disabled={disabled || page === 1}
           className={`px-3 py-1 border rounded-md transition-all duration-300 ease-in-out ${
             page === 1 || disabled
-              ? 'text-muted text-xs border-border cursor-not-allowed'
-              : 'text-foreground text-xs border-border hover:bg-surface-muted cursor-pointer'
+              ? 'text-muted text-ui-meta border-border cursor-not-allowed'
+              : 'text-foreground text-ui-meta border-border hover:bg-surface-muted cursor-pointer'
           }`}
         >
           Previous
@@ -57,8 +57,8 @@ const Pagination: React.FC<PaginationProps> = memo(({ total, page, pages, onPage
             disabled={disabled}
             className={`px-3 py-1 border rounded-md transition-all duration-300 ease-in-out ${
               pageNum === page
-                ? 'bg-blue-600 text-xs text-white border-blue-600 cursor-pointer'
-                : 'text-muted text-xs border-border hover:bg-surface-muted cursor-pointer disabled:text-muted disabled:border-border disabled:cursor-not-allowed'
+                ? 'bg-accent/85 text-ui-meta text-white border-blue-600 cursor-pointer'
+                : 'text-muted text-ui-meta border-border hover:bg-surface-muted cursor-pointer disabled:text-muted disabled:border-border disabled:cursor-not-allowed'
             }`}
           >
             {pageNum}
@@ -69,7 +69,7 @@ const Pagination: React.FC<PaginationProps> = memo(({ total, page, pages, onPage
           disabled={disabled || page === pages}
           className={`px-3 py-1 border rounded-md transition-all duration-300 ease-in-out ${
             page === pages || disabled
-              ? 'text-muted text-xs border-border cursor-not-allowed'
+              ? 'text-muted text-ui-meta border-border cursor-not-allowed'
               : 'text-foreground border-border hover:bg-surface-muted cursor-pointer'
           }`}
         >

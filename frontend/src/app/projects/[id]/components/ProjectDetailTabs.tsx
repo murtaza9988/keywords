@@ -24,7 +24,7 @@ export function ProjectDetailTabs({
           className={
             'px-3 py-1.5 text-ui-tab font-medium rounded-md transition-colors ' +
             (activeTab === tab
-              ? 'bg-blue-600 text-white shadow-sm'
+              ? 'bg-accent/85 text-white shadow-sm'
               : 'text-muted hover:text-foreground hover:bg-surface-muted')
           }
         >

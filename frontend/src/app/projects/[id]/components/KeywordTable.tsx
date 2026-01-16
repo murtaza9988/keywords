@@ -265,7 +265,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
               <th scope="col" className="w-[44px] px-2 py-1 text-left text-ui-label sticky left-0 z-20 bg-surface-muted">
                 <input
                   type="checkbox"
-                  className="h-6 w-6 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  className="h-6 w-6 rounded border-border text-accent focus:ring-blue-500 cursor-pointer"
                   checked={isAllSelected}
                   ref={input => { if (input) input.indeterminate = !isAllSelected && isAnySelected }}
                   onChange={handleSelectAllClick}
@@ -289,7 +289,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   <div className="flex items-center gap-1 justify-center">
                     <span title="SERP Features">S</span>
                     {filterState.serpFeatures.length > 0 && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600" title="Filters active"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent/85" title="Filters active"></span>
                     )}
                     <button
                       className="text-ui-muted hover:text-foreground focus:outline-none p-1 rounded-full hover:bg-surface-muted"
@@ -325,7 +325,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                       <div className="max-h-60 overflow-y-auto">
                         {isLoadingSerpFeatures ? (
                           <div className="flex justify-center items-center py-4">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-600" />
+                            <Loader2 className="h-4 w-4 animate-spin mr-2 text-accent" />
                             <span className="text-ui-muted">Loading SERP features...</span>
                           </div>
                         ) : serpFeaturesList.length === 0 ? (
@@ -340,7 +340,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                             >
                               <input
                                 type="checkbox"
-                                className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                className="mr-2 rounded border-gray-300 text-accent focus:ring-blue-500"
                                 checked={filterState.serpFeatures.includes(feature)}
                                 onChange={() => toggleSerpFeature(feature)}
                               />
@@ -352,14 +352,14 @@ const toggleSerpFeature = useCallback((feature: string) => {
                     </div>
                     <div className="p-3 border-t border-border bg-surface-muted flex justify-between">
                       <button
-                        className="text-ui-meta text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-ui-meta text-accent hover:text-blue-800 font-medium"
                         onClick={onSelectAllSerpFeatures}
                         disabled={isLoadingSerpFeatures || serpFeaturesList.length === 0}
                       >
                         Select All
                       </button>
                       <button
-                        className="text-ui-meta text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-ui-meta text-accent hover:text-blue-800 font-medium"
                         onClick={onClearFilters}
                         disabled={isLoadingSerpFeatures || filterState.serpFeatures.length === 0}
                       >
@@ -409,7 +409,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
               <tr className="bg-table-row h-10">
                 <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="px-4 py-2 text-center">
                   <div className="flex justify-center lg:mt-50 items-center flex-col text-ui-muted">
-                    <Loader2 className="animate-spin h-8 w-8 text-blue-600 mb-3" />
+                    <Loader2 className="animate-spin h-8 w-8 text-accent mb-3" />
                     <p className="text-ui-body font-medium">{isTableLoading ? 'Processing...' : 'Loading...'}</p>
                   </div>
                 </td>

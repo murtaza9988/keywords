@@ -53,7 +53,7 @@ export function ProcessingPanel({
     <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-3">
       <div className="flex flex-wrap items-center gap-4">
         <div className="min-w-[220px] flex flex-col gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted">Upload CSVs</span>
+          <span className="text-ui-meta font-semibold uppercase tracking-wide text-muted">Upload CSVs</span>
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-[180px] max-w-[220px]">
               <FileUploader
@@ -70,18 +70,18 @@ export function ProcessingPanel({
       </div>
       <div className="flex items-center h-6 mt-3">
         {showUploadLoader ? (
-          <div className="flex items-center text-blue-600">
+          <div className="flex items-center text-accent">
             <Loader2 size={16} className="animate-spin mr-2" />
-            <span className="text-xs">
+            <span className="text-ui-meta">
               {isUploading ? "Uploading..." : "Processing..."}
             </span>
           </div>
         ) : processingStatus === 'error' && !isUploading ? (
-          <div className="text-red-600 text-xs">
+          <div className="text-danger text-ui-meta">
             {processingMessage || 'Processing failed. Try uploading again.'}
           </div>
         ) : (
-          <span className="text-xs text-transparent">Status</span>
+          <span className="text-ui-meta text-transparent">Status</span>
         )}
       </div>
       <ProcessingProgressBar
