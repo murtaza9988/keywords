@@ -1,7 +1,7 @@
 // ProcessingProgressBar.tsx
 import React, { useMemo, useState } from 'react';
 import { ProcessingFileError, ProcessingStatus } from './types';
-import { CheckCircle2, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertTriangle, RotateCcw, Wifi, FileX, Clock } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 
 interface ProcessingProgressBarProps {
@@ -52,6 +52,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
       setIsResetting(false);
     }
   };
+
   // Ensure progress is always between 0-100
   const safeProgress = Math.max(0, Math.min(100, progress));
   
@@ -130,6 +131,37 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   );
   const queuedCount = queueItems.length;
 
+  // Enhanced error type detection
+  const getErrorIcon = (error: ProcessingFileError) => {
+    const message = error.message?.toLowerCase() || '';
+    const stage = error.stage?.toLowerCase() || '';
+
+    if (message.includes('network') || message.includes('connection') || message.includes('timeout')) {
+      return <Wifi className="h-4 w-4 text-orange-500" />;
+    }
+    if (message.includes('validation') || message.includes('format') || message.includes('invalid')) {
+      return <FileX className="h-4 w-4 text-red-500" />;
+    }
+    if (stage.includes('duplicate') || message.includes('duplicate')) {
+      return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+    }
+    return <AlertTriangle className="h-4 w-4 text-red-500" />;
+  };
+
+  // Estimated time calculation (rough estimate based on file size and processing stage)
+  const getEstimatedTimeRemaining = useMemo(() => {
+    if (status !== 'processing' && status !== 'queued') return null;
+    
+    const remainingFiles = queuedCount;
+    if (remainingFiles === 0) return 'Completing...';
+    
+    // Rough estimate: 30 seconds per file for processing
+    const estimatedSeconds = remainingFiles * 30;
+    if (estimatedSeconds < 60) return '< 1 min remaining';
+    if (estimatedSeconds < 3600) return `${Math.ceil(estimatedSeconds / 60)} min remaining`;
+    return `${Math.ceil(estimatedSeconds / 3600)} hr remaining`;
+  }, [status, queuedCount]);
+
   const shouldHide = status === 'idle' && !showUploadSummary && safeFileErrors.length === 0;
   if (shouldHide) {
     return null;
@@ -179,6 +211,11 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                     : `Processing CSV: ${Math.round(safeProgress)}%`
                 }
               </span>
+              {getEstimatedTimeRemaining && (
+                <span className="text-ui-meta text-sm">
+                  {getEstimatedTimeRemaining}
+                </span>
+              )}
             </>
           )}
         </div>
@@ -237,17 +274,26 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
       {queueItems.length > 0 && (
         <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-ui-muted">
           <div className="flex items-center justify-between">
-            <div className="text-ui-label">
+            <div className="text-ui-label flex items-center gap-2">
+              <Clock className="h-4 w-4" />
               Queue ({queueItems.length})
+              {getEstimatedTimeRemaining && (
+                <span className="text-ui-meta text-xs">
+                  ~{getEstimatedTimeRemaining}
+                </span>
+              )}
             </div>
           </div>
           <ol className="mt-2 space-y-1">
-            {queueItems.map((file) => (
+            {queueItems.map((file, index) => (
               <li key={`${file.name}-${file.status}`} className="flex items-center gap-2">
                 {file.status === 'current' ? (
                   <Loader2 className="h-4 w-4 animate-spin text-accent flex-shrink-0" />
                 ) : (
-                  <span className="h-4 w-4 rounded-full border border-border flex-shrink-0" />
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <span className="text-ui-meta text-xs">#{index + 1}</span>
+                    <Clock className="h-3 w-3 text-muted" />
+                  </div>
                 )}
                 <span className={file.status === 'current' ? 'text-accent font-medium' : 'text-ui-muted'}>
                   {file.name}
@@ -262,19 +308,25 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
       )}
       {safeFileErrors.length > 0 && (
         <div className="mt-2 rounded-md border border-danger/20 bg-danger/10 px-3 py-2 text-ui-meta text-danger">
-          <div className="text-ui-label text-danger">
-            File errors
+          <div className="text-ui-label text-danger flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            File errors ({safeFileErrors.length})
           </div>
           <ul className="mt-2 space-y-1">
             {safeFileErrors.map((error, index) => (
               <li key={`${error.fileName ?? 'unknown'}-${index}`} className="flex flex-col">
-                <span className="font-medium text-danger">
-                  {error.fileName ?? 'Unknown file'}
-                </span>
-                <span className="text-danger/90">{error.message ?? 'Unknown error'}</span>
-                {error.stageDetail && (
-                  <span className="text-danger/80">{error.stageDetail}</span>
-                )}
+                <div className="flex items-start gap-2">
+                  {getErrorIcon(error)}
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-danger">
+                      {error.fileName ?? 'Unknown file'}
+                    </span>
+                    <span className="text-danger/90 block">{error.message ?? 'Unknown error'}</span>
+                    {error.stageDetail && (
+                      <span className="text-danger/80 text-xs block mt-1">{error.stageDetail}</span>
+                    )}
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
