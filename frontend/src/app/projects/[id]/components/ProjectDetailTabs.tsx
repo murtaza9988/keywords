@@ -24,7 +24,7 @@ export function ProjectDetailTabs({
           className={
             'px-3 py-1.5 text-ui-tab font-medium rounded-md transition-colors ' +
             (activeTab === tab
-              ? 'bg-blue-600 text-white shadow-sm'
+              ? 'bg-accent/80 text-white shadow-sm ring-1 ring-white/10'
               : 'text-muted hover:text-foreground hover:bg-surface-muted')
           }
         >
@@ -37,7 +37,7 @@ export function ProjectDetailTabs({
               <span className="flex items-center gap-1.5">
                 <span>Group</span>
                 {processingLocked && (
-                  <span className="text-ui-meta uppercase tracking-wide text-amber-200/90">
+                  <span className="text-ui-meta uppercase tracking-wide text-amber-100/90 [text-shadow:_0_1px_2px_rgb(0_0_0_/_20%)]">
                     🔒 Processing…
                   </span>
                 )}
