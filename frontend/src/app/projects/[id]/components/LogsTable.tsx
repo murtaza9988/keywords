@@ -23,6 +23,33 @@ const formatDetails = (details?: Record<string, unknown> | null) => {
   }
 };
 
+const formatErrorMessage = (error: unknown) => {
+  if (!(error instanceof Error)) {
+    return 'Unable to load activity logs.';
+  }
+  const message = error.message || '';
+  const lowerMessage = message.toLowerCase();
+  if (lowerMessage.includes('session expired') || lowerMessage.includes('login again')) {
+    return 'Session expired. Please log in again to view activity logs.';
+  }
+  if (
+    lowerMessage.includes('could not validate credentials') ||
+    lowerMessage.includes('unauthorized') ||
+    lowerMessage.includes('forbidden') ||
+    lowerMessage.includes('401') ||
+    lowerMessage.includes('403')
+  ) {
+    return 'You are not authorized to view activity logs.';
+  }
+  if (lowerMessage.includes('project not found')) {
+    return 'Project not found. Unable to load activity logs.';
+  }
+  if (lowerMessage.includes('not found') || lowerMessage.includes('404')) {
+    return 'Logs endpoint not found. Check API proxy configuration.';
+  }
+  return message;
+};
+
 export function LogsTable({
   projectId,
   isActive = true,
@@ -62,21 +89,25 @@ export function LogsTable({
         if (scope === 'project' && projectId) {
           const collectedLogs: ActivityLog[] = [];
           let page = 1;
-          while (true) {
+          let totalPages = 1;
+          let total = 0;
+          while (page <= totalPages) {
             const data = await apiClient.fetchProjectLogs(projectId, {
               page,
               limit: pageSize,
             });
             if (!isMounted) return;
-            collectedLogs.push(...data);
-            if (data.length < pageSize) {
+            collectedLogs.push(...data.logs);
+            total = data.pagination.total;
+            totalPages = data.pagination.pages || 1;
+            page += 1;
+            if (data.logs.length === 0) {
               break;
             }
-            page += 1;
           }
           if (isMounted) {
             setLogs(collectedLogs);
-            setTotalCount(null);
+            setTotalCount(total);
           }
         } else {
           const data = await apiClient.fetchAllActivityLogs({ page: 1, limit: pageSize });
@@ -87,7 +118,7 @@ export function LogsTable({
         }
       } catch (error) {
         if (isMounted) {
-          setErrorMessage(error instanceof Error ? error.message : 'Unable to load activity logs.');
+          setErrorMessage(formatErrorMessage(error));
         }
       } finally {
         if (isMounted) {
@@ -294,7 +325,9 @@ export function LogsTable({
               ) : sortedLogs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
-                    No activity logs match your filters.
+                    {scope === 'project'
+                      ? 'No activity logs for this project yet.'
+                      : 'No activity logs match your filters.'}
                   </td>
                 </tr>
               ) : (
