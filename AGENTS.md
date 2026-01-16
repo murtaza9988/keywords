@@ -46,6 +46,7 @@ Even for "urgent hotfixes":
 - Create a branch: `git checkout -b fix/urgent-hotfix`
 - Push the branch: `git push origin fix/urgent-hotfix`
 - **Create a PR on GitHub**: `gh pr create --base main --title "fix: urgent hotfix description"`
+- **Use the PR template**: Fill out all sections in `.github/PULL_REQUEST_TEMPLATE.md`
 - Merge via GitHub (not locally)
 
 **After creating a PR, always notify the user with this template:**
@@ -60,6 +61,15 @@ Even for "urgent hotfixes":
 
 **Ready for Review**: The PR includes all requested changes and passes local validation.
 ```
+
+### PR Template Usage
+All PRs must use the repository's PR template (`.github/PULL_REQUEST_TEMPLATE.md`) which includes:
+- **Description**: Brief overview of changes
+- **Changes Made**: Detailed bullet points
+- **Type of Change**: Categorization checkboxes
+- **Testing**: Validation checklist
+- **Screenshots**: For UI changes
+- **Related Issues**: Issue links
 
 **If an AI agent pushes directly to main, it has violated this repository's core workflow.**
 
