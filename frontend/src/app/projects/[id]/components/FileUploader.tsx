@@ -280,7 +280,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             {isUploadingInternal ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-muted" />
-                <span className="text-xs text-muted">
+                <span className="text-ui-meta">
                   {getStageLabel(uploadStage)}
                   {totalFiles > 0 ? ` ${currentFileIndex}/${totalFiles}` : ''}...
                   {uploadStage === 'uploading' ? ` ${uploadProgress}%` : ''}
@@ -291,7 +291,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                 <UploadCloud
                   className={`w-4 h-4 ${dragActive ? 'text-blue-500' : 'text-muted'}`}
                 />
-                <span className="text-xs text-muted">Upload CSVs</span>
+                <span className="text-ui-meta">Upload CSVs</span>
               </>
             )}
           </div>

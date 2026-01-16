@@ -163,7 +163,7 @@ export default function Projects() {
         <Card className="p-6">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-3">
-              <nav aria-label="Breadcrumb" className="text-xs text-muted">
+              <nav aria-label="Breadcrumb" className="text-ui-meta">
                 <ol className="flex items-center gap-2">
                   <li>
                     <Link href="/" className="transition-colors hover:text-foreground">
@@ -176,8 +176,8 @@ export default function Projects() {
               </nav>
               <div className="flex flex-col gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-foreground">Projects</h2>
-                  <p className="text-[13px] text-muted mt-1">
+                  <h2 className="text-ui-page">Projects</h2>
+                  <p className="text-ui-muted mt-1">
                     Manage your [{filteredProjectCount}] SEO keyword projects
                   </p>
                 </div>
@@ -186,7 +186,7 @@ export default function Projects() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search projects..."
-                  className="w-full max-w-[240px] text-[13px]"
+                  className="w-full max-w-[240px] text-ui-body"
                 />
               </div>
               <CreateProjectForm

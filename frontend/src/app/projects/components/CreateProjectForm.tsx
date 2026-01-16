@@ -32,8 +32,8 @@ export default function CreateProjectForm({
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-red-200">Error</h3>
-              <div className="mt-2 text-sm text-red-100">
+              <h3 className="text-ui-body font-medium text-red-200">Error</h3>
+              <div className="mt-2 text-ui-body text-red-100">
                 <p>{error}</p>
               </div>
               <div className="mt-4">
@@ -52,7 +52,7 @@ export default function CreateProjectForm({
       )}
       <form onSubmit={handleCreateProject} className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
-          <label htmlFor="newProjectName" className="text-[13px] font-medium text-foreground">
+          <label htmlFor="newProjectName" className="text-ui-body font-medium">
             Create New Project
           </label>
           <Input

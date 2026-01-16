@@ -102,8 +102,8 @@ export function ProjectDetailOverview({
       <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Downloads</p>
-            <p className="text-xs text-muted">
+            <p className="text-ui-label">Downloads</p>
+            <p className="text-ui-muted">
               Uploaded CSVs (including combined batch CSVs) are downloadable via the “CSV Uploads” dropdown. Final output
               CSV is generated from the database via Export.
             </p>
@@ -120,48 +120,48 @@ export function ProjectDetailOverview({
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">CSV files successfully processed</p>
-          <p className="text-lg font-semibold text-foreground">{(processingSucceededJobs ?? 0).toLocaleString()}</p>
+          <p className="text-ui-label">CSV files successfully processed</p>
+          <p className="text-ui-heading">{(processingSucceededJobs ?? 0).toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">CSV files failed</p>
-          <p className="text-lg font-semibold text-foreground">{(processingFailedJobs ?? 0).toLocaleString()}</p>
+          <p className="text-ui-label">CSV files failed</p>
+          <p className="text-ui-heading">{(processingFailedJobs ?? 0).toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total keywords uploaded</p>
-          <p className="text-lg font-semibold text-foreground">{stats.totalKeywords.toLocaleString()}</p>
+          <p className="text-ui-label">Total keywords uploaded</p>
+          <p className="text-ui-heading">{stats.totalKeywords.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total parent keywords</p>
-          <p className="text-lg font-semibold text-foreground">{stats.totalParentKeywords.toLocaleString()}</p>
+          <p className="text-ui-label">Total parent keywords</p>
+          <p className="text-ui-heading">{stats.totalParentKeywords.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total child keywords</p>
-          <p className="text-lg font-semibold text-foreground">{totalChildKeywords.toLocaleString()}</p>
+          <p className="text-ui-label">Total child keywords</p>
+          <p className="text-ui-heading">{totalChildKeywords.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Parent tokens</p>
-          <p className="text-lg font-semibold text-foreground">{stats.parentTokenCount.toLocaleString()}</p>
+          <p className="text-ui-label">Parent tokens</p>
+          <p className="text-ui-heading">{stats.parentTokenCount.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Child tokens</p>
-          <p className="text-lg font-semibold text-foreground">{stats.childTokenCount.toLocaleString()}</p>
+          <p className="text-ui-label">Child tokens</p>
+          <p className="text-ui-heading">{stats.childTokenCount.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total groups</p>
-          <p className="text-lg font-semibold text-foreground">{stats.groupCount.toLocaleString()}</p>
+          <p className="text-ui-label">Total groups</p>
+          <p className="text-ui-heading">{stats.groupCount.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Grouped pages</p>
-          <p className="text-lg font-semibold text-foreground">{stats.groupedPages.toLocaleString()}</p>
+          <p className="text-ui-label">Grouped pages</p>
+          <p className="text-ui-heading">{stats.groupedPages.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Confirmed pages</p>
-          <p className="text-lg font-semibold text-foreground">{stats.confirmedPages.toLocaleString()}</p>
+          <p className="text-ui-label">Confirmed pages</p>
+          <p className="text-ui-heading">{stats.confirmedPages.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Blocked parent keywords</p>
-          <p className="text-lg font-semibold text-foreground">{stats.blockedCount.toLocaleString()}</p>
+          <p className="text-ui-label">Blocked parent keywords</p>
+          <p className="text-ui-heading">{stats.blockedCount.toLocaleString()}</p>
         </div>
       </div>
     </div>

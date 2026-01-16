@@ -40,10 +40,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </svg>
         </Button>
 
-        <h3 className="text-lg font-semibold text-foreground mb-4" id="modal-title">
+        <h3 className="text-ui-heading mb-4" id="modal-title">
           {title}
         </h3>
-        <p className="text-sm text-muted mb-6">
+        <p className="text-ui-muted mb-6">
           {message}
         </p>
         <div className="flex justify-end gap-3">

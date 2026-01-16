@@ -694,7 +694,7 @@ export function TokenManagement({
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-[15px] font-semibold mb-4 text-foreground">Token Management</h2>
+      <h2 className="text-ui-title mb-4">Token Management</h2>
 
       <div className="relative">
         <TokenSearchBar 
@@ -705,7 +705,7 @@ export function TokenManagement({
         />
         
         {showMinimumCharInfo && (
-          <div className="text-xs text-muted mt-1 absolute top-full left-0">
+          <div className="text-ui-meta mt-1 absolute top-full left-0">
             Type at least {MINIMUM_SEARCH_LENGTH} characters to search...
           </div>
         )}
@@ -758,7 +758,7 @@ export function TokenManagement({
             />
           ) : (
             <div className="flex justify-center items-center h-full">
-              <p className="text-muted">No tokens found</p>
+              <p className="text-ui-muted">No tokens found</p>
             </div>
           )}
         </div>

@@ -262,7 +262,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
         <KeywordTableElement>
           <thead className="bg-surface-muted sticky top-0 z-10">
             <tr onDoubleClick={handleDoubleClick}>
-              <th scope="col" className="w-[44px] px-2 py-1 text-left text-xs font-semibold text-muted uppercase tracking-wider sticky left-0 z-20 bg-surface-muted">
+              <th scope="col" className="w-[44px] px-2 py-1 text-left text-ui-label sticky left-0 z-20 bg-surface-muted">
                 <input
                   type="checkbox"
                   className="h-6 w-6 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
@@ -275,7 +275,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
               </th>
               <th
                 scope="col"
-                className="w-[36%] py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer sticky left-[44px] z-10 bg-surface-muted"
+                className="w-[36%] py-1 text-left text-ui-label cursor-pointer sticky left-[44px] z-10 bg-surface-muted"
                 onClick={() => onSort(keywordColumnKey)}
               >
                 <div className="flex items-center">
@@ -283,8 +283,8 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   {renderSortIcon(keywordColumnKey)}
                 </div>
               </th>
-              <th scope="col" className="w-[44%] px-2 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">Tokens</th>
-              <th scope="col" className="w-[40px] px-0.5 py-1 text-left text-[13px] font-light text-foreground uppercase tracking-wider">
+              <th scope="col" className="w-[44%] px-2 py-1 text-left text-ui-label">Tokens</th>
+              <th scope="col" className="w-[40px] px-0.5 py-1 text-left text-ui-label">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1 justify-center">
                     <span title="SERP Features">S</span>
@@ -292,7 +292,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-600" title="Filters active"></span>
                     )}
                     <button
-                      className="text-muted hover:text-foreground focus:outline-none p-1 rounded-full hover:bg-surface-muted"
+                      className="text-ui-muted hover:text-foreground focus:outline-none p-1 rounded-full hover:bg-surface-muted"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowSerpFilter(prev => !prev);
@@ -321,22 +321,22 @@ const toggleSerpFeature = useCallback((feature: string) => {
                     ref={serpFilterDropdownRef}
                   >
                     <div className="p-3">
-                      <div className="text-xs font-semibold text-foreground mb-2">Filter by Values</div>
+                      <div className="text-ui-title mb-2">Filter by Values</div>
                       <div className="max-h-60 overflow-y-auto">
                         {isLoadingSerpFeatures ? (
                           <div className="flex justify-center items-center py-4">
                             <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-600" />
-                            <span className="text-sm text-muted">Loading SERP features...</span>
+                            <span className="text-ui-muted">Loading SERP features...</span>
                           </div>
                         ) : serpFeaturesList.length === 0 ? (
-                          <div className="text-sm text-muted py-2 px-2 italic">
+                          <div className="text-ui-muted py-2 px-2 italic">
                             No SERP features found
                           </div>
                         ) : (
                           serpFeaturesList.map(feature => (
                             <label
                               key={feature}
-                              className="flex items-center px-2 py-1 hover:bg-surface-muted rounded text-sm cursor-pointer transition-colors"
+                              className="flex items-center px-2 py-1 hover:bg-surface-muted rounded text-ui-body cursor-pointer transition-colors"
                             >
                               <input
                                 type="checkbox"
@@ -352,14 +352,14 @@ const toggleSerpFeature = useCallback((feature: string) => {
                     </div>
                     <div className="p-3 border-t border-border bg-surface-muted flex justify-between">
                       <button
-                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-ui-meta text-blue-600 hover:text-blue-800 font-medium"
                         onClick={onSelectAllSerpFeatures}
                         disabled={isLoadingSerpFeatures || serpFeaturesList.length === 0}
                       >
                         Select All
                       </button>
                       <button
-                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-ui-meta text-blue-600 hover:text-blue-800 font-medium"
                         onClick={onClearFilters}
                         disabled={isLoadingSerpFeatures || filterState.serpFeatures.length === 0}
                       >
@@ -370,32 +370,32 @@ const toggleSerpFeature = useCallback((feature: string) => {
                   document.body
                 )}
               </th>
-              <th scope="col" className="w-[40px] px-0.5 py-1 text-center text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort('childCount')}>
+              <th scope="col" className="w-[40px] px-0.5 py-1 text-center text-ui-label cursor-pointer" onClick={() => onSort('childCount')}>
                 <div className="flex items-center justify-center">
                   <span title="Count">#</span>
                   {renderSortIcon('childCount')}
                 </div>
               </th>
-              <th scope="col" className="w-[35px] px-0.5 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort('length')}>
+              <th scope="col" className="w-[35px] px-0.5 py-1 text-right text-ui-label cursor-pointer" onClick={() => onSort('length')}>
                 <div className="flex items-center justify-end">
                   <span title="Length">L</span>
                   {renderSortIcon('length')}
                 </div>
               </th>
-              <th scope="col" className="w-[40px] px-0.5 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer" onClick={() => onSort('volume')}>
+              <th scope="col" className="w-[40px] px-0.5 py-1 text-right text-ui-label cursor-pointer" onClick={() => onSort('volume')}>
                 <div className="flex items-center justify-end">
                   <span title="Volume">Vol</span>
                   {renderSortIcon('volume')}
                 </div>
               </th>
-              <th scope="col" className="w-[40px] px-0.5 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer hover:bg-surface-muted" onClick={() => onSort('difficulty')}>
+              <th scope="col" className="w-[40px] px-0.5 py-1 text-right text-ui-label cursor-pointer hover:bg-surface-muted" onClick={() => onSort('difficulty')}>
                 <div className="flex items-center justify-end">
                   <span title="Difficulty">KD</span>
                   {renderSortIcon('difficulty')}
                 </div>
               </th>
               {(currentView === 'ungrouped' || currentView === 'grouped') && (
-                <th scope="col" className="w-[35px] px-0.5 py-1 text-right text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer hover:bg-surface-muted" onClick={() => onSort('rating')}>
+                <th scope="col" className="w-[35px] px-0.5 py-1 text-right text-ui-label cursor-pointer hover:bg-surface-muted" onClick={() => onSort('rating')}>
                   <div className="flex items-center justify-end">
                     <span>Rt</span>
                     {renderSortIcon('rating')}
@@ -408,15 +408,15 @@ const toggleSerpFeature = useCallback((feature: string) => {
             {(loading || isTableLoading) ? (
               <tr className="bg-table-row h-10">
                 <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="px-4 py-2 text-center">
-                  <div className="flex justify-center lg:mt-50 items-center flex-col text-muted">
+                  <div className="flex justify-center lg:mt-50 items-center flex-col text-ui-muted">
                     <Loader2 className="animate-spin h-8 w-8 text-blue-600 mb-3" />
-                    <p className="text-sm font-medium">{isTableLoading ? 'Processing...' : 'Loading...'}</p>
+                    <p className="text-ui-body font-medium">{isTableLoading ? 'Processing...' : 'Loading...'}</p>
                   </div>
                 </td>
               </tr>
             ) : displayData.length === 0 ? (
               <tr className="bg-table-row h-10">
-                <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="px-4 py-2 text-center text-sm text-muted italic">
+                <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="px-4 py-2 text-center text-ui-muted italic">
                   {filterState.serpFeatures.length > 0
                     ? 'No keywords match the selected filters.'
                     : `No ${currentView === 'grouped' ? 'groups' : 'keywords'} found.`}
@@ -468,7 +468,7 @@ const toggleSerpFeature = useCallback((feature: string) => {
                     ))}
                     {isParentExpanded && (!groupData.children || groupData.children.length === 0) && !isLoadingThisParentChildren && (parent.childCount ?? 0) > 0 && (
                       <tr className={`${index % 2 === 0 ? 'bg-table-row-alt' : 'bg-table-row'} h-10`}>
-                        <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="pl-6 px-2 py-2 text-xs text-muted italic">
+                        <td colSpan={currentView === 'ungrouped' || currentView === 'grouped' ? 9 : 8} className="pl-6 px-2 py-2 text-ui-muted italic">
                           No children found or failed to load.
                         </td>
                       </tr>

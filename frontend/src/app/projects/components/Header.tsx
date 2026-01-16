@@ -17,7 +17,7 @@ export default function Header() {
       <div className="container mx-auto px-4 py-4 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center">
         <div className="flex items-center gap-3">
           <BarChart3 className="h-8 w-8 text-accent" />
-          <h1 className="text-2xl font-bold text-foreground">SEO Project Manager</h1>
+          <h1 className="text-ui-page font-bold">SEO Project Manager</h1>
         </div>
         <nav className="flex items-center gap-2">
           {[
@@ -31,7 +31,7 @@ export default function Header() {
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                className={`px-3 py-1.5 rounded-full text-ui-tab font-medium transition-colors border ${
                   isActive
                     ? 'bg-accent text-white border-accent shadow-sm'
                     : 'text-muted border-transparent hover:text-foreground hover:bg-surface-muted'
@@ -45,7 +45,7 @@ export default function Header() {
         <Button
           onClick={handleLogout}
           variant="ghost"
-          className="text-muted hover:text-foreground"
+          className="text-ui-tab text-muted hover:text-foreground"
           aria-label="Logout"
         >
           <LogOut size={18} />

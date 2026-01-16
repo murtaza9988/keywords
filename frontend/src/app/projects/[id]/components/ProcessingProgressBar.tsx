@@ -137,7 +137,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
 
   return (
     <div className="w-full mt-3 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-      <div className="flex flex-col gap-1 text-xs text-muted">
+      <div className="flex flex-col gap-1 text-ui-muted">
         <div className="flex flex-wrap items-center justify-between gap-2 text-foreground">
           {status === 'error' ? (
             <div className="flex items-center gap-2">
@@ -147,7 +147,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                 <button
                   onClick={handleReset}
                   disabled={isResetting}
-                  className="ml-2 inline-flex items-center gap-1 rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-200 disabled:opacity-50 transition-colors"
+                  className="ml-2 inline-flex items-center gap-1 rounded-md bg-red-100 px-2 py-1 text-ui-meta font-medium text-red-700 hover:bg-red-200 disabled:opacity-50 transition-colors"
                 >
                   <RotateCcw className={`h-3 w-3 ${isResetting ? 'animate-spin' : ''}`} />
                   {isResetting ? 'Resetting...' : 'Reset & Retry'}
@@ -183,31 +183,31 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
           )}
         </div>
         {message && (
-          <span className="text-xs text-muted">{message}</span>
+          <span className="text-ui-muted">{message}</span>
         )}
         {stageDetail && (
-          <span className="text-xs text-muted">{stageDetail}</span>
+          <span className="text-ui-muted">{stageDetail}</span>
         )}
         {stage && status === 'processing' && (
-          <span className="text-xs text-muted">Stage: {stage}</span>
+          <span className="text-ui-muted">Stage: {stage}</span>
         )}
         {currentFileName && (
-          <span className="text-xs text-muted">Current file: {currentFileName}</span>
+          <span className="text-ui-muted">Current file: {currentFileName}</span>
         )}
         {queuedCount > 0 && (
-          <span className="text-xs text-muted">Queued files: {queuedCount}</span>
+          <span className="text-ui-muted">Queued files: {queuedCount}</span>
         )}
         {showUploadSummary && (
-          <span className="text-xs text-muted">
+          <span className="text-ui-muted">
             Processed {processedCount}/{totalFiles} CSVs
           </span>
         )}
       </div>
       {showUploadSummary && (
-        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-muted">
-          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted">
+        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-ui-muted">
+          <div className="flex items-center justify-between text-ui-label">
             <span>Uploads</span>
-            <span className="text-[11px] font-medium text-muted">
+            <span className="text-ui-meta font-medium">
               Processed {processedCount}/{totalFiles} CSVs
             </span>
           </div>
@@ -222,7 +222,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                     ) : (
                       <span className="h-3 w-3 rounded-full border border-gray-300" />
                     )}
-                    <span className={isProcessed ? 'text-foreground' : 'text-muted'}>
+                    <span className={isProcessed ? 'text-foreground' : 'text-ui-muted'}>
                       {file}
                     </span>
                   </li>
@@ -230,14 +230,14 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
               })}
             </ul>
           ) : (
-            <div className="mt-2 text-xs text-muted">No uploaded files yet.</div>
+            <div className="mt-2 text-ui-muted">No uploaded files yet.</div>
           )}
         </div>
       )}
       {queueItems.length > 0 && (
-        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-muted">
+        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-ui-muted">
           <div className="flex items-center justify-between">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <div className="text-ui-label">
               Queue ({queueItems.length})
             </div>
           </div>
@@ -249,10 +249,10 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                 ) : (
                   <span className="h-4 w-4 rounded-full border border-gray-300 flex-shrink-0" />
                 )}
-                <span className={file.status === 'current' ? 'text-blue-600' : 'text-muted'}>
+                <span className={file.status === 'current' ? 'text-blue-600' : 'text-ui-muted'}>
                   {file.name}
                 </span>
-                <span className="text-[10px] text-muted">
+                <span className="text-ui-meta">
                   {file.status === 'current' ? 'Processing...' : 'Queued'}
                 </span>
               </li>
@@ -261,8 +261,8 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         </div>
       )}
       {safeFileErrors.length > 0 && (
-        <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-red-600">
+        <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-ui-meta text-red-700">
+          <div className="text-ui-label text-red-600">
             File errors
           </div>
           <ul className="mt-2 space-y-1">
@@ -291,7 +291,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
           const isError = status === 'error' && stepIndex === activeStep;
 
           return (
-            <div key={step.key} className="flex items-center gap-2 text-xs">
+            <div key={step.key} className="flex items-center gap-2 text-ui-meta">
               {isComplete ? (
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
               ) : isError ? (
