@@ -57,11 +57,11 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   
   // Custom color based on progress
   const getBarColor = () => {
-    if (status === 'error') return 'bg-red-500';
-    if (safeProgress < 30) return 'bg-blue-500';
-    if (safeProgress < 60) return 'bg-blue-600';
-    if (safeProgress < 90) return 'bg-green-500';
-    return 'bg-green-600';
+    if (status === 'error') return 'bg-danger/80';
+    if (safeProgress < 30) return 'bg-accent/70';
+    if (safeProgress < 60) return 'bg-accent/80';
+    if (safeProgress < 90) return 'bg-success/70';
+    return 'bg-success/80';
   };
 
   const steps = [
@@ -141,13 +141,13 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2 text-foreground">
           {status === 'error' ? (
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-red-600">Processing failed</span>
+              <AlertTriangle className="h-4 w-4 text-danger" />
+              <span className="text-danger font-medium">Processing failed</span>
               {projectId && (
                 <button
                   onClick={handleReset}
                   disabled={isResetting}
-                  className="ml-2 inline-flex items-center gap-1 rounded-md bg-red-100 px-2 py-1 text-ui-meta font-medium text-red-700 hover:bg-red-200 disabled:opacity-50 transition-colors"
+                  className="ml-2 inline-flex items-center gap-1 rounded-md bg-danger/10 px-2 py-1 text-ui-meta font-medium text-danger hover:bg-danger/20 disabled:opacity-50 transition-colors"
                 >
                   <RotateCcw className={`h-3 w-3 ${isResetting ? 'animate-spin' : ''}`} />
                   {isResetting ? 'Resetting...' : 'Reset & Retry'}
@@ -167,9 +167,9 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
           ) : (
             <>
               {status === 'complete' ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
               ) : (
-                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-accent" />
               )}
               <span>
                 {status === 'queued'
@@ -218,9 +218,9 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                 return (
                   <li key={file} className="flex items-center gap-2">
                     {isProcessed ? (
-                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                      <CheckCircle2 className="h-3 w-3 text-success" />
                     ) : (
-                      <span className="h-3 w-3 rounded-full border border-gray-300" />
+                      <span className="h-3 w-3 rounded-full border border-border" />
                     )}
                     <span className={isProcessed ? 'text-foreground' : 'text-ui-muted'}>
                       {file}
@@ -245,11 +245,11 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
             {queueItems.map((file) => (
               <li key={`${file.name}-${file.status}`} className="flex items-center gap-2">
                 {file.status === 'current' ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-500 flex-shrink-0" />
+                  <Loader2 className="h-4 w-4 animate-spin text-accent flex-shrink-0" />
                 ) : (
-                  <span className="h-4 w-4 rounded-full border border-gray-300 flex-shrink-0" />
+                  <span className="h-4 w-4 rounded-full border border-border flex-shrink-0" />
                 )}
-                <span className={file.status === 'current' ? 'text-blue-600' : 'text-ui-muted'}>
+                <span className={file.status === 'current' ? 'text-accent font-medium' : 'text-ui-muted'}>
                   {file.name}
                 </span>
                 <span className="text-ui-meta">
@@ -261,19 +261,19 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         </div>
       )}
       {safeFileErrors.length > 0 && (
-        <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-ui-meta text-red-700">
-          <div className="text-ui-label text-red-600">
+        <div className="mt-2 rounded-md border border-danger/20 bg-danger/10 px-3 py-2 text-ui-meta text-danger">
+          <div className="text-ui-label text-danger">
             File errors
           </div>
           <ul className="mt-2 space-y-1">
             {safeFileErrors.map((error, index) => (
               <li key={`${error.fileName ?? 'unknown'}-${index}`} className="flex flex-col">
-                <span className="font-medium text-red-700">
+                <span className="font-medium text-danger">
                   {error.fileName ?? 'Unknown file'}
                 </span>
-                <span className="text-red-600">{error.message ?? 'Unknown error'}</span>
+                <span className="text-danger/90">{error.message ?? 'Unknown error'}</span>
                 {error.stageDetail && (
-                  <span className="text-red-500">{error.stageDetail}</span>
+                  <span className="text-danger/80">{error.stageDetail}</span>
                 )}
               </li>
             ))}
@@ -293,17 +293,17 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
           return (
             <div key={step.key} className="flex items-center gap-2 text-ui-meta">
               {isComplete ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
               ) : isError ? (
-                <AlertTriangle className="h-4 w-4 text-red-500" />
+                <AlertTriangle className="h-4 w-4 text-danger" />
               ) : isActive ? (
-                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-accent" />
               ) : (
-                <span className="h-4 w-4 rounded-full border border-gray-300" />
+                <span className="h-4 w-4 rounded-full border border-border" />
               )}
               <span
                 className={`${
-                  isComplete ? 'text-foreground' : isActive ? 'text-blue-600' : isError ? 'text-red-600' : 'text-muted'
+                  isComplete ? 'text-foreground' : isActive ? 'text-accent font-medium' : isError ? 'text-danger' : 'text-muted'
                 }`}
               >
                 {step.label}
