@@ -46,7 +46,7 @@ export function ProcessingPanel({
   onUploadSuccess,
   onUploadError,
 }: ProcessingPanelProps): React.ReactElement {
-  const isProcessing = processingStatus === 'queued' || processingStatus === 'processing';
+  const isProcessing = processingStatus === 'queued' || processingStatus === 'processing' || processingStatus === 'uploading';
   const showUploadLoader = isUploading || isProcessing;
 
   return (
