@@ -51,7 +51,7 @@ const formatNumber = (num: number | undefined): string => {
 };
 
 const StatsCell = ({ value }: { value: number | undefined }) => {
-  return <span className="text-foreground font-normal text-[13px]">{formatNumber(value)}</span>;
+  return <span className="text-ui-body font-normal">{formatNumber(value)}</span>;
 };
 
 export default function ProjectsTable({
@@ -157,7 +157,7 @@ export default function ProjectsTable({
   };
 
   return (
-    <div className="w-full text-[13px] text-foreground">
+    <div className="w-full text-ui-body">
       <div className="mb-4 flex justify-end items-center h-9">
         <Button
           variant="danger"
@@ -175,18 +175,18 @@ export default function ProjectsTable({
         <div className="flex justify-center items-center py-20">
           <div className="text-center">
             <Spinner size="lg" className="text-accent border-muted border-t-accent mx-auto mb-4" />
-            <p className="text-muted">Loading projects...</p>
+            <p className="text-ui-muted">Loading projects...</p>
           </div>
         </div>
       ) : projects.length === 0 ? (
         <div className="p-12 text-center">
           <BarChart3 className="h-16 w-16 text-muted mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">No projects yet</h3>
-          <p className="text-muted">Create your first project to get started with keyword management.</p>
+          <h3 className="text-ui-heading mb-2">No projects yet</h3>
+          <p className="text-ui-muted">Create your first project to get started with keyword management.</p>
         </div>
       ) : (
         <div className="">
-          <table className="w-full divide-y divide-border text-[13px] table-fixed">
+          <table className="w-full divide-y divide-border text-ui-body table-fixed">
             <thead className="bg-surface-muted">
               <tr>
                 <th className="px-4 py-4 w-[50px] text-center">
@@ -197,63 +197,63 @@ export default function ProjectsTable({
                     className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
                   />
                 </th>
-                <th className="px-6 py-4 text-left text-[11px] font-semibold text-muted uppercase tracking-wider w-1/4">
+                <th className="px-6 py-4 text-left text-ui-label w-1/4">
                   <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('name')}>
                     <BarChart3 className="h-4 w-4" />
                     Project Name
                     <ArrowUpDown className="h-4 w-4" />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left text-[11px] font-semibold text-muted uppercase tracking-wider w-1/6">
+                <th className="px-6 py-4 text-left text-ui-label w-1/6">
                   <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('created_at')}>
                     <Calendar className="h-4 w-4" />
                     Date Created
                     <ArrowUpDown className="h-4 w-4" />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-[11px] font-semibold text-muted uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-ui-label w-1/8">
                   <div className="flex items-center justify-center gap-2 cursor-pointer" onClick={() => handleSort('totalParentKeywords')}>
                     Total Parent Keywords
                     <ArrowUpDown className="h-4 w-4" />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-[11px] font-semibold text-muted uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-ui-label w-1/8">
                   <div className="flex flex-col items-center cursor-pointer" onClick={() => handleSort('ungroupedCount')}>
                     <div className="flex items-center gap-2">
                       <span>Keywords</span>
                       <ArrowUpDown className="h-4 w-4" />
                     </div>
-                    <span className="text-[11px] text-muted font-normal">(View 1)</span>
+                    <span className="text-ui-meta font-normal">(View 1)</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-[11px] font-semibold text-muted uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-ui-label w-1/8">
                   <div className="flex flex-col items-center cursor-pointer" onClick={() => handleSort('groupedKeywordsCount')}>
                     <div className="flex items-center gap-2">
                       <span>Keywords</span>
                       <ArrowUpDown className="h-4 w-4" />
                     </div>
-                    <span className="text-[11px] text-muted font-normal">(View 2)</span>
+                    <span className="text-ui-meta font-normal">(View 2)</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-[11px] font-semibold text-muted uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-ui-label w-1/8">
                   <div className="flex flex-col items-center cursor-pointer" onClick={() => handleSort('confirmedKeywordsCount')}>
                     <div className="flex items-center gap-2">
                       <span>Keywords</span>
                       <ArrowUpDown className="h-4 w-4" />
                     </div>
-                    <span className="text-[11px] text-muted font-normal">(View 3)</span>
+                    <span className="text-ui-meta font-normal">(View 3)</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-[11px] font-semibold text-muted uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-ui-label w-1/8">
                   <div className="flex flex-col items-center cursor-pointer" onClick={() => handleSort('blockedCount')}>
                     <div className="flex items-center gap-2">
                       <span>Keywords</span>
                       <ArrowUpDown className="h-4 w-4" />
                     </div>
-                    <span className="text-[11px] text-muted font-normal">(View 4)</span>
+                    <span className="text-ui-meta font-normal">(View 4)</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center text-[11px] font-semibold text-muted uppercase tracking-wider w-1/8">
+                <th className="px-6 py-4 text-center text-ui-label w-1/8">
                   Actions
                 </th>
               </tr>
@@ -324,16 +324,16 @@ export default function ProjectsTable({
                         <td className="px-6 py-4 break-words whitespace-normal">
                           <div className="flex items-center group">
                             <div>
-                              <div className="text-[13px] font-semibold text-foreground group-hover:text-accent transition-colors break-words">
+                              <div className="text-ui-body font-semibold text-foreground group-hover:text-accent transition-colors break-words">
                                 {project.name}
                               </div>
-                              <div className="text-[12px] font-normal text-muted">
+                              <div className="text-ui-meta font-normal">
                                 ID: {project.id}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-normal text-foreground font-normal text-[13px]">
+                        <td className="px-6 py-4 whitespace-normal text-ui-body font-normal">
                           {formatDate(project.created_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-normal text-center">
@@ -401,8 +401,8 @@ export default function ProjectsTable({
       {showDeleteModal && projectsToDelete.length > 0 && (
         <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
           <div className="bg-surface rounded-2xl p-6 max-w-md w-full shadow-xl border border-border">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Confirm Deletion</h3>
-            <p className="text-muted mb-6">
+            <h3 className="text-ui-heading mb-4">Confirm Deletion</h3>
+            <p className="text-ui-muted mb-6">
               {projectsToDelete.length === 1 ? (
                 <>Are you sure you want to delete the project &ldquo;<strong className='font-medium text-foreground'>{projectsToDelete[0].name}</strong>&ldquo;?</>
               ) : (

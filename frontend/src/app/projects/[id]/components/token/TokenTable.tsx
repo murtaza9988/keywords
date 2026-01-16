@@ -73,7 +73,7 @@ export function TokenTable({
   ) => (
     <th
       scope="col"
-      className={`px-1 py-1.5 text-${align} text-[13px] font-light text-foreground uppercase tracking-wider cursor-pointer hover:text-muted ${className}`}
+      className={`px-1 py-1.5 text-${align} text-ui-label cursor-pointer hover:text-muted ${className}`}
       onClick={() => onSort(column)}
     >
       <div className={`flex items-center ${align === 'right' ? 'justify-end' : ''}`}>
@@ -89,12 +89,12 @@ export function TokenTable({
 
   const EmptyState = () => (
     <tr>
-      <td colSpan={6} className="px-4 py-8 text-center text-muted">
+      <td colSpan={6} className="px-4 py-8 text-center text-ui-muted">
         <div className="flex flex-col items-center justify-center space-y-2">
           <AlertCircle className="h-8 w-8 text-muted" />
           <p>No tokens found</p>
           {activeTokenView === 'current' && (
-            <p className="text-xs max-w-md">Try changing your search or view settings</p>
+            <p className="text-ui-meta max-w-md">Try changing your search or view settings</p>
           )}
         </div>
       </td>
@@ -103,7 +103,7 @@ export function TokenTable({
 
   return (
    <div className="relative h-full">
-        <table className="w-full table-fixed divide-y divide-gray-200 text-xs">
+        <table className="w-full table-fixed divide-y divide-gray-200 text-ui-body">
           <colgroup>
             <col className="w-[36px]" />
             <col className="w-auto" />
@@ -130,7 +130,7 @@ export function TokenTable({
               {renderSortableHeader('difficulty', 'Diff', 'right')}
               <th
                 scope="col"
-                className="px-1 py-1.5 text-center text-[13px] font-light text-foreground uppercase tracking-wider"
+                className="px-1 py-1.5 text-center text-ui-label"
               >
                 Action
               </th>
@@ -162,7 +162,7 @@ export function TokenTable({
                         />
                       </td>
                       <td
-                        className={`pr-0.5 pl-1 py-1 whitespace-nowrap text-[13px] font-medium text-foreground relative ${isSelected ? 'bg-surface-muted' : rowBgClass}`}
+                        className={`pr-0.5 pl-1 py-1 whitespace-nowrap text-ui-body font-medium text-foreground relative ${isSelected ? 'bg-surface-muted' : rowBgClass}`}
                         onMouseEnter={() => onTokenHover(token.tokenName)}
                         onMouseLeave={() => onTokenHover(null)}
                       >
@@ -193,16 +193,16 @@ export function TokenTable({
                           <TokenKeywordPopover token={token} getTopKeywords={getTopKeywords} index={index} />
                         )}
                       </td>
-                      <td className="pl-0.5 pr-1 py-1 whitespace-nowrap text-[13px] text-right text-muted tabular-nums">
+                      <td className="pl-0.5 pr-1 py-1 whitespace-nowrap text-ui-muted text-right tabular-nums">
                         {token.count ?? 'N/A'}
                       </td>
                       <td
-                        className="px-1 py-1 whitespace-nowrap text-[13px] text-right text-muted tabular-nums"
+                        className="px-1 py-1 whitespace-nowrap text-ui-muted text-right tabular-nums"
                         title={token.volume != null ? token.volume.toLocaleString() : undefined}
                       >
                         {token.volume != null ? compactNumberFormatter.format(token.volume) : 'N/A'}
                       </td>
-                      <td className="px-1 py-1 whitespace-nowrap text-[13px] text-right text-muted tabular-nums">
+                      <td className="px-1 py-1 whitespace-nowrap text-ui-muted text-right tabular-nums">
                         {token.difficulty != null ? Number(token.difficulty).toFixed(0) : 'N/A'}
                       </td>
                       <td className="px-1 py-1 whitespace-nowrap text-center flex items-center justify-center space-x-1">
@@ -218,7 +218,7 @@ export function TokenTable({
                           <button
                             onClick={() => onUnmergeToken(token.tokenName)}
                             disabled={isProcessingAction}
-                            className="text-[10px] px-1 py-0.5 bg-surface-muted cursor-pointer hover:bg-surface-muted/70 text-foreground rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="text-ui-meta px-1 py-0.5 bg-surface-muted cursor-pointer hover:bg-surface-muted/70 text-foreground rounded disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={`Unmerge token "${token.tokenName}"`}
                           >
                             Unmerge
@@ -243,7 +243,7 @@ export function TokenTable({
                                 {token.childTokens.map(childToken => (
                                   <div
                                     key={childToken}
-                                    className="flex items-center justify-between text-[12px] py-0.5"
+                                    className="flex items-center justify-between text-ui-meta py-0.5"
                                   >
                                     <span className="text-foreground truncate" title={childToken}>
                                       {childToken}
@@ -255,7 +255,7 @@ export function TokenTable({
                                           onUnmergeIndividualToken(token.tokenName, childToken);
                                         }}
                                         disabled={isProcessingAction}
-                                        className="text-[10px] px-1 py-0.5 bg-surface-muted hover:bg-surface-muted/70 text-foreground rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="text-ui-meta px-1 py-0.5 bg-surface-muted hover:bg-surface-muted/70 text-foreground rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                         title={`Unmerge "${childToken}" from "${token.tokenName}"`}
                                         aria-label={`Unmerge "${childToken}" from "${token.tokenName}"`}
                                       >
@@ -266,7 +266,7 @@ export function TokenTable({
                                 ))}
                               </div>
                             ) : (
-                              <div className="text-[12px] text-muted py-1">No child tokens available</div>
+                              <div className="text-ui-meta text-muted py-1">No child tokens available</div>
                             )}
                           </div>
                         </td>

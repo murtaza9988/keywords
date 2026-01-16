@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { backlogItems, type BacklogItem, type BacklogPriority, type BacklogStatus } from './backlogData';
 
 const renderList = (items: string[]) => (
-  <ul className="list-disc pl-4 text-[13px] text-muted space-y-1">
+  <ul className="list-disc pl-4 text-ui-muted space-y-1">
     {items.map((item) => (
       <li key={item}>{item}</li>
     ))}
@@ -49,7 +49,7 @@ function Pill({
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+      className={`px-3 py-1.5 rounded-full text-ui-tab font-medium transition-colors border ${
         active
           ? 'bg-accent text-white border-accent shadow-sm'
           : 'text-muted border-border hover:text-foreground hover:bg-surface-muted'
@@ -104,19 +104,19 @@ export default function BacklogPage() {
       <main className="max-w-[1100px] mx-auto px-4 py-8">
         <Card className="p-8 space-y-8">
           <header className="space-y-2">
-            <h2 className="text-2xl font-semibold text-foreground">Backlog</h2>
-            <p className="text-[13px] text-muted">
+            <h2 className="text-ui-page">Backlog</h2>
+            <p className="text-ui-muted">
               Review-friendly list of remaining features, fixes, and product improvements.
             </p>
           </header>
 
           <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm text-foreground font-semibold">Summary</div>
-              <div className="text-xs text-muted">Total: {counts.total}</div>
+              <div className="text-ui-title font-semibold">Summary</div>
+              <div className="text-ui-meta">Total: {counts.total}</div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs text-muted">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-ui-meta">
               <div className="rounded-lg border border-border bg-background px-3 py-2">
                 <span className="font-semibold text-foreground">Priorities:</span>{' '}
                 P0 {counts.byPriority.P0} · P1 {counts.byPriority.P1} · P2 {counts.byPriority.P2}
@@ -181,11 +181,11 @@ export default function BacklogPage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="space-y-1">
-                    <h3 className="text-lg font-semibold text-foreground">
+                    <h3 className="text-ui-heading">
                       <span className="text-muted mr-2">#{item.id}</span>
                       {item.name}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
+                    <div className="flex flex-wrap items-center gap-2 text-ui-meta">
                       <span className="rounded-full border border-border bg-background px-2 py-0.5">
                         {item.category}
                       </span>
@@ -198,10 +198,10 @@ export default function BacklogPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] uppercase tracking-wider font-semibold text-white bg-accent border border-accent px-2 py-1 rounded-full">
+                    <span className="text-ui-label text-white bg-accent border border-accent px-2 py-1 rounded-full">
                       {item.priority}
                     </span>
-                    <span className="text-[11px] uppercase tracking-wider font-semibold text-accent bg-accent/10 border border-accent/30 px-2 py-1 rounded-full">
+                    <span className="text-ui-label text-accent bg-accent/10 border border-accent/30 px-2 py-1 rounded-full">
                       {item.status}
                     </span>
                   </div>
@@ -209,36 +209,36 @@ export default function BacklogPage() {
 
                 <dl className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-1">
-                    <dt className="text-[11px] uppercase tracking-wider text-muted">Scores</dt>
-                    <dd className="text-[13px] text-foreground">
+                    <dt className="text-ui-label">Scores</dt>
+                    <dd className="text-ui-body">
                       Impact <span className="font-semibold">{item.impact}/10</span> · Complexity{' '}
                       <span className="font-semibold">{item.complexity}/10</span>
                     </dd>
                   </div>
                   <div className="space-y-1">
-                    <dt className="text-[11px] uppercase tracking-wider text-muted">Problem statement</dt>
-                    <dd className="text-[13px] text-foreground">{item.problemStatement}</dd>
+                    <dt className="text-ui-label">Problem statement</dt>
+                    <dd className="text-ui-body">{item.problemStatement}</dd>
                   </div>
                   <div className="space-y-1">
-                    <dt className="text-[11px] uppercase tracking-wider text-muted">Definition of done</dt>
-                    <dd className="text-[13px] text-foreground">{item.definitionOfDone}</dd>
+                    <dt className="text-ui-label">Definition of done</dt>
+                    <dd className="text-ui-body">{item.definitionOfDone}</dd>
                   </div>
                   <div className="space-y-1">
-                    <dt className="text-[11px] uppercase tracking-wider text-muted">Scope</dt>
-                    <dd className="text-[13px] text-foreground">
+                    <dt className="text-ui-label">Scope</dt>
+                    <dd className="text-ui-body">
                       <span className="font-semibold">{item.scope.type}</span> — {item.scope.why}
                     </dd>
                   </div>
                   <div className="space-y-1">
-                    <dt className="text-[11px] uppercase tracking-wider text-muted">Impacted areas</dt>
+                    <dt className="text-ui-label">Impacted areas</dt>
                     <dd>{renderList(item.impactedAreas)}</dd>
                   </div>
                   <div className="space-y-1">
-                    <dt className="text-[11px] uppercase tracking-wider text-muted">Dependencies</dt>
+                    <dt className="text-ui-label">Dependencies</dt>
                     <dd>{renderList(item.dependencies)}</dd>
                   </div>
                   <div className="space-y-1">
-                    <dt className="text-[11px] uppercase tracking-wider text-muted">Risks</dt>
+                    <dt className="text-ui-label">Risks</dt>
                     <dd>{renderList(item.risks)}</dd>
                   </div>
                 </dl>

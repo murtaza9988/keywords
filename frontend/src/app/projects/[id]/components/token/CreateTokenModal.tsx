@@ -23,12 +23,12 @@ export function CreateTokenModal({
   return (
     <Modal open onClose={onCancel}>
       <div className="w-full max-w-sm">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Create New Token</h3>
-        <p className="text-sm text-muted mb-4">
+        <h3 className="text-ui-heading mb-4">Create New Token</h3>
+        <p className="text-ui-muted mb-4">
           Create a token &quot;{tokenName}&quot; that will be added to all keywords containing &quot;{searchTerm}&quot;.
         </p>
         <div className="mb-4">
-          <label className="block text-sm font-medium text-muted mb-1">Token Name</label>
+          <label className="block text-ui-body font-medium text-muted mb-1">Token Name</label>
           <Input
             type="text"
             value={tokenName}

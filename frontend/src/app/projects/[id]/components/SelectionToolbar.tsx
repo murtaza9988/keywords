@@ -27,31 +27,31 @@ export const SelectionToolbar = memo(({
       <div className="flex border border-border p-0.5 gap-2 rounded bg-surface-muted w-full sm:w-auto justify-center shrink-0">
         <button
           onClick={() => onViewChange('ungrouped')}
-          className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'ungrouped' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
+          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'ungrouped' ? 'bg-blue-600 text-white shadow-sm' : 'hover:text-foreground hover:bg-surface-muted'}`}
         >
           {viewLabels.ungrouped}
         </button>
         <button
           onClick={() => onViewChange('grouped')}
-          className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'grouped' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
+          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'grouped' ? 'bg-blue-600 text-white shadow-sm' : 'hover:text-foreground hover:bg-surface-muted'}`}
         >
           {viewLabels.grouped}
         </button>
         <button
           onClick={() => onViewChange('confirmed')}
-          className={`flex-1 sm:flex-none px-1 py-2 text-[13px] rounded transition-colors hover:cursor-pointer ${activeView === 'confirmed' ? 'bg-green-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
+          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'confirmed' ? 'bg-green-600 text-white shadow-sm' : 'hover:text-foreground hover:bg-surface-muted'}`}
         >
           {viewLabels.confirmed}
         </button>
         <button
           onClick={() => onViewChange('blocked')}
-          className={`flex-1 sm:flex-none px-1 py-2 text-sm rounded transition-colors hover:cursor-pointer ${activeView === 'blocked' ? 'bg-red-600 text-white shadow-sm' : 'text-muted hover:text-foreground hover:bg-surface-muted'}`}
+          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'blocked' ? 'bg-red-600 text-white shadow-sm' : 'hover:text-foreground hover:bg-surface-muted'}`}
         >
           {viewLabels.blocked}
         </button>
       </div>
 
-      <div className="flex items-center justify-center sm:justify-end gap-1 text-xs text-foreground">
+      <div className="flex items-center justify-center sm:justify-end gap-1 text-ui-body">
         <span className="flex-shrink-0">
           Showing <span className="inline-block min-w-[30px] text-center">{keywordsCount.toLocaleString()}</span> | 
           Page <span className="inline-block min-w-[10px] text-center">{pagination.page}</span> /
@@ -63,7 +63,7 @@ export const SelectionToolbar = memo(({
             id="itemsPerPage"
             value={pagination.limit}
             onChange={onLimitChange}
-            className="appearance-none bg-white border border-border rounded text-sm py-1 pl-2 pr-6 focus:outline-none cursor-pointer"
+            className="appearance-none bg-white border border-border rounded text-ui-body py-1 pl-2 pr-6 focus:outline-none cursor-pointer"
             aria-label="Items per page"
             disabled={isLoadingData}
           >

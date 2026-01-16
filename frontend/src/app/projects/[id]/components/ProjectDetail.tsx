@@ -2945,10 +2945,10 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         onExportCSV={handleExportCSV}
       />
       <div className="flex-1 w-full">
-        <div className="mx-auto w-full max-w-[1720px] px-4 sm:px-6 lg:px-8 py-4">
+        <div className="mx-auto w-full max-w-[1720px] px-4 sm:px-6 lg:px-8 py-2">
           <div className="flex flex-col xl:flex-row gap-4">
             <main className="w-full xl:basis-4/5 xl:flex-[4] min-w-0 flex flex-col">
-              <div className="bg-white shadow border border-border rounded-lg p-4 sm:p-6 flex flex-col flex-grow h-full">
+              <div className="bg-white shadow border border-border rounded-lg p-3 sm:p-4 flex flex-col flex-grow h-full">
                 <ProjectDetailTabs
                   activeTab={activeTab}
                   processingLocked={processingLocked}

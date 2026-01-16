@@ -24,7 +24,7 @@ export function TokenViewTabs({
             <button
               key={view}
               onClick={() => onViewChange(view)}
-              className={`py-1.5 px-1 text-[13px] font-medium cursor-pointer ${
+              className={`py-1.5 px-1 text-ui-tab font-medium cursor-pointer ${
                 activeView === view
                   ? 'border-b-2 border-blue-500 text-blue-600'
                   : 'text-muted hover:text-foreground hover:border-border border-b-2 border-transparent'
@@ -40,7 +40,7 @@ export function TokenViewTabs({
         <select
           value={limit}
           onChange={onLimitChange}
-          className="border border-border rounded-md px-2 py-1.5 cursor-pointer bg-white text-[13px] text-foreground focus:ring-blue-500 focus:border-blue-500"
+          className="border border-border rounded-md px-2 py-1.5 cursor-pointer bg-white text-ui-body focus:ring-blue-500 focus:border-blue-500"
         >
           {limitOptions.map(option => (
             <option key={option} value={option}>

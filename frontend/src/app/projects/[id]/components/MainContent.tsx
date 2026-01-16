@@ -131,25 +131,25 @@ const VolumeInputs = memo(
 
     return (
       <div className="flex items-center">
-        <span className="text-[13px] text-foreground font-light mr-1">Vol:</span>
+        <span className="text-ui-meta font-light mr-1">Vol:</span>
         <input
           ref={minInputRef}
           type="number"
           placeholder="Min"
           value={localMinVolume}
           onChange={handleMinChange}
-          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={8}
         />
-        <span className="mx-1 text-muted">-</span>
+        <span className="mx-1 text-ui-muted">-</span>
         <input
           ref={maxInputRef}
           type="number"
           placeholder="Max"
           value={localMaxVolume}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={8}
         />
@@ -214,25 +214,25 @@ const LengthInputs = memo(
 
     return (
       <div className="flex items-center ml-2">
-        <span className="text-[13px] text-foreground font-light mr-1">Len:</span>
+        <span className="text-ui-meta font-light mr-1">Len:</span>
         <input
           ref={minInputRef}
           type="number"
           placeholder="Min"
           value={localMinLength}
           onChange={handleMinChange}
-          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
-        <span className="mx-1 text-muted">-</span>
+        <span className="mx-1 text-ui-muted">-</span>
         <input
           ref={maxInputRef}
           type="number"
           placeholder="Max"
           value={localMaxLength}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
@@ -299,7 +299,7 @@ const DifficultyInputs = memo(
 
     return (
       <div className="flex items-center ml-2 ">
-        <span className="text-[13px] text-foreground font-light mr-1">Diff:</span>
+        <span className="text-ui-meta font-light mr-1">Diff:</span>
         <input
           ref={minInputRef}
           type="number"
@@ -307,11 +307,11 @@ const DifficultyInputs = memo(
           placeholder="Min"
           value={localMinDifficulty}
           onChange={handleMinChange}
-          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={5}
         />
-        <span className="mx-1 text-muted">-</span>
+        <span className="mx-1 text-ui-muted">-</span>
         <input
           ref={maxInputRef}
           type="number"
@@ -319,7 +319,7 @@ const DifficultyInputs = memo(
           placeholder="Max"
           value={localMaxDifficulty}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={5}
         />
@@ -384,25 +384,25 @@ const RatingInputs = memo(
 
     return (
       <div className="flex items-center ml-2">
-        <span className="text-[13px] text-foreground font-light mr-1">Rt:</span>
+        <span className="text-ui-meta font-light mr-1">Rt:</span>
         <input
           ref={minInputRef}
           type="number"
           placeholder="Min"
           value={localMinRating}
           onChange={handleMinChange}
-          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
-        <span className="mx-1 text-muted">-</span>
+        <span className="mx-1 text-ui-muted">-</span>
         <input
           ref={maxInputRef}
           type="number"
           placeholder="Max"
           value={localMaxRating}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-xs border border-border rounded-md text-[13px] bg-white text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
@@ -452,9 +452,9 @@ export const MainContent: React.FC<MainContentProps> = memo(({
   return (
     <>
       <div className="flex flex-col gap-1 pb-2 border-b border-border">
-        <h2 className="text-[15px] font-semibold text-foreground">Keyword Management</h2>
+        <h2 className="text-ui-title">Keyword Management</h2>
         {showSelectedParentCount && (
-          <span className="text-xs text-muted">
+          <span className="text-ui-meta">
             Selected parent keywords: {viewState.selectedParentKeywordCount.toLocaleString()}
           </span>
         )}

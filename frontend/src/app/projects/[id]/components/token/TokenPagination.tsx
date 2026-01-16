@@ -34,7 +34,7 @@ export function TokenPagination({
   const pageNumbers = getPageNumbers();
   if (total === 0) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-ui-body">
         <div>No results found</div>
       </div>
     );
@@ -42,7 +42,7 @@ export function TokenPagination({
   
   if (totalPages <= 1) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-ui-body">
         <div>
           Showing {total.toLocaleString()} {total === 1 ? 'result' : 'results'}
         </div>
@@ -51,7 +51,7 @@ export function TokenPagination({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-2 text-ui-body">
       <div>
         Showing page {currentPage} of {totalPages} ({total.toLocaleString()} total)
       </div>
@@ -59,7 +59,7 @@ export function TokenPagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1 || isLoading}
-          className="px-2 py-1 border border-border cursor-pointer rounded-md text-foreground hover:bg-surface-muted disabled:opacity-50"
+          className="px-2 py-1 border border-border cursor-pointer rounded-md text-ui-body hover:bg-surface-muted disabled:opacity-50"
           aria-label="Previous page"
         >
           ‹
@@ -85,7 +85,7 @@ export function TokenPagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages || isLoading}
-          className="px-2 py-1 border border-border cursor-pointer rounded-md text-muted hover:bg-surface-muted disabled:opacity-50"
+          className="px-2 py-1 border border-border cursor-pointer rounded-md text-ui-muted hover:bg-surface-muted disabled:opacity-50"
           aria-label="Next page"
         >
           ›
