@@ -14,25 +14,34 @@ from app.utils.security import get_current_user
 router = APIRouter(tags=["activity-logs"])
 
 
-@router.get("/projects/{project_id}/logs", response_model=List[ActivityLogResponse])
+@router.get("/projects/{project_id}/logs", response_model=ActivityLogListResponse)
 async def get_project_logs(
     project_id: int,
     page: int = Query(1, ge=1),
     limit: int = Query(100, ge=1, le=1000),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> List[ActivityLogResponse]:
+) -> ActivityLogListResponse:
     project = await ProjectService.get_by_id(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    logs, _ = await ActivityLogService.list_logs(
+    logs, total = await ActivityLogService.list_logs(
         db,
         project_id=project_id,
         page=page,
         limit=limit,
     )
-    return logs
+    pages = ceil(total / limit) if total else 0
+    return ActivityLogListResponse(
+        logs=logs,
+        pagination=ActivityLogPagination(
+            total=total,
+            page=page,
+            limit=limit,
+            pages=pages,
+        ),
+    )
 
 
 @router.get("/logs", response_model=ActivityLogListResponse)

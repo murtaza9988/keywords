@@ -15,7 +15,6 @@ import {
   TokenListResponse,
   Note,
   CSVUpload,
-  ActivityLog,
   ActivityLogListResponse,
 } from './types';
 import authService from './authService';
@@ -382,7 +381,7 @@ class ApiClient {
   async fetchProjectLogs(
     projectId: string,
     options: { page?: number; limit?: number } = {}
-  ): Promise<ActivityLog[]> {
+  ): Promise<ActivityLogListResponse> {
     const params = new URLSearchParams();
     if (options.page) {
       params.set('page', String(options.page));
@@ -394,19 +393,20 @@ class ApiClient {
     const url = query
       ? `/api/projects/${projectId}/logs?${query}`
       : `/api/projects/${projectId}/logs`;
-    const data = await this.request<ApiActivityLog[]>(
+    const data = await this.request<ApiActivityLogListResponse>(
       'get',
       url,
       undefined,
       undefined,
       false
     );
-    return data.map((log) => ({
+    const logs = data.logs.map((log) => ({
       ...log,
       projectId: log.projectId ?? log.project_id ?? Number(projectId),
       createdAt: log.createdAt ?? log.created_at ?? new Date().toISOString(),
       details: log.details ?? null,
     }));
+    return { logs, pagination: data.pagination };
   }
 
   async fetchAllActivityLogs(filters: {
