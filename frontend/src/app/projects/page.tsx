@@ -159,9 +159,9 @@ export default function Projects() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-[1100px] mx-auto px-4 py-4">
-        <Card className="p-6">
-          <div className="flex flex-col gap-5">
+      <main className="max-w-[1100px] mx-auto px-4 py-2">
+        <Card className="p-4">
+          <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3">
               <nav aria-label="Breadcrumb" className="text-ui-meta">
                 <ol className="flex items-center gap-2">
@@ -174,7 +174,7 @@ export default function Projects() {
                   <li className="text-foreground">Projects</li>
                 </ol>
               </nav>
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3">
                 <div>
                   <h2 className="text-ui-page">Projects</h2>
                   <p className="text-ui-muted mt-1">
