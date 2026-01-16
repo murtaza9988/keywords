@@ -35,7 +35,7 @@ seo-project-manager/
 │   │   └── keyword.py        # Keyword processing service
 │   └── utils/                # Utility functions
 │       ├── security.py       # JWT and auth utilities
-│       └── text_processing.py # Tokenization and NLP utilities
+│       └── token_normalization.py # Tokenization/normalization utilities
 ├── uploads/                  # Directory for uploaded files
 ├── requirements.txt          # Project dependencies
 ├── .env                      # Environment variables
