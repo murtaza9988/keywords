@@ -12,8 +12,6 @@ A SEO keyword management application built with FastAPI and MySQL.
 
 ## Project Structure
 
-
-```
 seo-project-manager/
 ├── app/
 │   ├── main.py               # FastAPI application entry point
