@@ -15,13 +15,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify SSH secrets are set
+        run: |
+          if [ -z "${{ secrets.SSH_HOST }}" ]; then
+            echo "❌ SSH_HOST secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_USER }}" ]; then
+            echo "❌ SSH_USER secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ SSH_PRIVATE_KEY secret is not set"
+            exit 1
+          fi
+          echo "✅ All SSH secrets are configured"
+
       - name: Deploy to production server
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          timeout: 60s
           script: |
             cd /home/keywords/backend
             git fetch origin
