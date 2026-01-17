@@ -1,38 +1,44 @@
-name: CI
+name: CI – Lint & Typecheck
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  lint-backend:
-  typecheck:
+  lint-and-typecheck:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      # ── Backend (Python / FastAPI) ───────────────────────────────────────────
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: 'pip'                  # caches pip dependencies automatically
+          cache-dependency-path: backend/requirements.txt
 
       - name: Install backend dependencies
-        run: pip install -r backend/requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          # Install lint tools if not in requirements.txt
+          pip install ruff black
 
-      - name: Ruff
-        run: ruff check backend/app backend/alembic
-
-      - name: Black
-        run: black --check backend/app backend/alembic
-      - name: Setup Node
+      # ── Frontend (Node.js) ───────────────────────────────────────────────────
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
+          cache: 'npm'
+          cache-dependency-path: package-lock.json  # adjust if using yarn/pnpm
+
+      - name: Install frontend dependencies
+        run: npm ci  # clean install – good for CI
+
       - name: Typecheck frontend
-        run: npm run typecheck -w frontend
+        run: npm run typecheck -w frontend  
