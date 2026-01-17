@@ -2,7 +2,7 @@
 
 A comprehensive full-stack application for SEO keyword management, clustering, and analysis. Built with **Next.js 15 (React 19)** and **FastAPI**.
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 - **Node.js** v20+
