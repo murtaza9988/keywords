@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
 
-# Create SQLAlchemy engine for MySQL with aiomysql driver
+# Create SQLAlchemy engine for PostgreSQL with asyncpg driver
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
 # Create async engine
