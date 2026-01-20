@@ -21,7 +21,7 @@ interface FiltersSectionProps {
   handleIncludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleExcludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   setGroupName: (value: string) => void;
-  handleGroupKeywords: () => void;
+  handleGroupKeywords: (overrideGroupName?: string) => void | Promise<void>;
   handleUngroupKeywords: () => void;
   handleUnblockKeywords: () => void;
   removeToken: (token: string) => void;

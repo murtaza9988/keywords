@@ -20,6 +20,7 @@ import {
 } from '../ProjectDetail.state';
 import {
   ProcessingStatus,
+  ProcessingFileError,
   ActiveKeywordView,
   Keyword
 } from '../types';
@@ -130,7 +131,7 @@ export interface UseProjectDetailStateReturn {
   processingRunningJobs: number | undefined;
   processingSucceededJobs: number | undefined;
   processingFailedJobs: number | undefined;
-  processingFileErrors: Array<{ filename: string; error: string }>;
+  processingFileErrors: ProcessingFileError[];
   uploadedFileCount: number;
   processedFileCount: number;
   uploadedFiles: string[];

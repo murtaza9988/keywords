@@ -11,6 +11,7 @@ import { fetchProjectStats as fetchProjectStatsApi } from '@/lib/api/projects';
 import { ProjectDetailAction } from '../ProjectDetail.state';
 import {
   ProcessingStatus,
+  ProcessingFileError,
   ActiveKeywordView,
   Keyword,
   SortParams
@@ -590,7 +591,7 @@ export function useKeywordFetching({
             processedFileCount?: number;
             uploadedFiles?: string[];
             processedFiles?: string[];
-            fileErrors?: Array<{ filename: string; error: string }>;
+            fileErrors?: ProcessingFileError[];
             queuedJobs?: number;
             runningJobs?: number;
           };
