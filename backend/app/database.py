@@ -66,15 +66,38 @@ async def init_db():
 
 async def verify_csv_uploads_storage_path(conn: AsyncConnection | None = None) -> None:
     """Verify csv_uploads.storage_path exists to avoid runtime UndefinedColumnError."""
-    query = text(
-        """
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = :table_name
-          AND column_name = :column_name
-        LIMIT 1
-        """
-    )
+    if engine.dialect.name == "postgresql":
+        query = text(
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = :table_name
+              AND column_name = :column_name
+            LIMIT 1
+            """
+        )
+    elif engine.dialect.name in {"mysql", "mariadb"}:
+        query = text(
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = :table_name
+              AND column_name = :column_name
+            LIMIT 1
+            """
+        )
+    else:
+        query = text(
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_name = :table_name
+              AND column_name = :column_name
+            LIMIT 1
+            """
+        )
 
     async def _column_exists(connection: AsyncConnection) -> bool:
         result = await connection.execute(
