@@ -1,7 +1,7 @@
 "use client";
 import { useCallback } from 'react';
 import { AppDispatch } from '@/store/store';
-import { setKeywordsForView, setProjectStats, setChildrenForGroup } from '@/store/projectSlice';
+import { setKeywordsForView, setProjectStats } from '@/store/projectSlice';
 import {
   fetchInitialData as fetchInitialDataApi,
   fetchKeywords as fetchKeywordsApi,
