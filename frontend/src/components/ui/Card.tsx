@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { cn } from "@/lib/cn";
 
 /**
@@ -159,16 +160,42 @@ export function CardActions({ className, ...props }: React.HTMLAttributes<HTMLDi
   );
 }
 
+interface CardMediaProps {
+  className?: string;
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  fill?: boolean;
+}
+
 export function CardMedia({
   className,
   src,
   alt,
-  ...props
-}: React.ImgHTMLAttributes<HTMLImageElement>) {
+  width,
+  height,
+  fill,
+}: CardMediaProps) {
+  if (fill) {
+    return (
+      <div className={cn("relative w-full first:rounded-t-xl overflow-hidden", className)}>
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          className="object-cover"
+        />
+      </div>
+    );
+  }
+
   return (
-    <img
+    <Image
       src={src}
       alt={alt}
+      width={width || 400}
+      height={height || 300}
       className={cn(
         // Full width, maintain aspect ratio
         "w-full object-cover",
@@ -176,7 +203,6 @@ export function CardMedia({
         "first:rounded-t-xl",
         className
       )}
-      {...props}
     />
   );
 }
