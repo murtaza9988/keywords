@@ -5,6 +5,37 @@
 
 ---
 
+## Required Reading Index
+
+> **Before starting ANY task, read the appropriate documents below.**
+
+| Task Type | Required Reading |
+|-----------|------------------|
+| **Any Task** | This file (AGENTS.md) + [CLAUDE.md](CLAUDE.md) |
+| **Bug Fix** | + [docs/BUG_HANDLING_PLAYBOOK.md](docs/BUG_HANDLING_PLAYBOOK.md), [docs/BUG_REGISTRY.md](docs/BUG_REGISTRY.md) |
+| **Feature Development** | + [docs/agents/feature-implementation.md](docs/agents/feature-implementation.md), [REPO_REVIEW.md](REPO_REVIEW.md) |
+| **Refactoring** | + [docs/agents/refactor-steward.md](docs/agents/refactor-steward.md) |
+| **Security Work** | + [docs/agents/security-auditor.md](docs/agents/security-auditor.md), [SECURITY.md](SECURITY.md) |
+| **Database/Migrations** | + [docs/agents/migration-gatekeeper.md](docs/agents/migration-gatekeeper.md) |
+| **API Changes** | + [docs/agents/api-contract-auditor.md](docs/agents/api-contract-auditor.md) |
+| **Testing** | + [docs/agents/test-harness-builder.md](docs/agents/test-harness-builder.md) |
+
+**Master instruction reference:** [docs/AI_INSTRUCTION_INDEX.md](docs/AI_INSTRUCTION_INDEX.md)
+
+---
+
+## Critical Known Issues
+
+> **These bugs exist in the codebase. See [docs/BUG_REGISTRY.md](docs/BUG_REGISTRY.md) for details.**
+
+| ID | Issue | Severity | Impact |
+|----|-------|----------|--------|
+| BUG-001 | Hardcoded auth credentials | P0 | Security vulnerability |
+| BUG-002 | Background task uses request-scoped DB session | P0 | Data integrity |
+| BUG-003 | DB engine mismatch (MySQL config, PostgreSQL code) | P0 | Runtime failures |
+
+---
+
 ## 1. Core Philosophy & Architecture
 
 ### Backend: The Service Pattern
