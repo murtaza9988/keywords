@@ -1,8 +1,10 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+import logging
 from contextlib import asynccontextmanager
+
+from sqlalchemy import text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
 
@@ -16,6 +18,8 @@ engine = create_async_engine(
     pool_pre_ping=True,
    
 )
+
+logger = logging.getLogger(__name__)
 
 # Session factory
 async_session_factory = sessionmaker(
@@ -58,3 +62,38 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("Database tables created")
+
+
+async def verify_csv_uploads_storage_path(conn: AsyncConnection | None = None) -> None:
+    """Verify csv_uploads.storage_path exists to avoid runtime UndefinedColumnError."""
+    query = text(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = :table_name
+          AND column_name = :column_name
+        LIMIT 1
+        """
+    )
+
+    async def _column_exists(connection: AsyncConnection) -> bool:
+        result = await connection.execute(
+            query,
+            {"table_name": "csv_uploads", "column_name": "storage_path"},
+        )
+        return result.scalar_one_or_none() is not None
+
+    if conn is None:
+        async with engine.connect() as connection:
+            exists = await _column_exists(connection)
+    else:
+        exists = await _column_exists(conn)
+
+    if not exists:
+        message = (
+            "Database schema missing column csv_uploads.storage_path. "
+            "Run `alembic upgrade head` (migration "
+            "20260114_000001_add_csv_upload_storage_path.py) before starting the app."
+        )
+        logger.error(message)
+        raise RuntimeError(message)
