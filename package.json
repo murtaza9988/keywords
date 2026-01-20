@@ -10,11 +10,25 @@
     "vercel-build": "npm run lint -w frontend && npm run typecheck -w frontend && npm run build -w frontend",
     "start": "npm run start -w frontend",
     "lint": "npm run lint -w frontend",
-    "typecheck": "npm run typecheck -w frontend"
+    "typecheck": "npm run typecheck -w frontend",
+    "prepare": "husky"
   },
   "dependencies": {
     "next": "15.2.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
+  },
+  "lint-staged": {
+    "frontend/src/**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ],
+    "backend/**/*.py": [
+      "ruff check --fix",
+      "black"
+    ]
   }
 }

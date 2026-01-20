@@ -40,5 +40,14 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci  # clean install – good for CI
 
+      - name: Lint frontend
+        run: npm run lint -w frontend
+
       - name: Typecheck frontend
-        run: npm run typecheck -w frontend  
+        run: npm run typecheck -w frontend
+
+      - name: Lint backend
+        run: |
+          cd backend
+          ruff check .
+          black --check .
