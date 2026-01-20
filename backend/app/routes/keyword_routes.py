@@ -5,6 +5,7 @@ import re
 import os
 import uuid
 import hashlib
+import traceback
 from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile, File, BackgroundTasks, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -294,129 +295,157 @@ async def get_processing_status(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
-    status = processing_queue_service.get_status(project_id)
-    if status == "not_started":
-        status = "idle"
-    result = processing_queue_service.get_result(project_id)
+    try:
+        status = processing_queue_service.get_status(project_id)
+        if status == "not_started":
+            status = "idle"
+        result = processing_queue_service.get_result(project_id)
 
-    progress = max(0, min(100, result.get("progress", 0.0)))
-    testing_mode = os.getenv("TESTING") == "True"
-    if testing_mode:
-        counts = {"queued": 0, "running": 0, "succeeded": 0, "failed": 0}
-        locked = False
-        queue = processing_queue_service.get_queue(project_id)
-        current_file = processing_queue_service.get_current_file(project_id)
-        queued_files = [item.get("file_name") for item in queue] if queue else []
-        processed_files = result.get("processed_files", [])
-        formatted_file_errors = _format_file_errors(result.get("file_errors", []))
-    else:
-        counts = await CsvProcessingJobService.counts_by_status(db, project_id)
-        locked = await CsvProcessingJobService.has_pending_jobs(db, project_id)
-        if not locked:
-            locked = await ProjectProcessingLeaseService.is_locked(db, project_id=project_id)
-        running_job = await CsvProcessingJobService.get_running_job(db, project_id)
-        current_file = (
-            {"file_name": running_job.source_filename or running_job.storage_path}
-            if running_job
-            else None
-        )
-        queued_files = await CsvProcessingJobService.list_file_names_by_status(
-            db,
-            project_id,
-            statuses=[CsvProcessingJobStatus.queued],
-        )
-        processed_files = await CsvProcessingJobService.list_file_names_by_status(
-            db,
-            project_id,
-            statuses=[CsvProcessingJobStatus.succeeded, CsvProcessingJobStatus.failed],
-        )
-        formatted_file_errors = _format_file_errors(
-            await CsvProcessingJobService.list_failed_jobs(db, project_id)
-        )
-    if testing_mode:
-        uploaded_files = result.get("uploaded_files", [])
-    else:
-        uploaded_files = await CsvProcessingJobService.list_file_names_by_status(
-            db,
-            project_id,
-            statuses=[
-                CsvProcessingJobStatus.queued,
-                CsvProcessingJobStatus.running,
-                CsvProcessingJobStatus.succeeded,
-                CsvProcessingJobStatus.failed,
-            ],
-        )
+        progress = max(0, min(100, result.get("progress", 0.0)))
+        testing_mode = os.getenv("TESTING") == "True"
+        if testing_mode:
+            counts = {"queued": 0, "running": 0, "succeeded": 0, "failed": 0}
+            locked = False
+            queue = processing_queue_service.get_queue(project_id)
+            current_file = processing_queue_service.get_current_file(project_id)
+            queued_files = [item.get("file_name") for item in queue] if queue else []
+            processed_files = result.get("processed_files", [])
+            formatted_file_errors = _format_file_errors(result.get("file_errors", []))
+        else:
+            counts = await CsvProcessingJobService.counts_by_status(db, project_id)
+            locked = await CsvProcessingJobService.has_pending_jobs(db, project_id)
+            if not locked:
+                locked = await ProjectProcessingLeaseService.is_locked(db, project_id=project_id)
+            running_job = await CsvProcessingJobService.get_running_job(db, project_id)
+            current_file = (
+                {"file_name": running_job.source_filename or running_job.storage_path}
+                if running_job
+                else None
+            )
+            queued_files = await CsvProcessingJobService.list_file_names_by_status(
+                db,
+                project_id,
+                statuses=[CsvProcessingJobStatus.queued],
+            )
+            processed_files = await CsvProcessingJobService.list_file_names_by_status(
+                db,
+                project_id,
+                statuses=[CsvProcessingJobStatus.succeeded, CsvProcessingJobStatus.failed],
+            )
+            formatted_file_errors = _format_file_errors(
+                await CsvProcessingJobService.list_failed_jobs(db, project_id)
+            )
+        if testing_mode:
+            uploaded_files = result.get("uploaded_files", [])
+        else:
+            uploaded_files = await CsvProcessingJobService.list_file_names_by_status(
+                db,
+                project_id,
+                statuses=[
+                    CsvProcessingJobStatus.queued,
+                    CsvProcessingJobStatus.running,
+                    CsvProcessingJobStatus.succeeded,
+                    CsvProcessingJobStatus.failed,
+                ],
+            )
 
-    uploaded_count = len(uploaded_files)
-    processed_count = len(processed_files)
-    validation_error = None
+        uploaded_count = len(uploaded_files)
+        processed_count = len(processed_files)
+        validation_error = None
 
-    if not testing_mode:
-        if counts["running"] > 0:
-            status = "processing"
-        elif counts["queued"] > 0:
-            status = "queued"
-        elif status in {"processing", "queued"}:
-            if uploaded_count > 0 and processed_count == uploaded_count:
-                status = "complete"
-            else:
-                status = "idle"
+        if not testing_mode:
+            if counts["running"] > 0:
+                status = "processing"
+            elif counts["queued"] > 0:
+                status = "queued"
+            elif status in {"processing", "queued"}:
+                if uploaded_count > 0 and processed_count == uploaded_count:
+                    status = "complete"
+                else:
+                    status = "idle"
 
-    # In production, the DB job table is authoritative; do not declare a
-    # "missing files" validation error based on ephemeral in-memory state.
-    if testing_mode:
-        if (
-            status in {"complete", "idle"}
-            and uploaded_count > 0
-            and processed_count < uploaded_count
-            and not queued_files
-            and not current_file
-        ):
-            missing_count = uploaded_count - processed_count
-            validation_error = f"{missing_count} CSV file(s) did not finish processing."
-            status = "error"
+        # In production, the DB job table is authoritative; do not declare a
+        # "missing files" validation error based on ephemeral in-memory state.
+        if testing_mode:
+            if (
+                status in {"complete", "idle"}
+                and uploaded_count > 0
+                and processed_count < uploaded_count
+                and not queued_files
+                and not current_file
+            ):
+                missing_count = uploaded_count - processed_count
+                validation_error = f"{missing_count} CSV file(s) did not finish processing."
+                status = "error"
 
-    if validation_error:
+        if validation_error:
+            return {
+                "status": "error",
+                "locked": locked,
+                "keywordCount": result.get("processed_count", 0),
+                "processedCount": result.get("processed_count", 0),
+                "skippedCount": result.get("skipped_count", 0),
+                "keywords": result.get("keywords", []),
+                "complete": False,
+                "totalRows": result.get("total_rows", 0),
+                "progress": progress,
+                "message": validation_error,
+                "stage": result.get("stage"),
+                "stageDetail": result.get("stage_detail"),
+                "currentFileName": current_file.get("file_name") if current_file else None,
+                "queuedFiles": queued_files,
+                "queueLength": len(queued_files),
+                "uploadedFiles": uploaded_files,
+                "processedFiles": processed_files,
+                "uploadedFileCount": uploaded_count,
+                "processedFileCount": processed_count,
+                "queuedJobs": counts["queued"],
+                "runningJobs": counts["running"],
+                "succeededJobs": counts["succeeded"],
+                "failedJobs": counts["failed"],
+                "validationError": validation_error,
+                "fileErrors": formatted_file_errors,
+            }
+
+        if status == "complete" and uploaded_count == processed_count:
+            keyword_count = await KeywordService.count_total_by_project(db, project_id)
+            return {
+                "status": "complete",
+                "locked": locked,
+                "keywordCount": keyword_count,
+                "processedCount": result.get("processed_count", 0),
+                "skippedCount": result.get("skipped_count", 0),
+                "keywords": result.get("keywords", []),
+                "complete": True,
+                "totalRows": result.get("total_rows", 0),
+                "progress": 100.0,
+                "message": result.get("message", ""),
+                "stage": result.get("stage"),
+                "stageDetail": result.get("stage_detail"),
+                "currentFileName": current_file.get("file_name") if current_file else None,
+                "queuedFiles": queued_files,
+                "queueLength": len(queued_files),
+                "uploadedFiles": uploaded_files,
+                "processedFiles": processed_files,
+                "uploadedFileCount": uploaded_count,
+                "processedFileCount": processed_count,
+                "queuedJobs": counts["queued"],
+                "runningJobs": counts["running"],
+                "succeededJobs": counts["succeeded"],
+                "failedJobs": counts["failed"],
+                "validationError": validation_error,
+                "fileErrors": formatted_file_errors,
+            }
         return {
-            "status": "error",
+            "status": status,
             "locked": locked,
             "keywordCount": result.get("processed_count", 0),
             "processedCount": result.get("processed_count", 0),
             "skippedCount": result.get("skipped_count", 0),
             "keywords": result.get("keywords", []),
-            "complete": False,
+            "complete": result.get("complete", False),
             "totalRows": result.get("total_rows", 0),
             "progress": progress,
-            "message": validation_error,
-            "stage": result.get("stage"),
-            "stageDetail": result.get("stage_detail"),
-            "currentFileName": current_file.get("file_name") if current_file else None,
-            "queuedFiles": queued_files,
-            "queueLength": len(queued_files),
-            "uploadedFiles": uploaded_files,
-            "processedFiles": processed_files,
-            "uploadedFileCount": uploaded_count,
-            "processedFileCount": processed_count,
-            "queuedJobs": counts["queued"],
-            "runningJobs": counts["running"],
-            "succeededJobs": counts["succeeded"],
-            "failedJobs": counts["failed"],
-            "validationError": validation_error,
-            "fileErrors": formatted_file_errors,
-        }
-
-    if status == "complete" and uploaded_count == processed_count:
-        keyword_count = await KeywordService.count_total_by_project(db, project_id)
-        return {
-            "status": "complete",
-            "locked": locked,
-            "keywordCount": keyword_count,
-            "processedCount": result.get("processed_count", 0),
-            "skippedCount": result.get("skipped_count", 0),
-            "keywords": result.get("keywords", []),
-            "complete": True,
-            "totalRows": result.get("total_rows", 0),
-            "progress": 100.0,
             "message": result.get("message", ""),
             "stage": result.get("stage"),
             "stageDetail": result.get("stage_detail"),
@@ -434,33 +463,42 @@ async def get_processing_status(
             "validationError": validation_error,
             "fileErrors": formatted_file_errors,
         }
-    return {
-        "status": status,
-        "locked": locked,
-        "keywordCount": result.get("processed_count", 0),
-        "processedCount": result.get("processed_count", 0),
-        "skippedCount": result.get("skipped_count", 0),
-        "keywords": result.get("keywords", []),
-        "complete": result.get("complete", False),
-        "totalRows": result.get("total_rows", 0),
-        "progress": progress,
-        "message": result.get("message", ""),
-        "stage": result.get("stage"),
-        "stageDetail": result.get("stage_detail"),
-        "currentFileName": current_file.get("file_name") if current_file else None,
-        "queuedFiles": queued_files,
-        "queueLength": len(queued_files),
-        "uploadedFiles": uploaded_files,
-        "processedFiles": processed_files,
-        "uploadedFileCount": uploaded_count,
-        "processedFileCount": processed_count,
-        "queuedJobs": counts["queued"],
-        "runningJobs": counts["running"],
-        "succeededJobs": counts["succeeded"],
-        "failedJobs": counts["failed"],
-        "validationError": validation_error,
-        "fileErrors": formatted_file_errors,
-    }
+    except Exception as e:
+        # Return a graceful error response instead of 500
+        # This prevents error toast flooding on the frontend
+        print(f"[ERROR] Processing status check failed for project {project_id}: {e}")
+        traceback.print_exc()
+
+        # Return an error status that the frontend can handle gracefully
+        return {
+            "status": "error",
+            "locked": False,
+            "keywordCount": 0,
+            "processedCount": 0,
+            "skippedCount": 0,
+            "keywords": [],
+            "complete": False,
+            "totalRows": 0,
+            "progress": 0,
+            "message": f"Failed to check processing status: {str(e)}",
+            "stage": None,
+            "stageDetail": None,
+            "currentFileName": None,
+            "queuedFiles": [],
+            "queueLength": 0,
+            "uploadedFiles": [],
+            "processedFiles": [],
+            "uploadedFileCount": 0,
+            "processedFileCount": 0,
+            "queuedJobs": 0,
+            "runningJobs": 0,
+            "succeededJobs": 0,
+            "failedJobs": 0,
+            "validationError": f"Status check error: {str(e)}",
+            "fileErrors": [],
+        }
+
+
 @router.post("/projects/{project_id}/upload", status_code=status.HTTP_202_ACCEPTED)
 async def upload_keywords(
     project_id: int,
@@ -659,7 +697,11 @@ async def upload_keywords(
                 csv_upload_id=entry.get("csv_upload_id"),
                 idempotency_key=entry.get("idempotency_key"),
             )
-        await start_next_processing(project_id)
+        try:
+            await start_next_processing(project_id)
+        except Exception as e:
+            # Log but don't fail - files are queued and will be picked up
+            print(f"[WARN] Failed to start processing for project {project_id}: {e}")
 
         return {
             "message": "Batch upload complete. Files queued for sequential processing.",
@@ -876,7 +918,10 @@ async def upload_keywords(
                         entry.get("file_name") or "CSV file",
                         idempotency_key=idempotency_key,
                     )
-                await start_next_processing(project_id)
+                try:
+                    await start_next_processing(project_id)
+                except Exception as e:
+                    print(f"[WARN] Failed to start processing for project {project_id}: {e}")
 
                 return {
                     "message": "Batch upload complete. Files queued for sequential processing.",
@@ -907,8 +952,11 @@ async def upload_keywords(
                     originalFilename,
                     idempotency_key=idempotency_key,
                 )
-                await start_next_processing(project_id)
-            
+                try:
+                    await start_next_processing(project_id)
+                except Exception as e:
+                    print(f"[WARN] Failed to start processing for project {project_id}: {e}")
+
             return {
                 "message": "Upload complete. Processing queued.",
                 "status": processing_queue_service.get_status(project_id),
@@ -1053,7 +1101,11 @@ async def upload_keywords(
                     entry.get("file_name") or "CSV file",
                     idempotency_key=idempotency_key,
                 )
-            await start_next_processing(project_id)
+            try:
+                await start_next_processing(project_id)
+            except Exception as e:
+                print(f"[WARN] Failed to start processing for project {project_id}: {e}")
+
             return {
                 "message": "Batch upload complete. Processing queued.",
                 "status": processing_queue_service.get_status(project_id),
@@ -1082,8 +1134,11 @@ async def upload_keywords(
             csv_upload_id=csv_upload.id if not duplicate_info else None,
             idempotency_key=idempotency_key,
         )
-        await start_next_processing(project_id)
-        
+        try:
+            await start_next_processing(project_id)
+        except Exception as e:
+            print(f"[WARN] Failed to start processing for project {project_id}: {e}")
+
         return {
             "message": "Upload complete. Processing queued.",
             "status": processing_queue_service.get_status(project_id),

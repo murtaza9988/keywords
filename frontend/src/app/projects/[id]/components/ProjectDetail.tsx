@@ -166,6 +166,10 @@ export default function ProjectDetail(): React.ReactElement {
   const dispatch: AppDispatch = useDispatch();
   const statusCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const statusCheckIntervalMsRef = useRef<number | null>(null);
+  // Error debouncing refs to prevent error toast flooding
+  const lastStatusErrorRef = useRef<string | null>(null);
+  const statusErrorCountRef = useRef<number>(0);
+  const lastStatusErrorToastTimeRef = useRef<number>(0);
   const apiCache = useMemo(() => new ApiCache(), []);
   
   const project = useSelector((state: RootState) =>
@@ -2139,7 +2143,12 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
 
     try {
       const data = await checkProcessingStatusApi(projectIdStr);
-      
+
+      // Reset error tracking on successful API call
+      statusErrorCountRef.current = 0;
+      lastStatusErrorRef.current = null;
+      lastStatusErrorToastTimeRef.current = 0;
+
       if (data.progress !== undefined) {
         const normalizedProgress = Math.max(0, Math.min(100, data.progress));
         detailDispatch({
@@ -2276,7 +2285,37 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
     } catch (error) {
       console.error('Error checking processing status:', error);
       const message = 'Error checking status: ' + (isError(error) ? error.message : 'Unknown error');
-      addSnackbarMessage(message, 'error');
+
+      // Increment error count
+      statusErrorCountRef.current += 1;
+      const errorCount = statusErrorCountRef.current;
+      const now = Date.now();
+      const timeSinceLastToast = now - lastStatusErrorToastTimeRef.current;
+      const isNewError = lastStatusErrorRef.current !== message;
+
+      // Only show toast if:
+      // 1. Error count <= 3 (first few errors)
+      // 2. OR it's a new/different error
+      // 3. OR it's been > 30 seconds since last toast
+      // AND error count < 10 (circuit breaker - stop showing after 10 consecutive errors)
+      const shouldShowToast = errorCount < 10 && (
+        errorCount <= 3 ||
+        isNewError ||
+        timeSinceLastToast > 30000
+      );
+
+      if (shouldShowToast) {
+        addSnackbarMessage(
+          errorCount > 3
+            ? `${message} (error ${errorCount})`
+            : message,
+          'error'
+        );
+        lastStatusErrorToastTimeRef.current = now;
+      }
+
+      lastStatusErrorRef.current = message;
+
       detailDispatch({
         type: 'updateProcessing',
         payload: { isUploading: false },
@@ -2289,12 +2328,19 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
           processingMessage: message,
         },
       });
+
+      // Circuit breaker: If too many consecutive errors, stop polling
+      if (errorCount >= 5) {
+        console.warn(`[Circuit Breaker] Stopping status polling after ${errorCount} consecutive errors`);
+        stopProcessingCheck();
+      }
     }
   }, [
     projectIdStr, processingStatus,
-    fetchKeywords, pagination.limit, activeView, sortParams, 
-    filterParams, addSnackbarMessage, 
-    dispatch, projectIdNum, fetchProjectStats, bumpLogsRefresh
+    fetchKeywords, pagination.limit, activeView, sortParams,
+    filterParams, addSnackbarMessage,
+    dispatch, projectIdNum, fetchProjectStats, bumpLogsRefresh,
+    stopProcessingCheck
   ]);
 
   useEffect(() => {
@@ -2342,6 +2388,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
   
   
   const startProcessingCheck = useCallback(() => {
+    // Reset error tracking when starting a new polling cycle
+    statusErrorCountRef.current = 0;
+    lastStatusErrorRef.current = null;
+    lastStatusErrorToastTimeRef.current = 0;
+
     stopProcessingCheck();
     checkProcessingStatus();
     statusCheckIntervalRef.current = setInterval(checkProcessingStatus, 1000);
