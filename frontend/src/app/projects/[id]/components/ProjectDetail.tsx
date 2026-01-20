@@ -359,7 +359,8 @@ export default function ProjectDetail(): React.ReactElement {
 
   useEffect(() => {
     targetProgressRef.current = processingProgress;
-    
+    let frameId: number | null = null;
+
     const animateProgress = () => {
       const target = targetProgressRef.current;
       const current = displayProgressRef.current;
@@ -371,15 +372,17 @@ export default function ProjectDetail(): React.ReactElement {
         payload: { displayProgress: next },
       });
       if (Math.abs(next - targetProgressRef.current) > 0.1) {
-        animationFrameRef.current = requestAnimationFrame(animateProgress);
+        frameId = requestAnimationFrame(animateProgress);
+        animationFrameRef.current = frameId;
       }
     };
     
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    animationFrameRef.current = requestAnimationFrame(animateProgress);
+    frameId = requestAnimationFrame(animateProgress);
+    animationFrameRef.current = frameId;
     
     return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (frameId) cancelAnimationFrame(frameId);
     };
   }, [processingProgress]);
 
@@ -2644,7 +2647,20 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
       stopProcessingCheck();
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [projectIdStr, activeView, fetchProjectStats, fetchInitialData, fetchKeywords, stopProcessingCheck, pagination.limit, sortParams, filterParams, pagination.page]);
+  }, [
+    projectIdStr,
+    activeView,
+    fetchProjectStats,
+    fetchInitialData,
+    fetchKeywords,
+    stopProcessingCheck,
+    pagination.limit,
+    sortParams,
+    filterParams,
+    pagination.page,
+    animationFrameRef,
+    prevActiveViewRef,
+  ]);
   const { isAllSelected, isAnySelected } = useMemo(() => {
     const keywords = filteredAndSortedKeywords;
     const allFilteredIds = keywords.map(k => k.id);
