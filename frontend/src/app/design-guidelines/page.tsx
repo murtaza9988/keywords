@@ -782,6 +782,85 @@ box-shadow: 0 8px 12px 6px rgba(0,0,0,0.15),
                   Horizontal padding: 16dp. Leading element gap: 16dp. Icon size: 24dp. Avatar size: 40dp.
                 </p>
               </section>
+
+              <section className="space-y-4">
+                <h2 className="text-ui-heading text-lg font-semibold">Top App Bar</h2>
+                {renderTable(
+                  ['Property', 'Value'],
+                  [
+                    ['Height (small)', '64dp'],
+                    ['Height (medium)', '112dp'],
+                    ['Height (large)', '152dp'],
+                    ['Navigation icon', '24dp, 16dp from start'],
+                    ['Title text style', 'Title Large (22sp)'],
+                    ['Action icons', '24dp, 12dp gap between'],
+                  ]
+                )}
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="text-ui-heading text-lg font-semibold">Switch</h2>
+                {renderTable(
+                  ['Property', 'Value'],
+                  [
+                    ['Width', '52dp'],
+                    ['Height', '32dp'],
+                    ['Track corner radius', 'Full (16dp)'],
+                    ['Handle size (off)', '16dp'],
+                    ['Handle size (on)', '24dp'],
+                    ['Touch target', '48dp'],
+                  ]
+                )}
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="text-ui-heading text-lg font-semibold">Checkbox &amp; Radio</h2>
+                {renderTable(
+                  ['Component', 'Size', 'Touch Target', 'Corner Radius'],
+                  [
+                    ['Checkbox', '18dp', '48dp', '2dp'],
+                    ['Radio Button', '20dp', '48dp', 'Full (circle)'],
+                  ]
+                )}
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="text-ui-heading text-lg font-semibold">Snackbar</h2>
+                {renderTable(
+                  ['Property', 'Value'],
+                  [
+                    ['Min width', '344dp'],
+                    ['Height (single-line)', '48dp'],
+                    ['Height (two-line)', '68dp'],
+                    ['Corner radius', '4dp'],
+                    ['Padding', '16dp'],
+                    ['Default duration', '4 seconds'],
+                  ]
+                )}
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="text-ui-heading text-lg font-semibold">Progress Indicators</h2>
+                {renderTable(
+                  ['Type', 'Size', 'Stroke/Height'],
+                  [
+                    ['Linear', 'Full width', '4dp height'],
+                    ['Circular (small)', '24dp', '4dp stroke'],
+                    ['Circular (medium)', '40dp', '4dp stroke'],
+                    ['Circular (large)', '48dp', '4dp stroke'],
+                  ]
+                )}
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="text-ui-heading text-lg font-semibold">More Components</h2>
+                <p className="text-ui-muted">
+                  For complete specifications on all 30+ M3 components including Navigation Rail,
+                  Navigation Drawer, Menus, Sliders, Badges, Tooltips, Bottom Sheets, Segmented Buttons,
+                  Date Picker, Time Picker, and more, see the full documentation at{' '}
+                  <code className="text-accent">docs/MATERIAL_DESIGN_3_GUIDELINES.md</code>
+                </p>
+              </section>
             </div>
           )}
 

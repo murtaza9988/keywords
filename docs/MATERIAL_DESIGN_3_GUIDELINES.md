@@ -23,7 +23,26 @@
    - [Text Fields](#text-fields)
    - [Lists](#lists)
    - [Dialogs](#dialogs)
+   - [Top App Bar](#top-app-bar)
+   - [Bottom App Bar](#bottom-app-bar)
+   - [Navigation Rail](#navigation-rail)
+   - [Navigation Drawer](#navigation-drawer)
+   - [Menus](#menus)
+   - [Snackbar](#snackbar)
+   - [Progress Indicators](#progress-indicators)
+   - [Sliders](#sliders)
+   - [Switch](#switch)
+   - [Checkbox](#checkbox)
+   - [Radio Button](#radio-button)
+   - [Badges](#badges)
+   - [Tooltips](#tooltips)
+   - [Bottom Sheets](#bottom-sheets)
+   - [Dividers](#dividers)
+   - [Segmented Buttons](#segmented-buttons)
    - [Chips](#chips)
+   - [Date Picker](#date-picker)
+   - [Time Picker](#time-picker)
+   - [Scrim](#scrim)
 
 ---
 
@@ -850,6 +869,436 @@ Filled (focused):
 
 ---
 
+### Top App Bar
+
+#### Top App Bar Types
+
+| Type | Height | Usage |
+|------|--------|-------|
+| **Small** | 64dp | Default, standard screens |
+| **Medium** | 112dp | More prominent titles |
+| **Large** | 152dp | Hero screens, emphasis |
+
+#### Top App Bar Specifications
+
+| Property | Value |
+|----------|-------|
+| Height (small) | 64dp |
+| Navigation icon | 24dp, 16dp from start |
+| Title text style | Title Large (22sp) |
+| Action icons | 24dp, 12dp gap between |
+| Horizontal padding | 16dp |
+| Elevation (scrolled) | Level 2 (3dp) |
+
+#### Top App Bar Layout
+
+```
+┌──────────────────────────────────────────────────┐
+│ [16dp] [Nav ←] [16dp] [Title...] [Action] [Action] [16dp] │
+│                                     24dp    24dp          │
+└──────────────────────────────────────────────────┘
+                        64dp height
+```
+
+---
+
+### Bottom App Bar
+
+#### Specifications
+
+| Property | Value |
+|----------|-------|
+| Height | 80dp |
+| Horizontal padding | 16dp |
+| Icon size | 24dp |
+| Icon gap | 16dp |
+| FAB position | End, overlapping edge |
+| Background | Surface Container |
+| Elevation | Level 2 (3dp) |
+
+---
+
+### Navigation Rail
+
+#### Specifications
+
+| Property | Value |
+|----------|-------|
+| Width | 80dp |
+| Item height | 56dp |
+| Icon size | 24dp |
+| Label text style | Label Medium (12sp) |
+| Items | 3-7 destinations |
+| FAB position | Top, above items |
+| Active indicator | 56dp × 32dp, Full radius |
+
+#### Navigation Rail Layout
+
+```
+┌────────┐
+│  FAB   │ ← Optional
+│ [16dp] │
+│ [Icon] │
+│ [4dp]  │
+│ [Label]│
+│ [12dp] │
+│ [Icon] │
+│ [4dp]  │
+│ [Label]│
+└────────┘
+  80dp wide
+```
+
+---
+
+### Navigation Drawer
+
+#### Specifications
+
+| Property | Value |
+|----------|-------|
+| Width | 360dp (max) |
+| Corner radius | 0dp (standard), 16dp (modal) |
+| Header height | 56dp minimum |
+| Item height | 56dp |
+| Item horizontal padding | 28dp start, 24dp end |
+| Item corner radius | Full (28dp) |
+| Icon size | 24dp |
+| Icon-to-label gap | 12dp |
+| Label text style | Label Large |
+| Section divider | 1dp, 16dp vertical padding |
+
+#### Drawer Types
+
+| Type | Behavior | Width |
+|------|----------|-------|
+| **Standard** | Persistent, pushes content | 256-360dp |
+| **Modal** | Overlay, scrim behind | 256-360dp |
+| **Bottom** | Slides from bottom (mobile) | Full width |
+
+---
+
+### Menus
+
+#### Menu Specifications
+
+| Property | Value |
+|----------|-------|
+| Min width | 112dp |
+| Max width | 280dp |
+| Corner radius | 4dp |
+| Elevation | Level 2 (3dp) |
+| Vertical padding | 8dp |
+| Item height | 48dp |
+| Item horizontal padding | 12dp |
+| Icon size | 24dp |
+| Icon-to-text gap | 12dp |
+| Text style | Body Large |
+| Divider | 1dp, 8dp vertical margin |
+
+#### Menu Item Layout
+
+```
+┌──────────────────────────────────┐
+│ [12dp] [Icon 24dp] [12dp] [Label...] [12dp] │  48dp
+└──────────────────────────────────┘
+```
+
+---
+
+### Snackbar
+
+#### Specifications
+
+| Property | Value |
+|----------|-------|
+| Min width | 344dp |
+| Max width | 672dp (desktop) |
+| Height | 48dp (single-line), 68dp (two-line) |
+| Corner radius | 4dp |
+| Horizontal margin | 8dp from screen edge |
+| Bottom margin | 8dp |
+| Internal padding | 16dp |
+| Text style | Body Medium |
+| Action text style | Label Large |
+| Action color | Inverse Primary |
+| Background | Inverse Surface |
+| Text color | Inverse On Surface |
+
+#### Snackbar Layout
+
+```
+┌─────────────────────────────────────────┐
+│ [16dp] [Message text...] [Action] [16dp] │  48dp
+└─────────────────────────────────────────┘
+```
+
+#### Snackbar Behavior
+
+| Property | Value |
+|----------|-------|
+| Default duration | 4 seconds |
+| With action duration | 10 seconds |
+| Position | Bottom center (mobile), bottom left (desktop) |
+| Animation | Fade in from bottom |
+
+---
+
+### Progress Indicators
+
+#### Linear Progress Indicator
+
+| Property | Value |
+|----------|-------|
+| Height | 4dp |
+| Corner radius | 2dp (ends) |
+| Track color | Surface Container Highest |
+| Indicator color | Primary |
+| Gap | 4dp (between indicator and track) |
+| Stop indicator | 4dp circle at end |
+
+#### Circular Progress Indicator
+
+| Property | Value |
+|----------|-------|
+| Size (small) | 24dp |
+| Size (medium) | 40dp |
+| Size (large) | 48dp |
+| Stroke width | 4dp |
+| Track color | Surface Container Highest |
+| Indicator color | Primary |
+| Gap | 4dp at 12 o'clock position |
+
+---
+
+### Sliders
+
+#### Slider Specifications
+
+| Property | Value |
+|----------|-------|
+| Track height | 4dp |
+| Track corner radius | 2dp |
+| Handle size | 20dp |
+| Handle shape | Rounded rectangle or circle |
+| Touch target | 48dp |
+| Active track color | Primary |
+| Inactive track color | Surface Container Highest |
+| Handle color | Primary |
+
+#### Slider with Value Label
+
+| Property | Value |
+|----------|-------|
+| Label width | 28dp minimum |
+| Label height | 28dp |
+| Label corner radius | 14dp |
+| Label text style | Label Medium |
+| Label offset | 8dp above handle |
+
+---
+
+### Switch
+
+#### Switch Specifications
+
+| Property | Value |
+|----------|-------|
+| Width | 52dp |
+| Height | 32dp |
+| Track corner radius | Full (16dp) |
+| Handle size (off) | 16dp |
+| Handle size (on) | 24dp |
+| Handle offset | 4dp from track edge |
+| Icon size (optional) | 16dp |
+
+#### Switch Colors
+
+| State | Track | Handle |
+|-------|-------|--------|
+| Off | Surface Container Highest | Outline |
+| On | Primary | On Primary |
+| Disabled Off | Surface Container Highest @ 12% | On Surface @ 38% |
+| Disabled On | On Surface @ 12% | Surface @ 100% |
+
+---
+
+### Checkbox
+
+#### Checkbox Specifications
+
+| Property | Value |
+|----------|-------|
+| Size | 18dp |
+| Corner radius | 2dp |
+| Stroke width | 2dp |
+| Touch target | 48dp |
+| Check icon | 12dp |
+
+#### Checkbox States
+
+| State | Container | Icon |
+|-------|-----------|------|
+| Unchecked | Transparent, Outline border | None |
+| Checked | Primary | On Primary (check) |
+| Indeterminate | Primary | On Primary (dash) |
+| Error | Error | On Error |
+| Disabled | On Surface @ 38% | On Surface @ 38% |
+
+---
+
+### Radio Button
+
+#### Radio Button Specifications
+
+| Property | Value |
+|----------|-------|
+| Size | 20dp |
+| Inner circle (selected) | 10dp |
+| Stroke width | 2dp |
+| Touch target | 48dp |
+
+#### Radio Button States
+
+| State | Outer Circle | Inner Circle |
+|-------|--------------|--------------|
+| Unselected | On Surface Variant | None |
+| Selected | Primary | Primary |
+| Disabled | On Surface @ 38% | On Surface @ 38% |
+
+---
+
+### Badges
+
+#### Badge Types
+
+| Type | Usage |
+|------|-------|
+| **Small** | Status indicator only |
+| **Large** | With count or label |
+
+#### Badge Specifications
+
+| Property | Small | Large |
+|----------|-------|-------|
+| Size | 6dp | 16dp height, min 16dp width |
+| Corner radius | Full (3dp) | Full (8dp) |
+| Text style | N/A | Label Small |
+| Horizontal padding | N/A | 4dp |
+| Color | Error | Error |
+| Text color | N/A | On Error |
+
+#### Badge Placement
+
+| Property | Value |
+|----------|-------|
+| Position | Top-right of icon |
+| Offset | -4dp from corner |
+| Max digits | 3 (999+) |
+
+---
+
+### Tooltips
+
+#### Plain Tooltip
+
+| Property | Value |
+|----------|-------|
+| Height | 24dp |
+| Corner radius | 4dp |
+| Horizontal padding | 8dp |
+| Text style | Body Small |
+| Background | Inverse Surface |
+| Text color | Inverse On Surface |
+| Max width | 200dp |
+
+#### Rich Tooltip
+
+| Property | Value |
+|----------|-------|
+| Min width | 200dp |
+| Max width | 312dp |
+| Corner radius | 12dp |
+| Padding | 16dp |
+| Title text style | Title Small |
+| Body text style | Body Medium |
+| Background | Surface Container |
+| Elevation | Level 2 (3dp) |
+
+---
+
+### Bottom Sheets
+
+#### Bottom Sheet Types
+
+| Type | Behavior |
+|------|----------|
+| **Standard** | Non-modal, coexists with content |
+| **Modal** | Blocks content, requires scrim |
+
+#### Bottom Sheet Specifications
+
+| Property | Standard | Modal |
+|----------|----------|-------|
+| Corner radius | 28dp (top) | 28dp (top) |
+| Min height | 256dp | 256dp |
+| Max height | 90% of screen | 90% of screen |
+| Horizontal padding | 16dp | 16dp |
+| Top padding | 22dp | 22dp |
+| Drag handle width | 32dp | 32dp |
+| Drag handle height | 4dp | 4dp |
+| Drag handle margin | 22dp top | 22dp top |
+| Background | Surface Container Low | Surface Container Low |
+| Scrim | None | Scrim @ 32% |
+| Elevation | Level 1 | Level 1 |
+
+---
+
+### Dividers
+
+#### Divider Specifications
+
+| Property | Value |
+|----------|-------|
+| Thickness | 1dp |
+| Color | Outline Variant |
+
+#### Divider Types
+
+| Type | Horizontal Inset |
+|------|------------------|
+| **Full-width** | 0dp |
+| **Inset** | 16dp start |
+| **Middle inset** | 16dp both sides |
+
+---
+
+### Segmented Buttons
+
+#### Specifications
+
+| Property | Value |
+|----------|-------|
+| Height | 40dp |
+| Min segment width | 48dp |
+| Corner radius | Full (20dp) |
+| Border | 1dp, Outline |
+| Icon size | 18dp |
+| Text style | Label Large |
+| Horizontal padding | 12dp |
+| Icon-to-text gap | 8dp |
+| Segments | 2-5 |
+
+#### Segmented Button States
+
+| State | Container | Content |
+|-------|-----------|---------|
+| Unselected | Transparent | On Surface |
+| Selected | Secondary Container | On Secondary Container |
+| Disabled | Transparent | On Surface @ 38% |
+
+---
+
 ### Chips
 
 #### Chip Types
@@ -902,6 +1351,91 @@ Input chip with trailing remove:
 | Focused | Focus ring | On Surface |
 | Pressed | 12% On Surface | On Surface |
 | Disabled | 12% On Surface | 38% On Surface |
+
+---
+
+### Date Picker
+
+#### Date Picker Types
+
+| Type | Usage |
+|------|-------|
+| **Docked** | Inline, embedded in layout |
+| **Modal** | Overlay dialog |
+| **Input** | Text field with picker |
+
+#### Date Picker Specifications
+
+| Property | Value |
+|----------|-------|
+| Width (modal) | 328dp |
+| Header height | 120dp |
+| Day cell size | 40dp |
+| Day cell touch target | 48dp |
+| Corner radius (modal) | 28dp |
+| Title text style | Label Large |
+| Selected date text style | Headline Large |
+| Day text style | Body Large |
+| Month navigation icon | 24dp |
+| Horizontal padding | 12dp |
+| Vertical padding | 16dp |
+
+#### Date Picker Colors
+
+| Element | Color |
+|---------|-------|
+| Header background | Surface Container High |
+| Selected day | Primary |
+| Selected day text | On Primary |
+| Today indicator | Primary (outline) |
+| Day in range | Secondary Container |
+
+---
+
+### Time Picker
+
+#### Time Picker Types
+
+| Type | Usage |
+|------|-------|
+| **Dial** | Clock face selection |
+| **Input** | Keyboard entry |
+
+#### Time Picker Specifications
+
+| Property | Value |
+|----------|-------|
+| Width (modal) | 328dp |
+| Clock dial size | 256dp |
+| Clock center dot | 8dp |
+| Hour/minute selector | 48dp |
+| AM/PM toggle height | 72dp |
+| Corner radius (modal) | 28dp |
+| Title text style | Label Medium |
+| Time text style | Display Large |
+
+---
+
+### Scrim
+
+#### Scrim Specifications
+
+| Property | Value |
+|----------|-------|
+| Color | Scrim (neutral) |
+| Opacity | 32% |
+| z-index | Above content, below modal |
+
+#### Scrim Usage
+
+| Component | Scrim Required |
+|-----------|----------------|
+| Modal dialog | Yes |
+| Modal bottom sheet | Yes |
+| Modal navigation drawer | Yes |
+| Modal side sheet | Yes |
+| Standard bottom sheet | No |
+| Menu | No |
 
 ---
 
@@ -1008,7 +1542,26 @@ Input chip with trailing remove:
 | List item (1-line) | 56dp |
 | List item (2-line) | 72dp |
 | List item (3-line) | 88dp |
-| Top App Bar | 64dp |
+| Top App Bar (small) | 64dp |
+| Top App Bar (medium) | 112dp |
+| Top App Bar (large) | 152dp |
+| Bottom App Bar | 80dp |
+| Navigation Rail | 80dp wide |
+| Navigation Drawer item | 56dp |
+| Menu item | 48dp |
+| Snackbar (single-line) | 48dp |
+| Snackbar (two-line) | 68dp |
+| Switch | 32dp |
+| Checkbox | 18dp (48dp touch) |
+| Radio Button | 20dp (48dp touch) |
+| Segmented Button | 40dp |
+| Slider handle | 20dp (48dp touch) |
+| Progress (linear) | 4dp |
+| Progress (circular) | 24-48dp |
+| Badge (small) | 6dp |
+| Badge (large) | 16dp |
+| Tooltip (plain) | 24dp |
+| Divider | 1dp |
 
 ### Common Padding Values
 
@@ -1035,6 +1588,16 @@ Input chip with trailing remove:
 | Navigation pill | 16dp |
 | Search bar | Full (28dp) |
 | Bottom sheet | 28dp (top) |
+| Menu | 4dp |
+| Snackbar | 4dp |
+| Switch track | Full (16dp) |
+| Checkbox | 2dp |
+| Segmented buttons | Full (20dp) |
+| Tooltip (plain) | 4dp |
+| Tooltip (rich) | 12dp |
+| Navigation drawer item | Full (28dp) |
+| Slider label | 14dp |
+| Progress bar | 2dp |
 
 ---
 
