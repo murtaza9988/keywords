@@ -231,16 +231,28 @@ export interface SnackbarMessage {
   description?: string;
   stage?: ProcessingStatus;
 }
+// Normalized keyword storage per project
+export interface NormalizedKeywordsState {
+  // Single source of truth: keyword entities by ID
+  byId: Record<number, Keyword>;
+  // View-specific ID lists (derived from byId)
+  viewIds: {
+    ungrouped: number[];
+    grouped: number[];
+    confirmed: number[];
+    blocked: number[];
+  };
+  // Children cache by group ID
+  childrenByGroupId: Record<string, number[]>;
+  // Derived cache keys (invalidated on keyword changes)
+  sortedCacheKeys: Record<ActiveKeywordView, Record<string, number[]>>;
+  filteredCacheKeys: Record<ActiveKeywordView, Record<string, number[]>>;
+}
+
 export interface ProjectState {
   projects: Project[];
-  groupedKeywords: Record<string, Keyword[]>;
-  ungroupedKeywords: Record<string, Keyword[]>;
-  confirmedKeywords: Record<string, Keyword[]>;
-  blockedKeywords: Record<string, Keyword[]>;
-  childrenCache: Record<string, Record<string, Keyword[]>>;
-  keywordsCache: Record<string, Record<ActiveKeywordView, Keyword[]>>;
-  sortedKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
-  filteredKeywordsCache: Record<string, Record<ActiveKeywordView, Record<string, Keyword[]>>>;
+  // Normalized keyword storage by project ID
+  byProject: Record<string, NormalizedKeywordsState>;
   metaData: Record<string, ProjectMetadata>;
   stats: Record<string, {
     ungroupedCount: number;

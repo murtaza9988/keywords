@@ -110,8 +110,9 @@ export const TextAreaInputs = memo(({ projectId }: { projectId: string }) => {
 
   useEffect(() => {
     return () => {
-      debouncedSaveNote1.cancel();
-      debouncedSaveNote2.cancel();
+      // Flush pending saves on unmount to ensure notes are saved
+      debouncedSaveNote1.flush();
+      debouncedSaveNote2.flush();
     };
   }, [debouncedSaveNote1, debouncedSaveNote2]);
 
