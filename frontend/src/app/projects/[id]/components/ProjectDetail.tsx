@@ -3121,13 +3121,11 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                 {activeTab === 'process' && (
                   <ProjectDetailProcess />
                 )}
-                {activeTab === 'notes' && (
-                  <div className="w-full">
-                    <div className="bg-white border border-border rounded-lg p-4">
-                      <TextAreaInputs projectId={projectIdStr} />
-                    </div>
+                <div className="w-full" style={{ display: activeTab === 'notes' ? 'block' : 'none' }}>
+                  <div className="bg-white border border-border rounded-lg p-4">
+                    <TextAreaInputs projectId={projectIdStr} />
                   </div>
-                )}
+                </div>
                 {activeTab === 'logs' && (
                   <ProjectDetailLogs
                     projectId={projectIdStr}
