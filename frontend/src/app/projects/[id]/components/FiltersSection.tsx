@@ -21,7 +21,7 @@ interface FiltersSectionProps {
   handleIncludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleExcludeFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   setGroupName: (value: string) => void;
-  handleGroupKeywords: () => void;
+  handleGroupKeywords: (overrideGroupName?: string) => void | Promise<void>;
   handleUngroupKeywords: () => void;
   handleUnblockKeywords: () => void;
   removeToken: (token: string) => void;
@@ -334,7 +334,9 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                 </div>
                 {isGroupButtonVisible && (
                   <button
-                    onClick={handleGroupKeywords}
+                    onClick={() => {
+                      void handleGroupKeywords();
+                    }}
                     disabled={selectedKeywordIds.size === 0 || !groupName.trim() || groupingLocked}
                     className="bg-blue-600 cursor-pointer text-white px-3 py-1 border border-transparent rounded-md text-ui-body shadow-sm hover:bg-blue-700 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none"
                   >
