@@ -61,7 +61,14 @@ seo-project-manager/
      ```
    - Update the connection settings in `.env` if needed
 
-5. Run the application
+5. Run database migrations
+   ```bash
+   alembic upgrade head
+   ```
+   This ensures required columns (including `csv_uploads.storage_path` from
+   `20260114_000001_add_csv_upload_storage_path.py`) exist before startup.
+
+6. Run the application
    ```
    uvicorn app.main:app --reload
    ```

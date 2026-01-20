@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from app.config import settings
-from app.database import init_db
+from app.database import init_db, verify_csv_uploads_storage_path
 from app.routes import (
     activity_logs,
     auth,
@@ -33,6 +33,7 @@ app.add_middleware(
 async def startup_db_client():
     ensure_nltk_resources()
     await init_db()
+    await verify_csv_uploads_storage_path()
     load_compound_variants()
 
 # Include routers
