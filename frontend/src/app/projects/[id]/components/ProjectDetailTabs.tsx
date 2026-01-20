@@ -16,7 +16,7 @@ export function ProjectDetailTabs({
   onTabChange,
 }: ProjectDetailTabsProps): React.ReactElement {
   return (
-    <div className="flex flex-wrap gap-2 border border-border rounded-lg bg-surface-muted/40 p-1 mb-3 justify-center">
+    <div className="flex flex-wrap gap-2 border border-border rounded-lg bg-surface-muted p-1 mb-3 justify-center">
       {(['overview', 'process', 'group', 'notes', 'logs'] as const).map(tab => (
         <button
           key={tab}
@@ -24,8 +24,8 @@ export function ProjectDetailTabs({
           className={
             'px-3 py-1.5 text-ui-tab font-medium rounded-md transition-colors ' +
             (activeTab === tab
-              ? 'bg-accent/80 text-white shadow-sm ring-1 ring-white/10'
-              : 'text-muted hover:text-foreground hover:bg-surface-muted')
+              ? 'bg-accent text-on-primary shadow-sm'
+              : 'text-muted hover:text-foreground hover:bg-surface-container')
           }
         >
           {tab === 'overview'

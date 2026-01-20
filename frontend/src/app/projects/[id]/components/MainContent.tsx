@@ -459,7 +459,7 @@ export const MainContent: React.FC<MainContentProps> = memo(({
           </span>
         )}
       </div>
-      <div className="flex flex-col justify-end mb-4 gap-3 shrink-0 bg-surface-muted/40 rounded-lg p-2">
+      <div className="flex flex-col justify-end mb-4 gap-3 shrink-0 bg-surface-muted rounded-lg p-2">
         <div className="flex items-center gap-2 w-full justify-end">
           <VolumeInputs
             minVolume={filterValues.minVolume}

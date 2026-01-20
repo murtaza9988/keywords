@@ -50,7 +50,7 @@ export function ProcessingPanel({
   const showUploadLoader = isUploading || isProcessing;
 
   return (
-    <div className="rounded-lg border border-border bg-surface-muted/60 px-4 py-3">
+    <div className="rounded-lg border border-border bg-surface-muted px-4 py-3">
       <div className="flex flex-wrap items-center gap-4">
         <div className="min-w-[220px] flex flex-col gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">Upload CSVs</span>

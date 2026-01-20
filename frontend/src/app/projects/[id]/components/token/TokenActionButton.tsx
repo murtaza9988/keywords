@@ -24,8 +24,8 @@ export function TokenActionButtons({
         disabled={isProcessingAction || selectedTokensCount === 0}
         className={`px-3 py-2 border border-transparent rounded-md text-ui-body shadow-sm transition-all duration-200 ${
           selectedTokensCount > 0
-            ? 'bg-accent/80 text-white hover:bg-accent hover:shadow-md'
-            : 'bg-muted-foreground/30 text-muted shadow-none cursor-not-allowed'
+            ? 'bg-accent text-on-primary hover:brightness-110 hover:shadow-md'
+            : 'bg-surface-container-high text-muted shadow-none cursor-not-allowed'
         }`}
       >
         Block
@@ -36,8 +36,8 @@ export function TokenActionButtons({
         disabled={isProcessingAction || selectedTokensCount === 0 || !isBlockedView}
         className={`px-3 py-2 rounded-md text-ui-body shadow-sm transition-all duration-200 ${
           selectedTokensCount > 0 && isBlockedView
-            ? 'bg-warning/80 text-white hover:bg-warning hover:shadow-md'
-            : 'bg-muted-foreground/30 text-muted shadow-none cursor-not-allowed'
+            ? 'bg-warning text-on-warning hover:brightness-110 hover:shadow-md'
+            : 'bg-surface-container-high text-muted shadow-none cursor-not-allowed'
         }`}
       >
         Unblock
@@ -48,8 +48,8 @@ export function TokenActionButtons({
         disabled={isProcessingAction || selectedTokensCount < 2}
         className={`px-3 py-2 border border-transparent rounded-md text-ui-body shadow-sm transition-all duration-200 ${
           selectedTokensCount >= 2
-            ? 'bg-accent/80 text-white hover:bg-accent hover:shadow-md'
-            : 'bg-muted-foreground/30 text-muted shadow-none cursor-not-allowed'
+            ? 'bg-accent text-on-primary hover:brightness-110 hover:shadow-md'
+            : 'bg-surface-container-high text-muted shadow-none cursor-not-allowed'
         }`}
       >
         Merge

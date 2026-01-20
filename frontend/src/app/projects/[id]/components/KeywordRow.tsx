@@ -185,8 +185,8 @@ export const KeywordRow: React.FC<{
                   onClick={(e) => handleTokenClick(token, e)}
                   className={`inline-block px-1.5 py-0.5 rounded text-ui-meta font-light cursor-pointer transition-colors duration-150 whitespace-nowrap ${
                     selectedTokens.includes(token)
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-foreground hover:bg-gray-300 hover:shadow-sm'
+                      ? 'bg-accent text-on-primary'
+                      : 'bg-surface-container-high text-foreground hover:bg-surface-container-highest hover:shadow-sm'
                   }`}
                 >
                   {token}
@@ -224,7 +224,7 @@ export const KeywordRow: React.FC<{
         </td>
         <td className="w-[40px] px-0.5 py-1 text-ui-body text-center whitespace-nowrap">
           {!isChild && (keyword.childCount ?? 0) > 0 ? (
-            <span className="inline-block bg-blue-100 text-blue-800 text-ui-meta font-semibold px-1 py-0.5 rounded-full">
+            <span className="inline-block bg-primary-container text-on-primary-container text-ui-meta font-semibold px-1 py-0.5 rounded-full">
               {(keyword.childCount ?? 0).toLocaleString()}
             </span>
           ) : null}

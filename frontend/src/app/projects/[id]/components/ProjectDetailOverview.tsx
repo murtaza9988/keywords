@@ -110,21 +110,21 @@ export function ProjectDetailOverview({
       value: (processingSucceededJobs ?? 0).toLocaleString(),
       icon: CheckCircle2,
       color: 'text-success',
-      bgColor: 'bg-success/10'
+      bgColor: 'bg-success-container'
     },
     {
       label: 'CSV files failed',
       value: (processingFailedJobs ?? 0).toLocaleString(),
       icon: AlertCircle,
       color: 'text-danger',
-      bgColor: 'bg-danger/10'
+      bgColor: 'bg-error-container'
     },
     {
       label: 'Files in queue',
       value: processingQueue.length.toString(),
       icon: Clock,
       color: 'text-accent',
-      bgColor: 'bg-accent/10'
+      bgColor: 'bg-primary-container'
     }
   ], [processingSucceededJobs, processingFailedJobs, processingQueue.length]);
 
@@ -301,7 +301,7 @@ export function ProjectDetailOverview({
             ].map(({ key, label, description }) => {
               const info = downloadInfo[`${key}-${projectId}`];
               return (
-                <div key={key} className="border border-border rounded-lg p-3 bg-surface-muted/30">
+                <div key={key} className="border border-border rounded-lg p-3 bg-surface-muted">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1 min-w-0">
                       <h4 className="text-ui-label font-medium">{label}</h4>

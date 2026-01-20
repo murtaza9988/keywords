@@ -27,25 +27,25 @@ export const SelectionToolbar = memo(({
       <div className="flex border border-border p-0.5 gap-2 rounded bg-surface-muted w-full sm:w-auto justify-center shrink-0">
         <button
           onClick={() => onViewChange('ungrouped')}
-          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'ungrouped' ? 'bg-accent/80 text-white shadow-sm ring-1 ring-white/10' : 'hover:text-foreground hover:bg-surface-muted'}`}
+          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'ungrouped' ? 'bg-accent text-on-primary shadow-sm' : 'hover:text-foreground hover:bg-surface-container'}`}
         >
           {viewLabels.ungrouped}
         </button>
         <button
           onClick={() => onViewChange('grouped')}
-          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'grouped' ? 'bg-accent/80 text-white shadow-sm ring-1 ring-white/10' : 'hover:text-foreground hover:bg-surface-muted'}`}
+          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'grouped' ? 'bg-accent text-on-primary shadow-sm' : 'hover:text-foreground hover:bg-surface-container'}`}
         >
           {viewLabels.grouped}
         </button>
         <button
           onClick={() => onViewChange('confirmed')}
-          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'confirmed' ? 'bg-success/80 text-white shadow-sm ring-1 ring-white/10' : 'hover:text-foreground hover:bg-surface-muted'}`}
+          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'confirmed' ? 'bg-success text-on-success shadow-sm' : 'hover:text-foreground hover:bg-surface-container'}`}
         >
           {viewLabels.confirmed}
         </button>
         <button
           onClick={() => onViewChange('blocked')}
-          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'blocked' ? 'bg-danger/80 text-white shadow-sm ring-1 ring-white/10' : 'hover:text-foreground hover:bg-surface-muted'}`}
+          className={`flex-1 sm:flex-none px-1 py-2 text-ui-tab rounded transition-colors hover:cursor-pointer ${activeView === 'blocked' ? 'bg-danger text-on-error shadow-sm' : 'hover:text-foreground hover:bg-surface-container'}`}
         >
           {viewLabels.blocked}
         </button>
