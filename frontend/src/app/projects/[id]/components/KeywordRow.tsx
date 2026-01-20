@@ -98,18 +98,30 @@ export const KeywordRow: React.FC<{
       if (e.button === 1) {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const windowWithHandling = window as Window & { __handlingMiddleClick?: boolean };
         if (windowWithHandling.__handlingMiddleClick) return;
         windowWithHandling.__handlingMiddleClick = true;
-        
+
         try {
           if (currentView === 'ungrouped') {
-            const keywordIds = e.shiftKey
-              ? Array.from(selectedKeywordIds).concat(keyword.id)
-              : [keyword.id];
+            // If there are selected keywords, group them all (include clicked keyword if not already selected)
+            // If no keywords selected, just group the clicked keyword
+            let keywordIds: number[];
+            if (selectedKeywordIds.size > 0) {
+              // Use all selected keywords, adding the clicked one if not already in selection
+              const selectedArray = Array.from(selectedKeywordIds);
+              if (!selectedKeywordIds.has(keyword.id)) {
+                selectedArray.push(keyword.id);
+              }
+              keywordIds = selectedArray;
+            } else {
+              // No selection, just group the clicked keyword
+              keywordIds = [keyword.id];
+            }
+
             if (keywordIds.length === 0) return;
-            
+
             onMiddleClickGroup(keywordIds);
           }
         } finally {
