@@ -1,43 +1,84 @@
 import Link from 'next/link';
-
 import { cn } from '@/lib/cn';
-
-const baseButtonClasses =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 px-4 py-3 text-ui-body';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[length:24px_24px] opacity-70" />
+    <div className="min-h-screen bg-surface text-on-surface relative overflow-hidden">
+      {/* Background pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--md-sys-color-outline-variant)_1px,transparent_1px)] bg-[length:24px_24px] opacity-30" />
+
       <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col items-center gap-12 px-6 py-16 text-center">
-        <span className="inline-flex items-center rounded-full border border-border/70 bg-surface/80 px-4 py-1 text-ui-label">
+        {/* Badge/Chip */}
+        <span className={cn(
+          "inline-flex items-center",
+          // M3 chip styling
+          "h-8 px-4 rounded-lg",
+          "border border-outline-variant",
+          "bg-surface-container text-on-surface-variant",
+          "text-label-large font-medium"
+        )}>
           SEO Workflow Companion
         </span>
+
+        {/* Hero section */}
         <div className="space-y-4">
-          <h1 className="text-ui-page tracking-tight">
+          <h1 className="text-headline-medium md:text-headline-large tracking-tight text-on-surface">
             Turn messy keyword lists into prioritized SEO action plans.
           </h1>
-          <p className="text-ui-muted max-w-2xl mx-auto">
+          <p className="text-body-large text-on-surface-variant max-w-2xl mx-auto">
             Manager centralizes keyword research, clusters intent, and highlights the pages that need your
             attention—so SEOs can move faster from discovery to content briefs.
           </p>
         </div>
+
+        {/* CTA buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/login" className={cn(baseButtonClasses, 'bg-accent text-white hover:bg-accent-strong')}>
+          <Link
+            href="/login"
+            className={cn(
+              // M3 Filled button
+              "inline-flex items-center justify-center gap-2",
+              "h-10 min-w-[64px] px-6",
+              "rounded-full font-medium text-label-large",
+              "bg-primary text-on-primary",
+              "hover:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_1px_3px_1px_rgba(0,0,0,0.15)]",
+              "hover:bg-[color-mix(in_srgb,var(--md-sys-color-primary)_92%,var(--md-sys-color-on-primary)_8%)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+              "transition-all duration-200 ease-[cubic-bezier(0.2,0,0,1)]"
+            )}
+          >
             Get started
           </Link>
           <Link
             href="/login"
-            className={cn(baseButtonClasses, 'border border-border text-foreground hover:bg-surface-muted')}
+            className={cn(
+              // M3 Outlined button
+              "inline-flex items-center justify-center gap-2",
+              "h-10 min-w-[64px] px-6",
+              "rounded-full font-medium text-label-large",
+              "border border-outline bg-transparent text-primary",
+              "hover:bg-[color-mix(in_srgb,transparent_92%,var(--md-sys-color-primary)_8%)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+              "transition-all duration-200 ease-[cubic-bezier(0.2,0,0,1)]"
+            )}
           >
             Sign in
           </Link>
         </div>
 
-        <section className="grid w-full gap-6 rounded-3xl border border-border/60 bg-gradient-to-br from-white/90 via-surface/70 to-surface-muted/60 p-6 text-left md:grid-cols-[1.2fr_1fr] md:p-8">
+        {/* Main feature card */}
+        <section className={cn(
+          "grid w-full gap-6 text-left md:grid-cols-[1.2fr_1fr] md:p-8",
+          // M3 Card styling - elevated
+          "rounded-xl p-6",
+          "bg-surface-container-low",
+          "shadow-[0_1px_2px_rgba(0,0,0,0.3),0_1px_3px_1px_rgba(0,0,0,0.15)]"
+        )}>
           <div className="space-y-4">
-            <h2 className="text-ui-heading">Everything you need to ship smarter SEO strategy</h2>
-            <p className="text-ui-muted">
+            <h2 className="text-title-large text-on-surface">
+              Everything you need to ship smarter SEO strategy
+            </h2>
+            <p className="text-body-medium text-on-surface-variant">
               Build momentum with a workflow that keeps research, clustering, and delivery in one place—no
               more spreadsheet chaos.
             </p>
@@ -48,9 +89,17 @@ export default function Home() {
                 'Prioritization cues based on volume and difficulty',
                 'Export-ready views for clients and content teams'
               ].map((item) => (
-                <div key={item} className="flex items-start gap-3 rounded-2xl border border-border/70 bg-white/70 p-4">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-accent" />
-                  <p className="text-ui-body">{item}</p>
+                <div
+                  key={item}
+                  className={cn(
+                    // M3 outlined card style
+                    "flex items-start gap-3 p-4",
+                    "rounded-xl",
+                    "bg-surface border border-outline-variant"
+                  )}
+                >
+                  <span className="mt-1.5 h-2 w-2 rounded-full bg-primary flex-shrink-0" />
+                  <p className="text-body-medium text-on-surface">{item}</p>
                 </div>
               ))}
             </div>
@@ -63,44 +112,71 @@ export default function Home() {
             ].map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-2xl border border-border/70 bg-white/80 p-5 text-left shadow-sm"
+                className={cn(
+                  // M3 filled card style
+                  "rounded-xl p-5 text-left",
+                  "bg-surface-container-highest"
+                )}
               >
-                <p className="text-ui-label">{stat.label}</p>
-                <p className="mt-2 text-ui-heading">{stat.value}</p>
+                <p className="text-label-medium text-on-surface-variant uppercase tracking-wide">{stat.label}</p>
+                <p className="mt-2 text-title-medium text-on-surface">{stat.value}</p>
               </div>
             ))}
           </div>
         </section>
 
+        {/* Feature cards */}
         <div className="grid gap-6 md:grid-cols-3 text-left w-full">
-          <div className="rounded-2xl border border-border/70 bg-surface/70 p-6">
-            <h3 className="text-ui-title mb-2">Keyword intelligence</h3>
-            <p className="text-ui-muted">
-              Upload, normalize, and segment massive keyword exports without losing the context of intent.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/70 bg-surface/70 p-6">
-            <h3 className="text-ui-title mb-2">Opportunity scoring</h3>
-            <p className="text-ui-muted">
-              Quickly spot high-impact terms and content gaps so you can prioritize what wins next.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/70 bg-surface/70 p-6">
-            <h3 className="text-ui-title mb-2">Team-ready exports</h3>
-            <p className="text-ui-muted">
-              Generate clean, client-ready exports and shareable insights in minutes.
-            </p>
-          </div>
+          {[
+            {
+              title: 'Keyword intelligence',
+              description: 'Upload, normalize, and segment massive keyword exports without losing the context of intent.'
+            },
+            {
+              title: 'Opportunity scoring',
+              description: 'Quickly spot high-impact terms and content gaps so you can prioritize what wins next.'
+            },
+            {
+              title: 'Team-ready exports',
+              description: 'Generate clean, client-ready exports and shareable insights in minutes.'
+            }
+          ].map((feature) => (
+            <div
+              key={feature.title}
+              className={cn(
+                // M3 outlined card
+                "rounded-xl p-6",
+                "bg-surface border border-outline-variant",
+                // Hover effect
+                "transition-all duration-200 ease-[cubic-bezier(0.2,0,0,1)]",
+                "hover:bg-[color-mix(in_srgb,var(--md-sys-color-surface)_92%,var(--md-sys-color-on-surface)_8%)]"
+              )}
+            >
+              <h3 className="text-title-medium text-on-surface mb-2">{feature.title}</h3>
+              <p className="text-body-medium text-on-surface-variant">
+                {feature.description}
+              </p>
+            </div>
+          ))}
         </div>
 
-        <footer className="mt-auto w-full border-t border-border/70 pt-8 text-ui-muted">
+        {/* Footer */}
+        <footer className="mt-auto w-full border-t border-outline-variant pt-8">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <span>© 2025 Manager. Built for SEO teams who move fast.</span>
+            <span className="text-body-small text-on-surface-variant">
+              © 2025 Manager. Built for SEO teams who move fast.
+            </span>
             <div className="flex items-center gap-4">
-              <Link href="/login" className="hover:text-foreground transition-colors">
+              <Link
+                href="/login"
+                className="text-label-large text-primary hover:underline transition-colors"
+              >
                 Get started
               </Link>
-              <Link href="/login" className="hover:text-foreground transition-colors">
+              <Link
+                href="/login"
+                className="text-label-large text-primary hover:underline transition-colors"
+              >
                 Support
               </Link>
             </div>
