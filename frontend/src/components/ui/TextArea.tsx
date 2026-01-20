@@ -44,7 +44,8 @@ export function TextArea({
   disabled,
   ...props
 }: TextAreaProps) {
-  const textareaId = id || `textarea-${React.useId()}`;
+  const generatedId = React.useId();
+  const textareaId = id || `textarea-${generatedId}`;
   const hasValue = props.value !== undefined && props.value !== "";
   const [isFocused, setIsFocused] = React.useState(false);
 

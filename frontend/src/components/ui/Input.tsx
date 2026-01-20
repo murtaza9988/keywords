@@ -50,7 +50,8 @@ export function Input({
   disabled,
   ...props
 }: InputProps) {
-  const inputId = id || `input-${React.useId()}`;
+  const generatedId = React.useId();
+  const inputId = id || `input-${generatedId}`;
   const hasValue = props.value !== undefined && props.value !== "";
   const [isFocused, setIsFocused] = React.useState(false);
 
