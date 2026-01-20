@@ -120,7 +120,7 @@ export function Input({
               className={cn(
                 "absolute left-4 transition-all duration-200 ease-[cubic-bezier(0.2,0,0,1)] pointer-events-none",
                 // Adjust for start icon
-                startIcon && "left-0",
+                startIcon ? "left-0" : undefined,
                 // Label positioning and styling based on state
                 showFloatingLabel
                   ? cn(
@@ -149,8 +149,8 @@ export function Input({
               // Padding
               "px-4",
               label ? "pt-5 pb-2" : "py-4",
-              startIcon && "pl-3",
-              endIcon && "pr-3",
+              startIcon ? "pl-3" : undefined,
+              endIcon ? "pr-3" : undefined,
               // Typography - Body Large
               "text-body-large text-on-surface",
               // Placeholder

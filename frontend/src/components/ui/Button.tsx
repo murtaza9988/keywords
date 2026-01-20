@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
  * - text: Lowest emphasis, text only
  * - danger: Error/destructive actions
  */
-type ButtonVariant = "filled" | "tonal" | "elevated" | "outlined" | "text" | "danger";
+type ButtonVariant = "filled" | "tonal" | "elevated" | "outlined" | "text" | "danger" | "secondary" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -81,6 +81,20 @@ const variantClasses: Record<ButtonVariant, string> = {
     "active:bg-[color-mix(in_srgb,var(--md-sys-color-error)_88%,var(--md-sys-color-on-error)_12%)]",
     "active:shadow-none"
   ),
+  // Secondary button: Alias for outlined (backward compatibility)
+  secondary: cn(
+    "border border-outline bg-transparent text-primary",
+    "hover:bg-[color-mix(in_srgb,transparent_92%,var(--md-sys-color-primary)_8%)]",
+    "focus-visible:bg-[color-mix(in_srgb,transparent_90%,var(--md-sys-color-primary)_10%)]",
+    "active:bg-[color-mix(in_srgb,transparent_88%,var(--md-sys-color-primary)_12%)]"
+  ),
+  // Ghost button: Alias for text (backward compatibility)
+  ghost: cn(
+    "bg-transparent text-primary",
+    "hover:bg-[color-mix(in_srgb,transparent_92%,var(--md-sys-color-primary)_8%)]",
+    "focus-visible:bg-[color-mix(in_srgb,transparent_90%,var(--md-sys-color-primary)_10%)]",
+    "active:bg-[color-mix(in_srgb,transparent_88%,var(--md-sys-color-primary)_12%)]"
+  ),
 };
 
 /**
@@ -134,8 +148,8 @@ export function Button({
         // Icon sizing
         iconSizeClasses[size],
         // Adjust padding when icons are present
-        startIcon && "pl-4",
-        endIcon && "pr-4",
+        startIcon ? "pl-4" : undefined,
+        endIcon ? "pr-4" : undefined,
         className
       )}
       {...props}

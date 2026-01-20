@@ -39,7 +39,7 @@ export default function CreateProjectForm({
               <div className="mt-4">
                 <Button
                   onClick={() => setError('')}
-                  variant="outline"
+                  variant="outlined"
                   size="sm"
                   className="border-red-500/40 text-red-100 hover:bg-red-500/20"
                 >
