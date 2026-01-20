@@ -58,11 +58,11 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   
   // Custom color based on progress
   const getBarColor = () => {
-    if (status === 'error') return 'bg-danger/80';
-    if (safeProgress < 30) return 'bg-accent/70';
-    if (safeProgress < 60) return 'bg-accent/80';
-    if (safeProgress < 90) return 'bg-success/70';
-    return 'bg-success/80';
+    if (status === 'error') return 'bg-danger';
+    if (safeProgress < 30) return 'bg-accent';
+    if (safeProgress < 60) return 'bg-accent';
+    if (safeProgress < 90) return 'bg-success';
+    return 'bg-success';
   };
 
   const steps = [
@@ -179,7 +179,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
                 <button
                   onClick={handleReset}
                   disabled={isResetting}
-                  className="ml-2 inline-flex items-center gap-1 rounded-md bg-danger/10 px-2 py-1 text-ui-meta font-medium text-danger hover:bg-danger/20 disabled:opacity-50 transition-colors"
+                  className="ml-2 inline-flex items-center gap-1 rounded-md bg-error-container px-2 py-1 text-ui-meta font-medium text-danger hover:bg-error-container disabled:opacity-50 transition-colors"
                 >
                   <RotateCcw className={`h-3 w-3 ${isResetting ? 'animate-spin' : ''}`} />
                   {isResetting ? 'Resetting...' : 'Reset & Retry'}
@@ -241,7 +241,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         )}
       </div>
       {showUploadSummary && (
-        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-ui-muted">
+        <div className="mt-2 rounded-md border border-border bg-surface-muted px-3 py-2 text-ui-muted">
           <div className="flex items-center justify-between text-ui-label">
             <span>Uploads</span>
             <span className="text-ui-meta font-medium">
@@ -272,7 +272,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         </div>
       )}
       {queueItems.length > 0 && (
-        <div className="mt-2 rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-ui-muted">
+        <div className="mt-2 rounded-md border border-border bg-surface-muted px-3 py-2 text-ui-muted">
           <div className="flex items-center justify-between">
             <div className="text-ui-label flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -307,7 +307,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
         </div>
       )}
       {safeFileErrors.length > 0 && (
-        <div className="mt-2 rounded-md border border-danger/20 bg-danger/10 px-3 py-2 text-ui-meta text-danger">
+        <div className="mt-2 rounded-md border border-error-container bg-error-container px-3 py-2 text-ui-meta text-danger">
           <div className="text-ui-label text-danger flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
             File errors ({safeFileErrors.length})

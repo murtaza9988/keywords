@@ -80,7 +80,7 @@ export function ProjectDetailProcess(): React.ReactElement {
         </div>
         <ol className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {pipelineSteps.map((step, index) => (
-            <li key={step.title} className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
+            <li key={step.title} className="rounded-md border border-border bg-surface-muted px-3 py-3">
               <div className="flex items-start gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[11px] font-semibold text-white">
                   {index + 1}
@@ -236,7 +236,7 @@ export function ProjectDetailProcess(): React.ReactElement {
           </p>
         </div>
         <div className="mt-3 grid gap-4 lg:grid-cols-2 text-xs">
-          <div className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
+          <div className="rounded-md border border-border bg-surface-muted px-3 py-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">Status badges</div>
             <ul className="mt-2 space-y-2">
               {statusLegend.map((item) => (
@@ -249,7 +249,7 @@ export function ProjectDetailProcess(): React.ReactElement {
               ))}
             </ul>
           </div>
-          <div className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
+          <div className="rounded-md border border-border bg-surface-muted px-3 py-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">Processing stages</div>
             <ul className="mt-2 space-y-2">
               {stageLegend.map((item) => (
@@ -275,7 +275,7 @@ export function ProjectDetailProcess(): React.ReactElement {
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
           {fileLegend.map((item) => (
-            <div key={item.label} className="rounded-md border border-border bg-surface-muted/30 px-3 py-3">
+            <div key={item.label} className="rounded-md border border-border bg-surface-muted px-3 py-3">
               <div className="text-lg">{item.icon}</div>
               <div className="mt-1 text-xs font-semibold text-foreground">{item.label}</div>
               <div className="text-[11px] text-muted">{item.detail}</div>

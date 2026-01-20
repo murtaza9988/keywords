@@ -218,7 +218,7 @@ export function TokenTable({
                           <button
                             onClick={() => onUnmergeToken(token.tokenName)}
                             disabled={isProcessingAction}
-                            className="text-ui-meta px-1 py-0.5 bg-surface-muted cursor-pointer hover:bg-surface-muted/70 text-foreground rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="text-ui-meta px-1 py-0.5 bg-surface-muted cursor-pointer hover:bg-surface-container text-foreground rounded disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={`Unmerge token "${token.tokenName}"`}
                           >
                             Unmerge
@@ -235,7 +235,7 @@ export function TokenTable({
                     </tr>
 
                     {isExpanded && hasChildren && (
-                      <tr className="bg-surface-muted/60">
+                      <tr className="bg-surface-muted">
                         <td colSpan={6} className="px-2 py-1">
                           <div className="pl-8 border-l-2 border-border">
                             {token.childTokens && token.childTokens.length > 0 ? (
@@ -255,7 +255,7 @@ export function TokenTable({
                                           onUnmergeIndividualToken(token.tokenName, childToken);
                                         }}
                                         disabled={isProcessingAction}
-                                        className="text-ui-meta px-1 py-0.5 bg-surface-muted hover:bg-surface-muted/70 text-foreground rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="text-ui-meta px-1 py-0.5 bg-surface-muted hover:bg-surface-container text-foreground rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                         title={`Unmerge "${childToken}" from "${token.tokenName}"`}
                                         aria-label={`Unmerge "${childToken}" from "${token.tokenName}"`}
                                       >
