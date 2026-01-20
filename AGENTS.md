@@ -234,6 +234,78 @@ python -m app.scripts.backfill_compounds --project-id <id>
 - Treat TypeScript and ESLint errors as build blockers; resolve them before merging.
 
 ## React/Next.js guardrails
+
+### ⛔ React Hooks: Rules of Hooks (CRITICAL) ⛔
+React Hooks have strict rules that MUST be followed. Violating these rules causes build failures and runtime bugs.
+
+**RULE 1: Only call Hooks at the top level**
+- **NEVER** call Hooks inside conditions, loops, or nested functions
+- **ALWAYS** call Hooks at the top level of your React function, before any early returns
+- This applies to ALL hooks: `useState`, `useEffect`, `useId`, `useRef`, `useMemo`, `useCallback`, etc.
+
+```tsx
+// ❌ WRONG: Hook called conditionally
+function MyComponent({ showLabel }: Props) {
+  if (showLabel) {
+    const id = React.useId();  // BUILD WILL FAIL
+  }
+  // ...
+}
+
+// ❌ WRONG: Hook called after early return
+function MyComponent({ data }: Props) {
+  if (!data) return null;
+  const [state, setState] = useState(0);  // BUILD WILL FAIL
+  // ...
+}
+
+// ✅ CORRECT: Hooks at top level, before any conditions
+function MyComponent({ showLabel, data }: Props) {
+  const id = React.useId();  // Always called
+  const [state, setState] = useState(0);  // Always called
+
+  if (!data) return null;  // Early return AFTER hooks
+  // ...
+}
+```
+
+**RULE 2: Only call Hooks from React functions**
+- Call Hooks from React function components
+- Call Hooks from custom Hooks (functions starting with `use`)
+- **NEVER** call Hooks from regular JavaScript functions
+
+**Why this matters:** React relies on the ORDER of Hook calls to associate state with the correct Hook. If Hooks are called conditionally, the order changes between renders, causing state corruption.
+
+### ⛔ Next.js Image Component (REQUIRED) ⛔
+**ALWAYS** use `<Image />` from `next/image` instead of the HTML `<img>` element.
+
+```tsx
+// ❌ WRONG: Raw img element
+<img src="/photo.jpg" alt="Photo" />
+
+// ✅ CORRECT: Next.js Image component
+import Image from "next/image";
+<Image src="/photo.jpg" alt="Photo" width={400} height={300} />
+
+// ✅ CORRECT: Fill mode for responsive images
+<div className="relative w-full h-64">
+  <Image src="/photo.jpg" alt="Photo" fill className="object-cover" />
+</div>
+```
+
+**Why Next.js Image:**
+- Automatic image optimization (WebP, AVIF)
+- Lazy loading by default
+- Prevents Cumulative Layout Shift (CLS)
+- Faster LCP (Largest Contentful Paint)
+- Lower bandwidth usage
+
+**Required props:**
+- `src`: Image source (string or StaticImport)
+- `alt`: Alt text (always required for accessibility)
+- Either `width` + `height` OR `fill` (for responsive containers)
+
+### Other React/Next.js guardrails
 - Avoid duplicate JSX props. Duplicates can be introduced via copy/paste or merge conflicts and will fail builds (e.g., `JSX elements cannot have multiple attributes with the same name`).
 - Prefer passing grouped props as objects when lists get long to reduce copy/paste mistakes.
 - Enable ESLint rule `react/jsx-no-duplicate-props` in the frontend lint config to catch duplicates early.
@@ -330,3 +402,4 @@ For thorough execution, each agent has a dedicated runbook with entry/exit crite
 - 2026-01-14: Multi-CSV uploads failed because the backend rejected new uploads while processing and the UI surfaced only a generic error. Prevention: queue uploads per project, expose queue metadata in processing status, and show step-by-step progress with detailed error messages.
 - 2026-01-14: Vercel build failed due to an incomplete duplicate `const transformedKeywords` block in `ProjectDetail.tsx`, causing a syntax error in `next build`. Prevention: remove duplicate declarations, verify block structure, and keep lint/typecheck running before builds.
 - 2026-01-14: Multi-CSV upload showed "file already being processed" error after uploading 3 CSVs. Root cause: State was spread across 6 different dictionaries (processing_tasks, processing_results, processing_queue, etc.) that could get out of sync. Fix: First-principles redesign using a single ProjectState dataclass as the single source of truth. Key changes: (1) All state in ONE object per project, (2) Clear state machine with explicit invariants, (3) begin_upload() auto-resets stale/error state, (4) _ensure_invariants() catches bugs early. Prevention: Keep all related state in a single object, define and enforce invariants programmatically.
+- 2026-01-20: Vercel build failed with React Hooks "called conditionally" errors in Input.tsx and TextArea.tsx, plus `<img>` warning in Card.tsx. Root cause: React Hooks (useId) were placed after conditional logic or inside conditions, violating the Rules of Hooks. The Card component used raw `<img>` instead of Next.js `<Image>`. Prevention: (1) ALWAYS call ALL hooks at the top level of components before any conditions or early returns, (2) ALWAYS use `<Image>` from next/image instead of `<img>`, (3) Run `npm run lint` before committing - ESLint's react-hooks/rules-of-hooks catches these errors. See "React/Next.js guardrails" section above for detailed rules and examples.
