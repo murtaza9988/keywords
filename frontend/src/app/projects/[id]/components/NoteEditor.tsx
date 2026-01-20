@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useCallback } from 'react';
 
 interface NoteEditorProps {
   label: string;
@@ -21,7 +21,7 @@ export const NoteEditor = memo(({
   editorRef
 }: NoteEditorProps) => {
 
-  const formatText = (command: string, value?: string) => {
+  const formatText = useCallback((command: string, value?: string) => {
     if (command === "fontSize" && value) {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
@@ -37,9 +37,34 @@ export const NoteEditor = memo(({
     } else {
       document.execCommand(command, false, value);
     }
-    // Trigger change after formatting
     onChange();
-  };
+  }, [onChange]);
+
+  const insertLink = useCallback(() => {
+    const url = prompt("Enter URL:");
+    if (url) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        if (range.collapsed) {
+          const link = document.createElement("a");
+          link.href = url;
+          link.textContent = url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          range.insertNode(link);
+        } else {
+          document.execCommand("createLink", false, url);
+          const selectedLink = selection.anchorNode?.parentElement;
+          if (selectedLink?.tagName === "A") {
+            selectedLink.setAttribute("target", "_blank");
+            selectedLink.setAttribute("rel", "noopener noreferrer");
+          }
+        }
+      }
+      onChange();
+    }
+  }, [onChange]);
 
   return (
     <div className="note-section border border-border rounded-lg overflow-hidden bg-surface shadow-sm">
@@ -47,17 +72,55 @@ export const NoteEditor = memo(({
         <label htmlFor={id} className="text-[12px] font-medium mr-2 text-foreground">
           {label}
         </label>
-        <div className="toolbar flex gap-2 items-center">
+        <div className="toolbar flex flex-wrap gap-1.5 items-center">
           <button
             onClick={() => formatText("bold")}
-            className="px-2.5 py-1 text-[12px] bg-surface border border-border rounded hover:bg-surface-strong text-foreground transition-colors font-bold"
-            title="Bold"
+            className="px-2 py-1 text-[12px] bg-surface border border-border rounded hover:bg-surface-strong text-foreground transition-colors font-bold"
+            title="Bold (Ctrl+B)"
           >
             B
           </button>
+          <button
+            onClick={() => formatText("italic")}
+            className="px-2 py-1 text-[12px] bg-surface border border-border rounded hover:bg-surface-strong text-foreground transition-colors italic"
+            title="Italic (Ctrl+I)"
+          >
+            I
+          </button>
+          <button
+            onClick={() => formatText("underline")}
+            className="px-2 py-1 text-[12px] bg-surface border border-border rounded hover:bg-surface-strong text-foreground transition-colors underline"
+            title="Underline (Ctrl+U)"
+          >
+            U
+          </button>
+          <div className="w-px h-5 bg-border mx-1" />
+          <button
+            onClick={() => formatText("insertUnorderedList")}
+            className="px-2 py-1 text-[12px] bg-surface border border-border rounded hover:bg-surface-strong text-foreground transition-colors"
+            title="Bullet List"
+          >
+            •&nbsp;List
+          </button>
+          <button
+            onClick={() => formatText("insertOrderedList")}
+            className="px-2 py-1 text-[12px] bg-surface border border-border rounded hover:bg-surface-strong text-foreground transition-colors"
+            title="Numbered List"
+          >
+            1.&nbsp;List
+          </button>
+          <div className="w-px h-5 bg-border mx-1" />
+          <button
+            onClick={insertLink}
+            className="px-2 py-1 text-[12px] bg-surface border border-border rounded hover:bg-surface-strong text-foreground transition-colors"
+            title="Insert Link"
+          >
+            Link
+          </button>
+          <div className="w-px h-5 bg-border mx-1" />
           <select
             onChange={(e) => formatText("fontSize", e.target.value)}
-            className="text-[12px] bg-surface border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            className="text-[12px] bg-surface border border-border rounded px-1.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
             title="Font Size"
           >
             <option value="">Size</option>
