@@ -1,17 +1,53 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Project, Keyword, ActiveKeywordView, ProjectMetadata, ProjectState } from '../lib/types';
+import { Project, Keyword, ActiveKeywordView, ProjectMetadata, ProjectState, NormalizedKeywordsState } from '../lib/types';
 import { createSelector } from 'reselect';
+
+// Helper to create empty normalized state for a project
+const createEmptyNormalizedState = (): NormalizedKeywordsState => ({
+  byId: {},
+  viewIds: {
+    ungrouped: [],
+    grouped: [],
+    confirmed: [],
+    blocked: [],
+  },
+  childrenByGroupId: {},
+  sortedCacheKeys: {
+    ungrouped: {},
+    grouped: {},
+    confirmed: {},
+    blocked: {},
+  },
+  filteredCacheKeys: {
+    ungrouped: {},
+    grouped: {},
+    confirmed: {},
+    blocked: {},
+  },
+});
+
+// Helper to ensure project state exists
+const ensureProjectState = (state: ProjectState, projectId: string): NormalizedKeywordsState => {
+  if (!state.byProject[projectId]) {
+    state.byProject[projectId] = createEmptyNormalizedState();
+  }
+  return state.byProject[projectId];
+};
+
+// Helper to normalize keywords array into byId map and return IDs
+const normalizeKeywords = (keywords: Keyword[]): { byId: Record<number, Keyword>; ids: number[] } => {
+  const byId: Record<number, Keyword> = {};
+  const ids: number[] = [];
+  for (const keyword of keywords) {
+    byId[keyword.id] = keyword;
+    ids.push(keyword.id);
+  }
+  return { byId, ids };
+};
 
 const initialState: ProjectState = {
   projects: [],
-  groupedKeywords: {},
-  ungroupedKeywords: {},
-  confirmedKeywords: {},
-  blockedKeywords: {},
-  childrenCache: {},
-  keywordsCache: {},
-  sortedKeywordsCache: {},
-  filteredKeywordsCache: {},
+  byProject: {},
   metaData: {},
   stats: {}
 };
@@ -23,40 +59,29 @@ const projectSlice = createSlice({
     setProjects: (state, action: PayloadAction<Project[]>) => {
       state.projects = action.payload;
     },
-    
-    setKeywordsForView: (state, action: PayloadAction<{ 
-      projectId: string; 
-      view: ActiveKeywordView; 
+
+    setKeywordsForView: (state, action: PayloadAction<{
+      projectId: string;
+      view: ActiveKeywordView;
       keywords: Keyword[];
       totalCount?: number;
     }>) => {
       const { projectId, view, keywords, totalCount } = action.payload;
-      
-      switch (view) {
-        case 'grouped':
-          state.groupedKeywords[projectId] = keywords;
-          break;
-        case 'ungrouped':
-          state.ungroupedKeywords[projectId] = keywords;
-          break;
-        case 'confirmed':
-          state.confirmedKeywords[projectId] = keywords;
-          break;
-        case 'blocked':
-          state.blockedKeywords[projectId] = keywords;
-          break;
-      }
-      
-      if (!state.keywordsCache[projectId]) {
-        state.keywordsCache[projectId] = {
-          ungrouped: [],
-          grouped: [],
-          confirmed: [],
-          blocked: []
-        };
-      }
-      state.keywordsCache[projectId][view] = keywords;
-      
+      const projectState = ensureProjectState(state, projectId);
+
+      // Normalize keywords
+      const { byId, ids } = normalizeKeywords(keywords);
+
+      // Merge into byId (don't replace, in case other views have the same keywords)
+      Object.assign(projectState.byId, byId);
+
+      // Update view IDs
+      projectState.viewIds[view] = ids;
+
+      // Invalidate derived caches for this view
+      projectState.sortedCacheKeys[view] = {};
+      projectState.filteredCacheKeys[view] = {};
+
       if (totalCount !== undefined) {
         if (!state.metaData[projectId]) {
           state.metaData[projectId] = {};
@@ -64,66 +89,56 @@ const projectSlice = createSlice({
         state.metaData[projectId][`${view}Count`] = totalCount;
       }
     },
-    
-    setChildrenForGroup: (state, action: PayloadAction<{ 
-      projectId: string; 
-      groupId: string; 
+
+    setChildrenForGroup: (state, action: PayloadAction<{
+      projectId: string;
+      groupId: string;
       children: Keyword[];
     }>) => {
       const { projectId, groupId, children } = action.payload;
-      if (!state.childrenCache[projectId]) {
-        state.childrenCache[projectId] = {};
-      }
-      state.childrenCache[projectId][groupId] = children;
+      const projectState = ensureProjectState(state, projectId);
+
+      // Normalize and store children
+      const { byId, ids } = normalizeKeywords(children);
+      Object.assign(projectState.byId, byId);
+      projectState.childrenByGroupId[groupId] = ids;
     },
-    
-    clearChildrenForGroup: (state, action: PayloadAction<{ 
-      projectId: string; 
+
+    clearChildrenForGroup: (state, action: PayloadAction<{
+      projectId: string;
       groupId: string;
     }>) => {
       const { projectId, groupId } = action.payload;
-      if (state.childrenCache[projectId]) {
-        delete state.childrenCache[projectId][groupId];
+      const projectState = state.byProject[projectId];
+      if (projectState) {
+        delete projectState.childrenByGroupId[groupId];
       }
     },
-    
-    clearProjectKeywords: (state, action: PayloadAction<{ 
+
+    clearProjectKeywords: (state, action: PayloadAction<{
       projectId: string;
     }>) => {
       const { projectId } = action.payload;
-      delete state.groupedKeywords[projectId];
-      delete state.ungroupedKeywords[projectId];
-      delete state.confirmedKeywords[projectId];
-      delete state.blockedKeywords[projectId];
-      delete state.childrenCache[projectId];
-      delete state.keywordsCache[projectId];
-      delete state.sortedKeywordsCache[projectId];
-      delete state.filteredKeywordsCache[projectId];
+      delete state.byProject[projectId];
       delete state.metaData[projectId];
     },
-    
+
     addProject: (state, action: PayloadAction<Project>) => {
       if (!state.projects.some(p => p.id === action.payload.id)) {
         state.projects.push(action.payload);
         state.projects.sort((a, b) => a.name.localeCompare(b.name));
       }
     },
-    
-    removeProject: (state, action: PayloadAction<{ 
+
+    removeProject: (state, action: PayloadAction<{
       projectId: number;
     }>) => {
       const { projectId } = action.payload;
       state.projects = state.projects.filter(p => p.id !== projectId);
       const projectIdStr = String(projectId);
-      delete state.groupedKeywords[projectIdStr];
-      delete state.ungroupedKeywords[projectIdStr];
-      delete state.confirmedKeywords[projectIdStr];
-      delete state.blockedKeywords[projectIdStr];
-      delete state.childrenCache[projectIdStr];
-      delete state.keywordsCache[projectIdStr];
-      delete state.sortedKeywordsCache[projectIdStr];
-      delete state.filteredKeywordsCache[projectIdStr];
+      delete state.byProject[projectIdStr];
       delete state.metaData[projectIdStr];
+      delete state.stats[projectIdStr];
     },
 
     updateProject: (state, action: PayloadAction<Project>) => {
@@ -141,43 +156,27 @@ const projectSlice = createSlice({
       isComplete: boolean;
     }>) => {
       const { projectId, view, keywords, isComplete } = action.payload;
-      
-      if (!state.keywordsCache[projectId]) {
-        state.keywordsCache[projectId] = {
-          ungrouped: [],
-          grouped: [],
-          confirmed: [],
-          blocked: []
-        };
-      }
-      
-      if (!state.keywordsCache[projectId][view] || isComplete) {
-        state.keywordsCache[projectId][view] = keywords;
+      const projectState = ensureProjectState(state, projectId);
+
+      const { byId, ids } = normalizeKeywords(keywords);
+
+      if (!projectState.viewIds[view].length || isComplete) {
+        // Replace
+        Object.assign(projectState.byId, byId);
+        projectState.viewIds[view] = ids;
       } else {
-        const existingIds = new Set(state.keywordsCache[projectId][view].map(k => k.id));
-        const newKeywords = keywords.filter(k => !existingIds.has(k.id));
-        state.keywordsCache[projectId][view] = [
-          ...state.keywordsCache[projectId][view],
-          ...newKeywords
-        ];
+        // Append new keywords only
+        const existingIds = new Set(projectState.viewIds[view]);
+        const newIds = ids.filter(id => !existingIds.has(id));
+        Object.assign(projectState.byId, byId);
+        projectState.viewIds[view] = [...projectState.viewIds[view], ...newIds];
       }
-      
-      switch (view) {
-        case 'grouped':
-          state.groupedKeywords[projectId] = keywords;
-          break;
-        case 'ungrouped':
-          state.ungroupedKeywords[projectId] = keywords;
-          break;
-        case 'confirmed':
-          state.confirmedKeywords[projectId] = keywords;
-          break;
-        case 'blocked':
-          state.blockedKeywords[projectId] = keywords;
-          break;
-      }
+
+      // Invalidate derived caches
+      projectState.sortedCacheKeys[view] = {};
+      projectState.filteredCacheKeys[view] = {};
     },
-    
+
     setCachedSortedKeywords: (state, action: PayloadAction<{
       projectId: string;
       view: ActiveKeywordView;
@@ -186,22 +185,14 @@ const projectSlice = createSlice({
       keywords: Keyword[];
     }>) => {
       const { projectId, view, sortKey, sortDirection, keywords } = action.payload;
-      
-      if (!state.sortedKeywordsCache[projectId]) {
-        state.sortedKeywordsCache[projectId] = {
-          ungrouped: {},
-          grouped: {},
-          confirmed: {},
-          blocked: {}
-        };
-      }
-      
-      if (!state.sortedKeywordsCache[projectId][view]) {
-        state.sortedKeywordsCache[projectId][view] = {};
-      }
-      
+      const projectState = ensureProjectState(state, projectId);
+
+      // Normalize and store
+      const { byId, ids } = normalizeKeywords(keywords);
+      Object.assign(projectState.byId, byId);
+
       const cacheKey = `${sortKey}-${sortDirection}`;
-      state.sortedKeywordsCache[projectId][view][cacheKey] = keywords;
+      projectState.sortedCacheKeys[view][cacheKey] = ids;
     },
 
     setProjectStats: (state, action: PayloadAction<{
@@ -236,157 +227,191 @@ const projectSlice = createSlice({
       keywords: Keyword[];
     }>) => {
       const { projectId, view, filterKey, keywords } = action.payload;
-      
-      if (!state.filteredKeywordsCache[projectId]) {
-        state.filteredKeywordsCache[projectId] = {
-          ungrouped: {},
-          grouped: {},
-          confirmed: {},
-          blocked: {}
-        };
-      }
-      
-      if (!state.filteredKeywordsCache[projectId][view]) {
-        state.filteredKeywordsCache[projectId][view] = {};
-      }
-      
-      state.filteredKeywordsCache[projectId][view][filterKey] = keywords;
+      const projectState = ensureProjectState(state, projectId);
+
+      // Normalize and store
+      const { byId, ids } = normalizeKeywords(keywords);
+      Object.assign(projectState.byId, byId);
+
+      projectState.filteredCacheKeys[view][filterKey] = ids;
     },
-    
+
     updateKeyword: (state, action: PayloadAction<{
       projectId: string;
       keyword: Keyword;
     }>) => {
       const { projectId, keyword } = action.payload;
-      const { id } = keyword;
-      
-      const updateInCollection = (collection: Keyword[]) => {
-        const index = collection.findIndex(k => k.id === id);
-        if (index !== -1) {
-          collection[index] = { ...collection[index], ...keyword };
-        }
-        return collection;
-      };
-      
-      if (state.ungroupedKeywords[projectId]) {
-        state.ungroupedKeywords[projectId] = updateInCollection([...state.ungroupedKeywords[projectId]]);
-      }
-      if (state.groupedKeywords[projectId]) {
-        state.groupedKeywords[projectId] = updateInCollection([...state.groupedKeywords[projectId]]);
-      }
-      if (state.confirmedKeywords[projectId]) {
-        state.confirmedKeywords[projectId] = updateInCollection([...state.confirmedKeywords[projectId]]);
-      }
-      if (state.blockedKeywords[projectId]) {
-        state.blockedKeywords[projectId] = updateInCollection([...state.blockedKeywords[projectId]]);
-      }
-      
-      if (state.keywordsCache[projectId]) {
-        for (const view of ['ungrouped', 'grouped', 'confirmed', 'blocked'] as ActiveKeywordView[]) {
-          if (state.keywordsCache[projectId][view]) {
-            state.keywordsCache[projectId][view] = 
-              updateInCollection([...state.keywordsCache[projectId][view]]);
-          }
-        }
-      }
-      
-      if (state.sortedKeywordsCache[projectId]) {
-        delete state.sortedKeywordsCache[projectId];
-      }
-      
-      if (state.filteredKeywordsCache[projectId]) {
-        delete state.filteredKeywordsCache[projectId];
+      const projectState = state.byProject[projectId];
+
+      if (projectState && projectState.byId[keyword.id]) {
+        // Update single source of truth - no need to update multiple places!
+        projectState.byId[keyword.id] = { ...projectState.byId[keyword.id], ...keyword };
+
+        // Invalidate derived caches since keyword data changed
+        projectState.sortedCacheKeys = {
+          ungrouped: {},
+          grouped: {},
+          confirmed: {},
+          blocked: {},
+        };
+        projectState.filteredCacheKeys = {
+          ungrouped: {},
+          grouped: {},
+          confirmed: {},
+          blocked: {},
+        };
       }
     },
-    
+
     setProjectMetadata: (state, action: PayloadAction<{
       projectId: string;
       metadata: ProjectMetadata;
     }>) => {
       const { projectId, metadata } = action.payload;
-      
+
       if (!state.metaData[projectId]) {
         state.metaData[projectId] = {};
       }
-      
+
       state.metaData[projectId] = {
         ...state.metaData[projectId],
         ...metadata
       };
     },
-    
+
     clearCaches: (state, action: PayloadAction<{
       projectId?: string;
       view?: ActiveKeywordView;
     }>) => {
       const { projectId, view } = action.payload;
-      
+
       if (projectId) {
-        if (view) {
-          if (state.sortedKeywordsCache[projectId]?.[view]) {
-            delete state.sortedKeywordsCache[projectId][view];
+        const projectState = state.byProject[projectId];
+        if (projectState) {
+          if (view) {
+            projectState.sortedCacheKeys[view] = {};
+            projectState.filteredCacheKeys[view] = {};
+          } else {
+            projectState.sortedCacheKeys = {
+              ungrouped: {},
+              grouped: {},
+              confirmed: {},
+              blocked: {},
+            };
+            projectState.filteredCacheKeys = {
+              ungrouped: {},
+              grouped: {},
+              confirmed: {},
+              blocked: {},
+            };
           }
-          if (state.filteredKeywordsCache[projectId]?.[view]) {
-            delete state.filteredKeywordsCache[projectId][view];
-          }
-        } else {
-          delete state.sortedKeywordsCache[projectId];
-          delete state.filteredKeywordsCache[projectId];
         }
       } else {
-        state.sortedKeywordsCache = {};
-        state.filteredKeywordsCache = {};
+        // Clear all project caches
+        for (const pid of Object.keys(state.byProject)) {
+          const projectState = state.byProject[pid];
+          projectState.sortedCacheKeys = {
+            ungrouped: {},
+            grouped: {},
+            confirmed: {},
+            blocked: {},
+          };
+          projectState.filteredCacheKeys = {
+            ungrouped: {},
+            grouped: {},
+            confirmed: {},
+            blocked: {},
+          };
+        }
       }
     }
   },
 });
 
+// Base selectors
 const selectProjectState = (state: { project: ProjectState }) => state.project;
+const selectByProject = (state: { project: ProjectState }) => state.project.byProject;
 
 export const selectProjects = createSelector(
   [selectProjectState],
   (project) => project.projects
 );
 
+// Memoized selector for keywords by view - derives from single source of truth
 export const selectKeywordsForView = createSelector(
-  [selectProjectState, (_: unknown, projectId: string, view: ActiveKeywordView) => ({ projectId, view })],
-  (project, { projectId, view }) => {
-    switch (view) {
-      case 'grouped':
-        return project.groupedKeywords[projectId] || [];
-      case 'ungrouped':
-        return project.ungroupedKeywords[projectId] || [];
-      case 'confirmed':
-        return project.confirmedKeywords[projectId] || [];
-      case 'blocked':
-        return project.blockedKeywords[projectId] || [];
-      default:
-        return [];
-    }
+  [
+    selectByProject,
+    (_: unknown, projectId: string) => projectId,
+    (_: unknown, _pid: string, view: ActiveKeywordView) => view
+  ],
+  (byProject, projectId, view): Keyword[] => {
+    const projectState = byProject[projectId];
+    if (!projectState) return [];
+
+    const ids = projectState.viewIds[view];
+    return ids.map(id => projectState.byId[id]).filter(Boolean);
   }
 );
 
+// Memoized selector for children of a group
 export const selectChildrenForGroup = createSelector(
-  [selectProjectState, (_: unknown, projectId: string, groupId: string) => ({ projectId, groupId })],
-  (project, { projectId, groupId }) => project.childrenCache[projectId]?.[groupId] || []
-);
+  [
+    selectByProject,
+    (_: unknown, projectId: string) => projectId,
+    (_: unknown, _pid: string, groupId: string) => groupId
+  ],
+  (byProject, projectId, groupId): Keyword[] => {
+    const projectState = byProject[projectId];
+    if (!projectState) return [];
 
-export const selectCachedKeywords = createSelector(
-  [selectProjectState, (_: unknown, projectId: string, view: ActiveKeywordView) => ({ projectId, view })],
-  (project, { projectId, view }) => project.keywordsCache[projectId]?.[view] || []
-);
+    const ids = projectState.childrenByGroupId[groupId];
+    if (!ids) return [];
 
-export const selectCachedSortedKeywords = createSelector(
-  [selectProjectState, (_: unknown, projectId: string, view: ActiveKeywordView, sortKey: string, sortDirection: 'asc' | 'desc') => ({ projectId, view, sortKey, sortDirection })],
-  (project, { projectId, view, sortKey, sortDirection }) => {
-    const cacheKey = `${sortKey}-${sortDirection}`;
-    return project.sortedKeywordsCache[projectId]?.[view]?.[cacheKey] || [];
+    return ids.map(id => projectState.byId[id]).filter(Boolean);
   }
 );
 
+// Alias for backward compatibility
+export const selectCachedKeywords = selectKeywordsForView;
+
+// Memoized selector for sorted keywords cache
+export const selectCachedSortedKeywords = createSelector(
+  [
+    selectByProject,
+    (_: unknown, projectId: string) => projectId,
+    (_: unknown, _pid: string, view: ActiveKeywordView) => view,
+    (_: unknown, _pid: string, _view: ActiveKeywordView, sortKey: string) => sortKey,
+    (_: unknown, _pid: string, _view: ActiveKeywordView, _sk: string, sortDirection: 'asc' | 'desc') => sortDirection
+  ],
+  (byProject, projectId, view, sortKey, sortDirection): Keyword[] => {
+    const projectState = byProject[projectId];
+    if (!projectState) return [];
+
+    const cacheKey = `${sortKey}-${sortDirection}`;
+    const ids = projectState.sortedCacheKeys[view]?.[cacheKey];
+    if (!ids) return [];
+
+    return ids.map(id => projectState.byId[id]).filter(Boolean);
+  }
+);
+
+// Memoized selector for filtered keywords cache
 export const selectCachedFilteredKeywords = createSelector(
-  [selectProjectState, (_: unknown, projectId: string, view: ActiveKeywordView, filterKey: string) => ({ projectId, view, filterKey })],
-  (project, { projectId, view, filterKey }) => project.filteredKeywordsCache[projectId]?.[view]?.[filterKey] || []
+  [
+    selectByProject,
+    (_: unknown, projectId: string) => projectId,
+    (_: unknown, _pid: string, view: ActiveKeywordView) => view,
+    (_: unknown, _pid: string, _view: ActiveKeywordView, filterKey: string) => filterKey
+  ],
+  (byProject, projectId, view, filterKey): Keyword[] => {
+    const projectState = byProject[projectId];
+    if (!projectState) return [];
+
+    const ids = projectState.filteredCacheKeys[view]?.[filterKey];
+    if (!ids) return [];
+
+    return ids.map(id => projectState.byId[id]).filter(Boolean);
+  }
 );
 
 export const selectProjectMetadata = createSelector(
@@ -399,35 +424,74 @@ export const selectProjectStats = createSelector(
   (project, projectId) => project.stats[projectId] || {}
 );
 
-// Memoized selectors for token management to prevent unnecessary re-renders
+// View-specific selectors (backward compatibility)
 export const selectUngroupedKeywordsForProject = createSelector(
-  [selectProjectState, (_: unknown, projectId: string) => projectId],
-  (project, projectId) => project.ungroupedKeywords[projectId] || []
+  [selectByProject, (_: unknown, projectId: string) => projectId],
+  (byProject, projectId): Keyword[] => {
+    const projectState = byProject[projectId];
+    if (!projectState) return [];
+    return projectState.viewIds.ungrouped.map(id => projectState.byId[id]).filter(Boolean);
+  }
 );
 
 export const selectGroupedKeywordsForProject = createSelector(
-  [selectProjectState, (_: unknown, projectId: string) => projectId],
-  (project, projectId) => project.groupedKeywords[projectId] || []
+  [selectByProject, (_: unknown, projectId: string) => projectId],
+  (byProject, projectId): Keyword[] => {
+    const projectState = byProject[projectId];
+    if (!projectState) return [];
+    return projectState.viewIds.grouped.map(id => projectState.byId[id]).filter(Boolean);
+  }
 );
 
 export const selectBlockedKeywordsForProject = createSelector(
-  [selectProjectState, (_: unknown, projectId: string) => projectId],
-  (project, projectId) => project.blockedKeywords[projectId] || []
+  [selectByProject, (_: unknown, projectId: string) => projectId],
+  (byProject, projectId): Keyword[] => {
+    const projectState = byProject[projectId];
+    if (!projectState) return [];
+    return projectState.viewIds.blocked.map(id => projectState.byId[id]).filter(Boolean);
+  }
 );
 
 export const selectConfirmedKeywordsForProject = createSelector(
-  [selectProjectState, (_: unknown, projectId: string) => projectId],
-  (project, projectId) => project.confirmedKeywords[projectId] || []
+  [selectByProject, (_: unknown, projectId: string) => projectId],
+  (byProject, projectId): Keyword[] => {
+    const projectState = byProject[projectId];
+    if (!projectState) return [];
+    return projectState.viewIds.confirmed.map(id => projectState.byId[id]).filter(Boolean);
+  }
 );
 
 export const selectChildrenCacheForProject = createSelector(
-  [selectProjectState, (_: unknown, projectId: string) => projectId],
-  (project, projectId) => project.childrenCache[projectId] || {}
+  [selectByProject, (_: unknown, projectId: string) => projectId],
+  (byProject, projectId): Record<string, Keyword[]> => {
+    const projectState = byProject[projectId];
+    if (!projectState) return {};
+
+    const result: Record<string, Keyword[]> = {};
+    for (const [groupId, ids] of Object.entries(projectState.childrenByGroupId)) {
+      result[groupId] = ids.map(id => projectState.byId[id]).filter(Boolean);
+    }
+    return result;
+  }
 );
 
 export const selectProjectById = createSelector(
   [selectProjectState, (_: unknown, projectId: number) => projectId],
   (project, projectId) => project.projects.find((p) => p.id === projectId)
+);
+
+// Selector to get a single keyword by ID (useful for updates)
+export const selectKeywordById = createSelector(
+  [
+    selectByProject,
+    (_: unknown, projectId: string) => projectId,
+    (_: unknown, _pid: string, keywordId: number) => keywordId
+  ],
+  (byProject, projectId, keywordId): Keyword | undefined => {
+    const projectState = byProject[projectId];
+    if (!projectState) return undefined;
+    return projectState.byId[keywordId];
+  }
 );
 
 export const {
