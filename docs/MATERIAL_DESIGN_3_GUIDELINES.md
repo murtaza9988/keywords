@@ -1,7 +1,30 @@
 # Material Design 3 (M3) Comprehensive Design Guidelines
 
-> A complete reference for implementing Material Design 3 (Material You) in applications.
+> A complete reference for implementing Material Design 3 (Material You) and **Material 3 Expressive** in applications.
 > Based on official specifications from [m3.material.io](https://m3.material.io/)
+
+---
+
+## What's New: Material 3 Expressive
+
+**Material 3 Expressive** (M3E) is the latest evolution of Material Design 3, introduced at Google I/O 2025 and rolled out with Android 16. It is not a new generation ("Material 4") but an expansion of Material You, backed by 46 research studies with over 18,000 participants worldwide.
+
+### Key M3 Expressive Features
+
+| Feature | Description |
+|---------|-------------|
+| **35 New Shapes** | Expanded shape library with shape morphing capabilities |
+| **15 New/Updated Components** | Button Groups, FAB Menu, Loading Indicator, Split Button, Toolbars, and more |
+| **Fluid Motion** | Shape morphing animations and spring physics |
+| **Variable Fonts** | Dynamic typography with customizable font axes |
+| **Enhanced Colors** | Deeper tonal palettes with expanded tertiary color support |
+| **5 Button Sizes** | XS, S, M, L, XL sizing system for buttons |
+
+### M3 Expressive Timeline
+
+- **May 2025**: Announced at Google I/O 2025
+- **September 2025**: Rolled out to Pixel devices with Android 16 QPR1
+- **December 2025**: Adopted by major Google apps (Gmail, Chrome, Keep, Docs, Files)
 
 ---
 
@@ -43,6 +66,13 @@
    - [Date Picker](#date-picker)
    - [Time Picker](#time-picker)
    - [Scrim](#scrim)
+9. [M3 Expressive Components](#m3-expressive-components)
+   - [Button Groups](#button-groups)
+   - [Split Button](#split-button)
+   - [FAB Menu](#fab-menu)
+   - [Loading Indicator](#loading-indicator)
+   - [Toolbars](#toolbars)
+10. [Shape Morphing](#shape-morphing)
 
 ---
 
@@ -102,6 +132,32 @@ Material Design 3 uses **Roboto** as the default font family with a 15-token typ
 | Medium | 500 | Title (Medium, Small), Label |
 | Semi-Bold | 600 | Emphasized text (optional) |
 | Bold | 700 | Heavy emphasis (optional) |
+
+### M3 Expressive Typography Enhancements
+
+M3 Expressive introduces **variable fonts** for more expressive and dynamic typography.
+
+#### Variable Font Axes
+
+| Axis | Code | Description |
+|------|------|-------------|
+| **Weight** | wght | Dynamic weight adjustment (100-900) |
+| **Width** | wdth | Character width (75%-125%) |
+| **Optical Size** | opsz | Automatic optical adjustments |
+| **Grade** | GRAD | Fine-tune weight without changing width |
+
+#### Enhanced Type Hierarchy
+
+M3 Expressive emphasizes:
+- **Larger headline sizes** for key actions and important content
+- **Heavier weights** for improved attention hierarchy
+- **Dynamic scaling** based on context and interaction state
+
+```css
+/* Variable font example */
+font-family: 'Roboto Flex', sans-serif;
+font-variation-settings: 'wght' 500, 'wdth' 100;
+```
 
 ---
 
@@ -189,6 +245,51 @@ Reference Tokens → System Tokens → Component Tokens
    - Normal text: 4.5:1
    - Large text (18sp+ or 14sp+ bold): 3:1
    - UI components and graphics: 3:1
+
+### M3 Expressive Color Enhancements
+
+M3 Expressive expands the color system with deeper tonal palettes and enhanced tertiary color support.
+
+#### Expanded Tertiary Palette
+
+| Token | Role | M3 Expressive Enhancement |
+|-------|------|---------------------------|
+| **Tertiary** | Brand accent | More prominent in UI hierarchy |
+| **Tertiary Container** | Accent backgrounds | Expanded usage for visual variety |
+| **On Tertiary** | Content on tertiary | Improved contrast options |
+
+#### Deeper Tonal Palettes
+
+M3 Expressive generates more tonal variations for each color role:
+
+| Tone Level | Light Mode | Dark Mode |
+|------------|------------|-----------|
+| 0 | Black | Black |
+| 10 | Darkest | Lightest |
+| 20 | Darker | Lighter |
+| 30 | Dark | Light |
+| 40 | Medium-dark | Medium-light |
+| 50 | Medium | Medium |
+| 60 | Medium-light | Medium-dark |
+| 70 | Light | Dark |
+| 80 | Lighter | Darker |
+| 90 | Lightest | Darkest |
+| 95 | Near white | Near black |
+| 99 | Off-white | Off-black |
+| 100 | White | White |
+
+#### Dynamic Color Enhancements
+
+```kotlin
+// Compose dynamic color with M3 Expressive
+val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    val context = LocalContext.current
+    if (darkTheme) dynamicDarkColorScheme(context)
+    else dynamicLightColorScheme(context)
+} else {
+    if (darkTheme) darkColorScheme() else lightColorScheme()
+}
+```
 
 ---
 
@@ -289,6 +390,54 @@ M3 uses an **8dp baseline grid** for all measurements. Smaller elements use a 4d
 3. **Morphing states (M3 Expressive)**
    - Shapes can animate between states
    - Use consistent shape for related actions
+
+### M3 Expressive Shape Library (35 Shapes)
+
+M3 Expressive introduces an expanded library of **35 distinctive shapes** that enable more diverse interfaces and fluid transitions.
+
+#### Shape Categories
+
+| Category | Examples | Usage |
+|----------|----------|-------|
+| **Rounded Rectangle** | Standard corners | Buttons, cards, containers |
+| **Squircle** | Superellipse curves | Modern app icons, smooth transitions |
+| **Pill** | Full radius ends | Tags, chips, toggles |
+| **Organic** | Asymmetric curves | Playful, branded elements |
+| **Cut Corners** | Chamfered edges | Technical, angular designs |
+| **Scalloped** | Wave-like edges | Decorative elements |
+| **Clover** | Multi-lobed | Loading indicators, special states |
+
+#### Shape Principles
+
+1. **Shape as Brand Expression**
+   - Use consistent shape vocabulary across your app
+   - Shapes communicate personality and brand identity
+
+2. **Shape for Visual Rhythm**
+   - Contrasting shapes create hierarchy
+   - Similar shapes group related elements
+
+3. **Shape for State Communication**
+   - Shape changes can indicate interaction states
+   - Morphing shapes draw attention to changes
+
+#### Squircle Specifications
+
+The **squircle** (superellipse) is a key M3 Expressive shape:
+
+```css
+/* CSS approximation of squircle */
+border-radius: 30% / 30%;
+
+/* Or using clip-path for precise squircle */
+clip-path: path('...');
+```
+
+| Property | Value |
+|----------|-------|
+| Curvature exponent | ~2.5-4 (vs 2 for ellipse) |
+| Visual smoothness | Higher than standard radius |
+| Use case | App icons, FABs, modal containers |
 
 ---
 
@@ -500,6 +649,31 @@ State layer: on-primary-container @ {state opacity}
 | Icon size | 24dp |
 | Icon-to-text gap | 12dp |
 | Text style | Label Large |
+
+#### M3 Expressive Button Sizes
+
+M3 Expressive introduces a **5-tier sizing system** for buttons (XS to XL):
+
+| Size | Height | Icon Size | Horizontal Padding | Icon-Label Gap |
+|------|--------|-----------|-------------------|----------------|
+| **XS** | 28dp | 20dp | 12dp | 4dp |
+| **S** | 32dp | 20dp | 16dp | 8dp |
+| **M** | 40dp | 24dp | 24dp | 8dp |
+| **L** | 48dp | 32dp | 48dp | 12dp |
+| **XL** | 56dp | 40dp | 64dp | 16dp |
+
+> **Note**: All sizes maintain a minimum touch target of 48dp.
+
+#### Button Shape Morphing (M3 Expressive)
+
+Buttons can dynamically change shape in response to user input:
+
+| State | Shape Behavior |
+|-------|----------------|
+| Default | Standard corner radius |
+| Pressed | Slight compression with spring animation |
+| Selected | Shape morph (e.g., circle to squircle) |
+| Loading | Animated shape transformation |
 
 ---
 
@@ -904,7 +1078,9 @@ Filled (focused):
 
 ### Bottom App Bar
 
-#### Specifications
+> **⚠️ M3 Expressive Deprecation Notice**: The Bottom App Bar is being deprecated in M3 Expressive. Use the new **Docked Toolbar** or **Floating Toolbar** instead. See [Toolbars](#toolbars) section.
+
+#### Specifications (Legacy)
 
 | Property | Value |
 |----------|-------|
@@ -1068,6 +1244,18 @@ Filled (focused):
 | Track color | Surface Container Highest |
 | Indicator color | Primary |
 | Gap | 4dp at 12 o'clock position |
+
+#### M3 Expressive Progress Indicators
+
+M3 Expressive updates progress indicators with **wavy shapes** for longer processes:
+
+| Variant | Description | Use Case |
+|---------|-------------|----------|
+| **Standard** | Flat, smooth indicator | Quick operations |
+| **Wavy** | Undulating shape animation | Longer processes (5+ seconds) |
+| **Thicker** | Increased stroke width | Higher visibility |
+
+> **Note**: For operations under 5 seconds, use the new [Loading Indicator](#loading-indicator) instead of circular progress indicators.
 
 ---
 
@@ -1439,6 +1627,281 @@ Input chip with trailing remove:
 
 ---
 
+## M3 Expressive Components
+
+These components are new or significantly updated in Material 3 Expressive.
+
+### Button Groups
+
+Button Groups are containers that apply unified shape, motion, and width changes to groups of buttons.
+
+#### Button Group Specifications
+
+| Property | Value |
+|----------|-------|
+| Minimum buttons | 2 |
+| Maximum buttons | 5 |
+| Gap between buttons | 0dp (connected) or 8dp (separated) |
+| Corner radius | Applied to group ends only (connected) |
+| Available sizes | XS, S, M, L, XL |
+
+#### Button Group Layout
+
+```
+Connected style:
+┌──────────────────────────────────┐
+│ [Button 1] │ [Button 2] │ [Button 3] │
+└──────────────────────────────────┘
+   ↑ Rounded    Square    Rounded ↑
+   corners     corners    corners
+```
+
+#### Button Group Behavior
+
+| Interaction | Behavior |
+|-------------|----------|
+| Single selection | One button active at a time |
+| Multi selection | Multiple buttons can be active |
+| Shape morphing | Active button can morph on selection |
+
+---
+
+### Split Button
+
+Split buttons combine a primary action with a dropdown menu for additional options.
+
+#### Split Button Specifications
+
+| Property | Value |
+|----------|-------|
+| Heights | XS: 28dp, S: 32dp, M: 40dp, L: 48dp, XL: 56dp |
+| Divider | 1dp vertical line |
+| Menu indicator | Chevron/arrow icon |
+| Styles | Elevated, Filled, Tonal, Outlined |
+| Touch target | 48dp minimum per segment |
+
+#### Split Button Layout
+
+```
+┌─────────────────────────────────┐
+│ [Icon] [Primary Label] │ [▼] │
+└─────────────────────────────────┘
+         Primary action    Menu
+```
+
+#### Split Button States
+
+| State | Primary Segment | Menu Segment |
+|-------|-----------------|--------------|
+| Default | Standard appearance | Chevron down |
+| Menu open | Standard | Chevron rotates, shape morphs to circle (M/L/XL) |
+| Pressed | State layer 12% | State layer 12% |
+| Disabled | 38% opacity | 38% opacity |
+
+> **Size Note**: For XS/SM sizes, the trailing segment uses a fixed width of 48dp instead of morphing to a circle.
+
+---
+
+### FAB Menu
+
+The FAB Menu replaces speed dials and stacked small FABs with a more expressive menu system.
+
+#### FAB Menu Specifications
+
+| Property | Value |
+|----------|-------|
+| Trigger | Standard or Extended FAB |
+| Menu items | 3-6 actions |
+| Item size | Large touch targets |
+| Corner radius | Matches expanded container |
+| Elevation | Level 3 (6dp) |
+| Animation | Expands from FAB position |
+
+#### FAB Menu Layout
+
+```
+Collapsed:           Expanded:
+┌─────┐              ┌─────────────────┐
+│ FAB │   →→→        │ [Icon] Action 1 │
+└─────┘              │ [Icon] Action 2 │
+                     │ [Icon] Action 3 │
+                     │ [Icon] Action 4 │
+                     │─────────────────│
+                     │      [✕]        │
+                     └─────────────────┘
+```
+
+#### FAB Menu Colors
+
+| Element | Color |
+|---------|-------|
+| Container | Primary Container |
+| Icons | On Primary Container |
+| Labels | On Primary Container |
+| Scrim | 32% black overlay |
+
+---
+
+### Loading Indicator
+
+The Loading Indicator is a looping shape morph animation designed for operations under 5 seconds.
+
+#### Loading Indicator Specifications
+
+| Property | Value |
+|----------|-------|
+| Size | 48dp (default) |
+| Animation | 7 unique M3 shape morphs |
+| Duration | ~2 seconds per loop |
+| Color | Primary (default) |
+| Use case | Pull-to-refresh, short waits |
+
+#### Loading Indicator Usage
+
+| Context | Implementation |
+|---------|----------------|
+| Pull-to-refresh | Inside `PullToRefreshBox` container |
+| Page loading | Centered in container |
+| Button loading | Replaces button content |
+| Browser tab | Replaces favicon |
+| App launch | Boot screen indicator |
+
+#### Loading Indicator vs Progress Indicator
+
+| Indicator | Duration | Shape | Use Case |
+|-----------|----------|-------|----------|
+| **Loading Indicator** | < 5 seconds | Morphing shapes | Quick operations |
+| **Circular Progress** | > 5 seconds | Circle with track | Longer processes |
+| **Linear Progress** | Any | Horizontal bar | Determinate progress |
+
+```kotlin
+// Compose implementation
+@ExperimentalMaterial3ExpressiveApi
+LoadingIndicator(
+    modifier = Modifier.size(48.dp),
+    color = MaterialTheme.colorScheme.primary
+)
+```
+
+---
+
+### Toolbars
+
+Toolbars replace the deprecated Bottom App Bar with more flexible options.
+
+#### Toolbar Types
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| **Docked Toolbar** | Fixed to screen edge | Primary actions, navigation |
+| **Floating Toolbar** | Floats above content | Contextual actions, flexible placement |
+
+#### Docked Toolbar Specifications
+
+| Property | Value |
+|----------|-------|
+| Height | 64dp (shorter than Bottom App Bar) |
+| Horizontal padding | 16dp |
+| Icon size | 24dp |
+| Icon gap | 16dp |
+| Corner radius | 0dp (edge-to-edge) |
+| Background | Surface Container |
+| Elevation | Level 2 (3dp) |
+| Max actions | 4-5 icons |
+
+#### Floating Toolbar Specifications
+
+| Property | Value |
+|----------|-------|
+| Height | 48-56dp |
+| Corner radius | Full (pill-shaped) |
+| Horizontal margin | 16dp from edges |
+| Vertical position | Flexible (top, bottom, or contextual) |
+| Background | Surface Container High |
+| Elevation | Level 3 (6dp) |
+| Max actions | 3-6 icons |
+
+#### Toolbar Layout
+
+```
+Docked Toolbar:
+┌────────────────────────────────────────────────┐
+│ [16dp] [Icon] [Icon] [Icon] [───] [FAB] [16dp] │  64dp
+└────────────────────────────────────────────────┘
+
+Floating Toolbar:
+        ┌────────────────────────────────┐
+        │ [Icon] [Icon] [Icon] │ [Icon] │  48dp
+        └────────────────────────────────┘
+              ↑ Rounded ends (pill shape)
+```
+
+---
+
+## Shape Morphing
+
+Shape morphing is a core M3 Expressive animation technique where UI elements smoothly transition between different shapes.
+
+### Shape Morphing Principles
+
+1. **Continuous Transformation**
+   - Vertices interpolate smoothly between shapes
+   - No discrete state jumps
+
+2. **Matching Vertex Counts**
+   - Shapes should have compatible vertex structures
+   - Or use algorithmic vertex matching
+
+3. **Timing Considerations**
+   - Quick morphs (100-200ms) for direct feedback
+   - Longer morphs (300-500ms) for emphasis
+
+### Common Shape Morph Transitions
+
+| Transition | From | To | Use Case |
+|------------|------|-----|----------|
+| **Activation** | Circle | Squircle | FAB press, icon activation |
+| **Selection** | Rectangle | Rounded Rectangle | List item selection |
+| **Expansion** | Compact | Expanded | Search bar, menus |
+| **Loading** | Shape sequence | 7 M3 shapes | Loading indicator |
+
+### Implementation Example
+
+```kotlin
+// Compose shape morphing with shared elements
+@OptIn(ExperimentalSharedTransitionApi::class)
+SharedTransitionLayout {
+    AnimatedContent(targetState = expanded) { isExpanded ->
+        if (isExpanded) {
+            ExpandedContent(
+                modifier = Modifier.sharedBounds(
+                    sharedContentState = rememberSharedContentState("container"),
+                    animatedVisibilityScope = this
+                )
+            )
+        } else {
+            CollapsedContent(
+                modifier = Modifier.sharedBounds(
+                    sharedContentState = rememberSharedContentState("container"),
+                    animatedVisibilityScope = this
+                )
+            )
+        }
+    }
+}
+```
+
+### Shape Morphing Best Practices
+
+| Do | Don't |
+|----|-------|
+| Use for meaningful state changes | Morph for decorative purposes only |
+| Keep transitions under 500ms | Create distracting long animations |
+| Match brand shape language | Mix incompatible shape styles |
+| Test on lower-end devices | Assume smooth performance everywhere |
+
+---
+
 ## Responsive Breakpoints
 
 ### Window Size Classes
@@ -1492,6 +1955,49 @@ Input chip with trailing remove:
 | **Emphasized Decelerate** | cubic-bezier(0.05, 0.7, 0.1, 1) | Key entrances |
 | **Emphasized Accelerate** | cubic-bezier(0.3, 0, 0.8, 0.15) | Key exits |
 
+### M3 Expressive Motion System
+
+M3 Expressive introduces **fluid motion** with shape morphing and spring physics.
+
+#### Spring Animations
+
+| Parameter | Light | Medium | Heavy |
+|-----------|-------|--------|-------|
+| **Stiffness** | 200 | 400 | 800 |
+| **Damping Ratio** | 0.7 | 0.8 | 0.9 |
+| **Use Case** | Playful bounces | Standard interactions | Snappy responses |
+
+```kotlin
+// Compose spring animation example
+spring(
+    dampingRatio = Spring.DampingRatioMediumBouncy,
+    stiffness = Spring.StiffnessMedium
+)
+```
+
+#### Shape Morphing Principles
+
+1. **Continuous Transformation**
+   - Shapes flow smoothly between states
+   - No abrupt changes or jumps
+
+2. **Physics-Based Motion**
+   - Spring animations create natural movement
+   - Overshoot and settle for organic feel
+
+3. **Context-Aware Duration**
+   - Shorter morphs for quick feedback (100-200ms)
+   - Longer morphs for emphasis (300-500ms)
+
+#### Common Shape Morph Patterns
+
+| Pattern | From → To | Use Case |
+|---------|-----------|----------|
+| **Circle to Squircle** | ● → ◼ | FAB expansion |
+| **Pill to Rectangle** | ⬭ → ▭ | Search bar activation |
+| **Sharp to Rounded** | ▢ → ◼ | Selection state |
+| **Compress/Expand** | Scale down → up | Press feedback |
+
 ---
 
 ## Accessibility
@@ -1530,6 +2036,10 @@ Input chip with trailing remove:
 | Component | Height |
 |-----------|--------|
 | Button | 40dp |
+| Button (XS - M3E) | 28dp |
+| Button (S - M3E) | 32dp |
+| Button (L - M3E) | 48dp |
+| Button (XL - M3E) | 56dp |
 | FAB (standard) | 56dp |
 | FAB (small) | 40dp |
 | FAB (large) | 96dp |
@@ -1545,7 +2055,9 @@ Input chip with trailing remove:
 | Top App Bar (small) | 64dp |
 | Top App Bar (medium) | 112dp |
 | Top App Bar (large) | 152dp |
-| Bottom App Bar | 80dp |
+| Bottom App Bar (deprecated) | 80dp |
+| Docked Toolbar (M3E) | 64dp |
+| Floating Toolbar (M3E) | 48-56dp |
 | Navigation Rail | 80dp wide |
 | Navigation Drawer item | 56dp |
 | Menu item | 48dp |
@@ -1558,6 +2070,7 @@ Input chip with trailing remove:
 | Slider handle | 20dp (48dp touch) |
 | Progress (linear) | 4dp |
 | Progress (circular) | 24-48dp |
+| Loading Indicator (M3E) | 48dp |
 | Badge (small) | 6dp |
 | Badge (large) | 16dp |
 | Tooltip (plain) | 24dp |
@@ -1603,18 +2116,35 @@ Input chip with trailing remove:
 
 ## Sources
 
+### Official Material Design Resources
 - [Material Design 3 Official Documentation](https://m3.material.io/)
 - [M3 Typography](https://m3.material.io/styles/typography/applying-type)
 - [M3 Color System](https://m3.material.io/styles/color/roles)
+- [M3 Color Schemes](https://m3.material.io/styles/color/choosing-a-scheme)
 - [M3 Shape System](https://m3.material.io/styles/shape/corner-radius-scale)
+- [M3 Shape Morphing](https://m3.material.io/styles/shape/shape-morph)
 - [M3 Elevation](https://m3.material.io/styles/elevation/applying-elevation)
 - [M3 Components](https://m3.material.io/components)
+- [M3 All Buttons](https://m3.material.io/components/all-buttons)
+- [M3 Button Groups](https://m3.material.io/components/button-groups/specs)
+- [M3 Loading Indicator](https://m3.material.io/components/loading-indicator)
 - [M3 Layout](https://m3.material.io/foundations/layout/understanding-layout/spacing)
+- [Building with M3 Expressive](https://m3.material.io/blog/building-with-m3-expressive)
+
+### Developer Resources
 - [Material 3 in Compose - Android Developers](https://developer.android.com/develop/ui/compose/designsystems/material3)
+- [M3 Expressive for Wear OS](https://developer.android.com/design/ui/wear/guides/get-started/apply)
+- [Pull to Refresh in Compose](https://developer.android.com/develop/ui/compose/components/pull-to-refresh)
 - [Material Web Typography](https://material-web.dev/theming/typography/)
-- [M3 Expressive Updates](https://supercharge.design/blog/material-3-expressive)
+
+### M3 Expressive Coverage
+- [M3 Expressive: What's New and Why it Matters](https://supercharge.design/blog/material-3-expressive)
+- [M3 Expressive Deep Dive](https://www.androidauthority.com/google-material-3-expressive-features-changes-availability-supported-devices-3556392/)
+- [Google I/O 2025: Build with M3 Expressive](https://io.google/2025/explore/technical-session-24)
+- [Google Official M3 Expressive Announcement](https://blog.google/products-and-platforms/platforms/android/material-3-expressive-android-wearos-launch/)
+- [9to5Google M3 Expressive Guide](https://9to5google.com/guides/material-3-expressive/)
 
 ---
 
 *Last updated: January 2026*
-*Based on Material Design 3 and M3 Expressive specifications*
+*Based on Material Design 3 and M3 Expressive specifications (Android 16, September 2025 rollout)*
