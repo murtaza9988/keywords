@@ -60,7 +60,7 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
     <div className="relative">
       <button
         onClick={toggleDropdown}
-        className="flex items-center gap-2 cursor-pointer text-foreground px-3 py-2 text-xs font-medium rounded-md border border-border bg-white shadow-sm hover:bg-surface-muted transition-colors"
+        className="flex items-center gap-2 cursor-pointer text-foreground px-3 py-2 text-xs font-medium rounded-md border border-border bg-surface shadow-sm hover:bg-surface-muted transition-colors"
         disabled={isLoading}
       >
         <FileText className="h-4 w-4 text-muted" />
@@ -68,7 +68,7 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
         <ChevronDown className={`h-4 w-4 text-muted transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute mt-2 w-64 bg-white shadow-lg border border-border rounded-lg z-10">
+        <div className="absolute mt-2 w-64 bg-surface shadow-lg border border-border rounded-lg z-10">
           <div className="p-2 max-h-60 overflow-y-auto">
             {csvUploads.length === 0 ? (
               <p className="text-muted text-[13px] p-2">No CSV uploads yet.</p>
@@ -88,7 +88,7 @@ const CSVUploadDropdown: React.FC<CSVUploadDropdownProps> = ({ projectId, refres
                     type="button"
                     onClick={() => handleDownload(upload)}
                     disabled={downloadingId === upload.id}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1 text-[11px] font-medium text-foreground hover:bg-surface-muted disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-[11px] font-medium text-foreground hover:bg-surface-muted disabled:opacity-50"
                     title="Download this CSV"
                   >
                     <Download className="h-3.5 w-3.5" />

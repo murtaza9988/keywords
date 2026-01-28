@@ -71,7 +71,7 @@ export function ProjectDetailProcess(): React.ReactElement {
   return (
     <div className="flex flex-col gap-4">
       {/* Pipeline Overview */}
-      <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-foreground">🧭 Processing Pipeline (UI-aligned)</h3>
           <p className="text-xs text-muted">
@@ -102,7 +102,7 @@ export function ProjectDetailProcess(): React.ReactElement {
       </div>
 
       {/* Upload Flow */}
-      <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-foreground">📤 Upload Flow</h3>
           <p className="text-xs text-muted">
@@ -132,7 +132,7 @@ export function ProjectDetailProcess(): React.ReactElement {
       </div>
 
       {/* Token Generation */}
-      <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-foreground">🔤 Token Generation (Normalization)</h3>
           <p className="text-xs text-muted">
@@ -180,7 +180,7 @@ export function ProjectDetailProcess(): React.ReactElement {
       </div>
 
       {/* Auto-Clustering */}
-      <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-foreground">🔗 Auto-Clustering (Grouping)</h3>
           <p className="text-xs text-muted">
@@ -228,7 +228,7 @@ export function ProjectDetailProcess(): React.ReactElement {
       </div>
 
       {/* Processing States */}
-      <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-foreground">⚙️ Status & Stage Mapping</h3>
           <p className="text-xs text-muted">
@@ -254,7 +254,7 @@ export function ProjectDetailProcess(): React.ReactElement {
             <ul className="mt-2 space-y-2">
               {stageLegend.map((item) => (
                 <li key={item.stage} className="flex items-center justify-between gap-2">
-                  <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
+                  <span className="rounded bg-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
                     {item.stage}
                   </span>
                   <span className="text-muted">{item.description}</span>
@@ -266,7 +266,7 @@ export function ProjectDetailProcess(): React.ReactElement {
       </div>
 
       {/* Per-File Status */}
-      <div className="rounded-lg border border-border bg-white px-5 py-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-foreground">📁 Per-File Status (Uploads)</h3>
           <p className="text-xs text-muted">

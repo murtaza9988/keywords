@@ -71,7 +71,7 @@ export function KeywordTableContainer({
           onSerpFilterChange={serpFilters.onSerpFilterChange}
         />
         {shouldShowPagination && (
-          <div className="sticky bottom-0 bg-white border-t border-border px-2 py-2">
+          <div className="sticky bottom-0 bg-surface border-t border-border px-2 py-2">
             <Pagination
               total={tableState.pagination.total}
               page={tableState.pagination.page}

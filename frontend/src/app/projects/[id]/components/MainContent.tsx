@@ -138,7 +138,7 @@ const VolumeInputs = memo(
           placeholder="Min"
           value={localMinVolume}
           onChange={handleMinChange}
-          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={8}
         />
@@ -149,7 +149,7 @@ const VolumeInputs = memo(
           placeholder="Max"
           value={localMaxVolume}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={8}
         />
@@ -221,7 +221,7 @@ const LengthInputs = memo(
           placeholder="Min"
           value={localMinLength}
           onChange={handleMinChange}
-          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
@@ -232,7 +232,7 @@ const LengthInputs = memo(
           placeholder="Max"
           value={localMaxLength}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
@@ -307,7 +307,7 @@ const DifficultyInputs = memo(
           placeholder="Min"
           value={localMinDifficulty}
           onChange={handleMinChange}
-          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={5}
         />
@@ -319,7 +319,7 @@ const DifficultyInputs = memo(
           placeholder="Max"
           value={localMaxDifficulty}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={5}
         />
@@ -391,7 +391,7 @@ const RatingInputs = memo(
           placeholder="Min"
           value={localMinRating}
           onChange={handleMinChange}
-          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />
@@ -402,7 +402,7 @@ const RatingInputs = memo(
           placeholder="Max"
           value={localMaxRating}
           onChange={handleMaxChange}
-          className="w-16 p-1 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
+          className="w-16 p-1 text-ui-body border border-border rounded-md bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none hover:border-gray-400"
           autoComplete="off"
           maxLength={3}
         />

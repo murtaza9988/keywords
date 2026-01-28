@@ -22,7 +22,7 @@ export function TokenSearchBar({
           placeholder="Search tokens..."
           value={searchTerm}
           onChange={onSearchChange}
-          className="w-full pl-8 pr-20 py-2 text-ui-body border border-border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
+          className="w-full pl-8 pr-20 py-2 text-ui-body border border-border rounded-md bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
         />
         <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted" />
         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">

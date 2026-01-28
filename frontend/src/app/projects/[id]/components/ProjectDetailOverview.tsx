@@ -201,7 +201,7 @@ export function ProjectDetailOverview({
   ], [stats.groupCount, stats.groupedPages, stats.confirmedPages, stats.blockedCount]);
 
   const StatCard = ({ title, stats }: { title: string; stats: typeof processingStats }) => (
-    <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
+    <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
       <h3 className="text-ui-title font-semibold mb-3 flex items-center gap-2">
         {title}
       </h3>
@@ -247,7 +247,7 @@ export function ProjectDetailOverview({
       />
 
       {/* Progress Visualization */}
-      <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
           <TrendingUp className="h-5 w-5 text-accent" />
           <h3 className="text-ui-title font-semibold">Processing Progress</h3>
@@ -283,7 +283,7 @@ export function ProjectDetailOverview({
       </div>
 
       {/* Enhanced Download Section */}
-      <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
