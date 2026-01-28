@@ -28,7 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.database import get_db
+from app.database import get_db, get_db_context
 from app.models.csv_upload import CSVUpload
 from app.routes.keyword_helpers import (
     build_idempotency_key,
@@ -43,8 +43,10 @@ from app.routes.keyword_processing import (
 )
 from app.schemas.csv_upload import CSVUploadResponse
 from app.services.activity_log import ActivityLogService
+from app.services.csv_processing_job import CsvProcessingJobService
 from app.services.processing_queue import processing_queue_service
 from app.services.project import ProjectService
+from app.services.project_processing_lease import ProjectProcessingLeaseService
 from app.utils.security import get_current_user
 
 router = APIRouter(tags=["keywords"])
@@ -128,9 +130,11 @@ async def upload_keywords(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Check if processing is already active
+    # Check if processing is already active (but allow stale processing to be reset)
     current_status = processing_queue_service.get_status(project_id)
-    if current_status in ("processing", "queued"):
+    is_stale = processing_queue_service.is_stale(project_id)
+    
+    if current_status in ("processing", "queued") and not is_stale:
         raise HTTPException(
             status_code=409,
             detail=(
@@ -138,6 +142,18 @@ async def upload_keywords(
                 "Please wait for processing to complete before uploading."
             )
         )
+    
+    # If processing is stale, reset it before starting new upload
+    if is_stale and current_status in ("processing", "queued"):
+        print(f"[INFO] Detected stale processing for project {project_id}, resetting state")
+        processing_queue_service.reset_processing(project_id)
+        async with get_db_context() as db:
+            await CsvProcessingJobService.cancel_pending_jobs(
+                db,
+                project_id=project_id,
+                error="Stale processing reset",
+            )
+            await ProjectProcessingLeaseService.clear_for_project(db, project_id=project_id)
 
     # Signal upload starting - this handles all state reset logic internally
     # If there's stale/error state, it will be cleared automatically
@@ -236,6 +252,20 @@ async def upload_keywords(
                 )
 
             if duplicate_info:
+                # Cancel any existing processing for this file
+                cancelled_count = await CsvProcessingJobService.cancel_pending_jobs(
+                    db,
+                    project_id=project_id,
+                    source_filename=upload_file.filename,
+                    error="Cancelled: same file re-uploaded",
+                )
+                if cancelled_count > 0:
+                    print(f"[INFO] Cancelled {cancelled_count} existing job(s) for file: {upload_file.filename}")
+                    # Clear lease if we cancelled the current processing
+                    await ProjectProcessingLeaseService.clear_for_project(db, project_id=project_id)
+                    # Reset processing state
+                    processing_queue_service.reset_processing(project_id)
+                
                 duplicate_files.append(upload_file.filename)
                 duplicate_size = None
                 if os.path.exists(file_path):
@@ -243,11 +273,8 @@ async def upload_keywords(
                         duplicate_size = os.path.getsize(file_path)
                     except Exception:
                         duplicate_size = None
-                try:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                except Exception:
-                    pass
+                # Don't remove the file - we want to process the new one
+                # The old file will be replaced by the new upload
 
                 await ActivityLogService.log_activity(
                     db,
@@ -258,11 +285,13 @@ async def upload_keywords(
                         "existing_upload_id": duplicate_info[0],
                         "chunked": False,
                         "file_size": duplicate_size,
+                        "cancelled_jobs": cancelled_count,
                     },
                     user=current_user.get("username", "admin"),
                 )
                 await db.commit()
-                continue
+                # Continue to process the new file instead of skipping
+                # (remove the 'continue' statement)
 
             csv_upload = CSVUpload(
                 project_id=project_id, file_name=upload_file.filename
@@ -438,7 +467,7 @@ async def upload_keywords(
                 os.rmdir(parent_chunks_dir)
 
             # Detect duplicate uploads (same filename + identical content).
-            # If duplicate, skip creating CSVUpload row and enqueue processing.
+            # If duplicate, cancel existing processing and use the new file.
             duplicate_info: Optional[Tuple[int, str]] = None
             if originalFilename:
                 duplicate_info = await _find_duplicate_csv_upload(
@@ -449,12 +478,23 @@ async def upload_keywords(
                 )
 
             if duplicate_info:
+                # Cancel any existing processing for this file
+                cancelled_count = await CsvProcessingJobService.cancel_pending_jobs(
+                    db,
+                    project_id=project_id,
+                    source_filename=originalFilename,
+                    error="Cancelled: same file re-uploaded",
+                )
+                if cancelled_count > 0:
+                    print(f"[INFO] Cancelled {cancelled_count} existing job(s) for file: {originalFilename}")
+                    # Clear lease if we cancelled the current processing
+                    await ProjectProcessingLeaseService.clear_for_project(db, project_id=project_id)
+                    # Reset processing state
+                    processing_queue_service.reset_processing(project_id)
+                
                 existing_upload_id, _existing_path = duplicate_info
-                try:
-                    if os.path.exists(final_path):
-                        os.remove(final_path)
-                except Exception:
-                    pass
+                # Don't remove the file - we want to process the new one
+                # The old file will be replaced by the new upload
 
                 await ActivityLogService.log_activity(
                     db,
@@ -466,11 +506,19 @@ async def upload_keywords(
                         "chunked": True,
                         "total_chunks": int(totalChunks),
                         "file_size": fileSize,
+                        "cancelled_jobs": cancelled_count,
                     },
                     user=current_user.get("username", "admin"),
                 )
                 await db.commit()
-
+                # Continue to process the new file - create new CSVUpload record
+                csv_upload = CSVUpload(
+                    project_id=project_id,
+                    file_name=originalFilename,
+                    storage_path=rel_upload_path(final_path),
+                )
+                db.add(csv_upload)
+                await db.commit()
             else:
                 csv_upload = CSVUpload(
                     project_id=project_id,
@@ -480,7 +528,7 @@ async def upload_keywords(
                 db.add(csv_upload)
                 await db.commit()
 
-            if not duplicate_info:
+            if True:  # Always log upload activity, whether duplicate or not
                 await ActivityLogService.log_activity(
                     db,
                     project_id=project_id,
@@ -495,7 +543,7 @@ async def upload_keywords(
                 )
                 await db.commit()
 
-            if originalFilename and not duplicate_info:
+            if originalFilename:
                 processing_queue_service.register_upload(project_id, originalFilename)
 
             if batchId and resolved_total_files:
@@ -584,20 +632,10 @@ async def upload_keywords(
                     "file_name": originalFilename,
                 }
 
-            if duplicate_info and originalFilename and not batchId:
-                # Avoid leaving project stuck in "uploading" when skipped.
-                if processing_queue_service.get_status(project_id) == "uploading":
-                    processing_queue_service.set_status(project_id, "complete")
-                return {
-                    "message": (
-                        f"'{originalFilename}' already uploaded "
-                        f"(#{duplicate_info[0]}). Skipping."
-                    ),
-                    "status": processing_queue_service.get_status(project_id),
-                    "file_name": originalFilename,
-                }
+            # Note: We no longer skip duplicate files - we cancel existing processing
+            # and process the new file instead
 
-            if originalFilename and not duplicate_info:
+            if originalFilename:
                 idempotency_key = (
                     build_idempotency_key(final_path, originalFilename)
                     if os.path.exists(final_path)

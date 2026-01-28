@@ -376,6 +376,12 @@ class ProcessingQueueService:
         """
         state = self._get_or_create(project_id)
         
+        # If processing is stale (stuck), reset it to allow new uploads
+        if state.is_stale() and state.status in ("processing", "queued"):
+            print(f"[INFO] begin_upload: Resetting stale {state.status} state for project {project_id}")
+            self._full_reset(project_id)
+            state = self._get_or_create(project_id)
+        
         # If we're in a terminal/error state, reset for the new upload.
         # IMPORTANT: Do NOT clobber an active processing/queued state, otherwise
         # we can accidentally start multiple processing tasks concurrently.

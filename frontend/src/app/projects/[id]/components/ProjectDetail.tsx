@@ -359,6 +359,22 @@ export default function ProjectDetail(): React.ReactElement {
 
   useEffect(() => {
     targetProgressRef.current = processingProgress;
+    
+    // Only start animation if not already animating and there's a difference
+    const target = processingProgress;
+    const current = displayProgressRef.current;
+    
+    // If already very close, just update directly without animation
+    if (Math.abs(current - target) < 0.1) {
+      return;
+    }
+    
+    // Cancel any existing animation before starting a new one
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
     let frameId: number | null = null;
 
     const animateProgress = () => {
@@ -374,17 +390,21 @@ export default function ProjectDetail(): React.ReactElement {
       if (Math.abs(next - targetProgressRef.current) > 0.1) {
         frameId = requestAnimationFrame(animateProgress);
         animationFrameRef.current = frameId;
+      } else {
+        animationFrameRef.current = null;
       }
     };
     
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     frameId = requestAnimationFrame(animateProgress);
     animationFrameRef.current = frameId;
     
     return () => {
       if (frameId) cancelAnimationFrame(frameId);
+      if (animationFrameRef.current === frameId) {
+        animationFrameRef.current = null;
+      }
     };
-  }, [processingProgress]);
+  }, [processingProgress, detailDispatch]);
 
   const getCurrentViewData = useCallback(() => {
     let data: Keyword[] = [];

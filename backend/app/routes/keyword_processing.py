@@ -191,7 +191,13 @@ async def start_next_processing(project_id: int) -> None:
         )
         return
     runner = ProjectCsvRunnerService()
-    await runner.kick(project_id)
+    try:
+        await runner.kick(project_id)
+    except Exception as e:
+        print(f"[ERROR] Failed to kick processing for project {project_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 async def process_csv_file(
     file_path: str,

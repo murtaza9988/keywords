@@ -24,6 +24,23 @@ class ProjectCsvRunnerService:
     async def kick(self, project_id: int) -> None:
         owner = self._owner_id()
         async with get_db_context() as db:
+            # Clear any expired leases first
+            cleared = await ProjectProcessingLeaseService.clear_expired(db, project_id=project_id)
+            if cleared > 0:
+                print(f"[INFO] Cleared {cleared} expired lease(s) for project {project_id}")
+            
+            # Check if there are queued jobs
+            has_queued = await CsvProcessingJobService.has_queued_jobs(db, project_id)
+            if not has_queued:
+                print(f"[INFO] No queued jobs for project {project_id}, skipping kick")
+                return
+            
+            # Check if there's an active lease blocking us
+            is_locked = await ProjectProcessingLeaseService.is_locked(db, project_id=project_id)
+            if is_locked:
+                print(f"[WARN] Project {project_id} is locked by an active lease, cannot start processing")
+                return
+            
             acquired = await ProjectProcessingLeaseService.try_acquire(
                 db,
                 project_id=project_id,
@@ -31,7 +48,9 @@ class ProjectCsvRunnerService:
                 ttl_seconds=self.lease_ttl_seconds,
             )
         if not acquired:
+            print(f"[WARN] Failed to acquire lease for project {project_id}, owner: {owner}")
             return
+        print(f"[INFO] Acquired lease for project {project_id}, starting runner with owner: {owner}")
         asyncio.create_task(self.run(project_id, owner=owner))
 
     async def run(self, project_id: int, *, owner: str) -> None:

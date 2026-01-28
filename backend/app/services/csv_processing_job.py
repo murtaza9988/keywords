@@ -93,10 +93,12 @@ class CsvProcessingJobService:
         if not job:
             return None
         now = datetime.now(timezone.utc)
+        # Convert to naive UTC for PostgreSQL TIMESTAMP WITHOUT TIME ZONE columns
+        now_naive = now.replace(tzinfo=None)
         await db.execute(
             update(CsvProcessingJob)
             .where(CsvProcessingJob.id == job.id)
-            .values(status=CsvProcessingJobStatus.running, started_at=now)
+            .values(status=CsvProcessingJobStatus.running, started_at=now_naive)
         )
         await db.commit()
         return job
@@ -104,12 +106,14 @@ class CsvProcessingJobService:
     @staticmethod
     async def mark_succeeded(db: AsyncSession, job_id: int) -> None:
         now = datetime.now(timezone.utc)
+        # Convert to naive UTC for PostgreSQL TIMESTAMP WITHOUT TIME ZONE columns
+        now_naive = now.replace(tzinfo=None)
         await db.execute(
             update(CsvProcessingJob)
             .where(CsvProcessingJob.id == job_id)
             .values(
                 status=CsvProcessingJobStatus.succeeded,
-                finished_at=now,
+                finished_at=now_naive,
                 error=None,
             )
         )
@@ -118,12 +122,14 @@ class CsvProcessingJobService:
     @staticmethod
     async def mark_failed(db: AsyncSession, job_id: int, error: str) -> None:
         now = datetime.now(timezone.utc)
+        # Convert to naive UTC for PostgreSQL TIMESTAMP WITHOUT TIME ZONE columns
+        now_naive = now.replace(tzinfo=None)
         await db.execute(
             update(CsvProcessingJob)
             .where(CsvProcessingJob.id == job_id)
             .values(
                 status=CsvProcessingJobStatus.failed,
-                finished_at=now,
+                finished_at=now_naive,
                 error=error,
             )
         )
@@ -135,21 +141,25 @@ class CsvProcessingJobService:
         project_id: int,
         *,
         error: str,
+        source_filename: Optional[str] = None,
     ) -> int:
         now = datetime.now(timezone.utc)
+        # Convert to naive UTC for PostgreSQL TIMESTAMP WITHOUT TIME ZONE columns
+        now_naive = now.replace(tzinfo=None)
+        conditions = [
+            CsvProcessingJob.project_id == project_id,
+            CsvProcessingJob.status.in_(
+                [CsvProcessingJobStatus.queued, CsvProcessingJobStatus.running]
+            ),
+        ]
+        if source_filename:
+            conditions.append(CsvProcessingJob.source_filename == source_filename)
         result = await db.execute(
             update(CsvProcessingJob)
-            .where(
-                and_(
-                    CsvProcessingJob.project_id == project_id,
-                    CsvProcessingJob.status.in_(
-                        [CsvProcessingJobStatus.queued, CsvProcessingJobStatus.running]
-                    ),
-                )
-            )
+            .where(and_(*conditions))
             .values(
                 status=CsvProcessingJobStatus.failed,
-                finished_at=now,
+                finished_at=now_naive,
                 error=error,
             )
         )
@@ -243,6 +253,8 @@ class CsvProcessingJobService:
     @staticmethod
     async def recovery_sweep(db: AsyncSession, project_id: int, *, max_attempts: int) -> int:
         now = datetime.now(timezone.utc)
+        # Convert to naive UTC for PostgreSQL TIMESTAMP WITHOUT TIME ZONE columns
+        now_naive = now.replace(tzinfo=None)
         result = await db.execute(
             select(CsvProcessingJob)
             .where(
@@ -263,7 +275,7 @@ class CsvProcessingJobService:
                     .values(
                         status=CsvProcessingJobStatus.failed,
                         attempts=attempts,
-                        finished_at=now,
+                        finished_at=now_naive,
                         error="Lease expired; max retries exceeded.",
                     )
                 )
