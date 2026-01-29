@@ -224,7 +224,7 @@ export function LogsTable({
             placeholder="Filter by user, action, details, or ID"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            className="w-72 max-w-full rounded-md border border-border bg-white px-3 py-1.5 text-[13px] text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
+            className="w-72 max-w-full rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -232,7 +232,7 @@ export function LogsTable({
           <select
             value={actionFilter}
             onChange={(event) => setActionFilter(event.target.value)}
-            className="rounded-md border border-border bg-white px-3 py-1.5 text-[13px] text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
+            className="rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-foreground shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
           >
             {actionOptions.map((action) => (
               <option key={action} value={action}>
@@ -246,7 +246,7 @@ export function LogsTable({
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-white shadow-sm overflow-hidden">
+      <div className="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
         <div className="max-h-[420px] overflow-auto">
           <table className="min-w-full table-fixed text-[13px]">
             <thead className="bg-surface-muted sticky top-0 z-10">

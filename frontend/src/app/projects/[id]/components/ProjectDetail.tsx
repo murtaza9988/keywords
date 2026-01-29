@@ -3035,7 +3035,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
         <div className="mx-auto w-full max-w-[1720px] px-4 sm:px-6 lg:px-8 py-2">
           <div className="flex flex-col xl:flex-row gap-4">
             <main className="w-full xl:basis-4/5 xl:flex-[4] min-w-0 flex flex-col">
-              <div className="bg-white shadow border border-border rounded-lg p-3 sm:p-4 flex flex-col flex-grow h-full">
+              <div className="bg-surface shadow border border-border rounded-lg p-3 sm:p-4 flex flex-col flex-grow h-full">
                 <ProjectDetailTabs
                   activeTab={activeTab}
                   processingLocked={processingLocked}
@@ -3158,7 +3158,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
                   <ProjectDetailProcess />
                 )}
                 <div className="w-full" style={{ display: activeTab === 'notes' ? 'block' : 'none' }}>
-                  <div className="bg-white border border-border rounded-lg p-4">
+                  <div className="bg-surface border border-border rounded-lg p-4">
                     <TextAreaInputs projectId={projectIdStr} />
                   </div>
                 </div>
@@ -3172,7 +3172,7 @@ const toggleKeywordSelection = useCallback(async (keywordId: number) => {
               </div>
             </main>
             <aside className="w-full xl:basis-1/5 xl:flex-[1] xl:min-w-[320px] xl:max-w-[420px] flex flex-col">
-              <div className="bg-white shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-hidden">
+              <div className="bg-surface shadow border border-border rounded-lg p-4 flex flex-col flex-grow h-full overflow-hidden">
                 <TokenManagement
                   projectId={projectIdStr}
                   onBlockTokenSuccess={async () => {

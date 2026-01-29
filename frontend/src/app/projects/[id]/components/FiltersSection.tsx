@@ -250,7 +250,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                 <select
                   value={includeMatchType}
                   onChange={(e) => setIncludeMatchType(e.target.value as 'any' | 'all')}
-                  className="p-1.5 border border-border rounded-md text-ui-body bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer hover:border-gray-400"
+                  className="p-1.5 border border-border rounded-md text-ui-body bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer hover:border-gray-400"
                 >
                   <option value="any">Any</option>
                   <option value="all">All</option>
@@ -261,7 +261,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                   placeholder="Contains... (e.g., improve,increase)"
                   value={localIncludeFilter}
                   onChange={handleLocalIncludeChange}
-                  className="flex-1 p-1.5 border border-border rounded-md text-ui-body bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
+                  className="flex-1 p-1.5 border border-border rounded-md text-ui-body bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
                 />
               </div>
             </div>
@@ -271,7 +271,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                 <select
                   value={excludeMatchType}
                   onChange={(e) => setExcludeMatchType(e.target.value as 'any' | 'all')}
-                  className="p-1.5 border border-border rounded-md text-ui-body bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer hover:border-gray-400"
+                  className="p-1.5 border border-border rounded-md text-ui-body bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer hover:border-gray-400"
                 >
                   <option value="any">Any</option>
                   <option value="all">All</option>
@@ -282,7 +282,7 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                   placeholder="Not contain... (e.g., slow,delay)"
                   value={localExcludeFilter}
                   onChange={handleLocalExcludeChange}
-                  className="flex-1 p-1.5 border border-border rounded-md text-ui-body bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
+                  className="flex-1 p-1.5 border border-border rounded-md text-ui-body bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
                 />
               </div>
             </div>
@@ -304,12 +304,12 @@ export const FiltersSection: React.FC<FiltersSectionProps> = ({
                       }
                     }}
                     disabled={selectedKeywordIds.size === 0 || groupingLocked}
-                    className="w-full p-1.5 border border-border rounded-md text-ui-body bg-white shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
+                    className="w-full p-1.5 border border-border rounded-md text-ui-body bg-surface shadow-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
                   />
                   {showSuggestions && (
                     <div
                       ref={suggestionRef}
-                      className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto"
+                      className="absolute z-10 w-full mt-1 bg-surface border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto"
                     >
                       {isLoadingSuggestions ? (
                         <div className="flex items-center justify-center p-2">

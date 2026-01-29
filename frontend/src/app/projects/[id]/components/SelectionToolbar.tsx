@@ -63,7 +63,7 @@ export const SelectionToolbar = memo(({
             id="itemsPerPage"
             value={pagination.limit}
             onChange={onLimitChange}
-            className="appearance-none bg-white border border-border rounded text-ui-body py-1 pl-2 pr-6 focus:outline-none cursor-pointer"
+            className="appearance-none bg-surface border border-border rounded text-ui-body py-1 pl-2 pr-6 focus:outline-none cursor-pointer"
             aria-label="Items per page"
             disabled={isLoadingData}
           >

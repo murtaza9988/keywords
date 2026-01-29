@@ -40,7 +40,7 @@ export function TokenViewTabs({
         <select
           value={limit}
           onChange={onLimitChange}
-          className="border border-border rounded-md px-2 py-1.5 cursor-pointer bg-white text-ui-body focus:ring-blue-500 focus:border-blue-500"
+          className="border border-border rounded-md px-2 py-1.5 cursor-pointer bg-surface text-ui-body focus:ring-blue-500 focus:border-blue-500"
         >
           {limitOptions.map(option => (
             <option key={option} value={option}>

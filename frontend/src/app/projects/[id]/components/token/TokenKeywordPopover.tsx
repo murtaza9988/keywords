@@ -12,7 +12,7 @@ export function TokenKeywordPopover({ token, getTopKeywords, index }: TokenKeywo
   
   return (
     <div
-      className={`absolute z-[1000] left-0 bg-white border border-border rounded-md shadow-lg p-2 max-h-[300px] overflow-y-auto ${
+      className={`absolute z-[1000] left-0 bg-surface border border-border rounded-md shadow-lg p-2 max-h-[300px] overflow-y-auto ${
         index < 4 ? 'top-full mt-1' : 'bottom-full mb-1'
       }`}
     >

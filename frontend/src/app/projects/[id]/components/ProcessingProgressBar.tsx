@@ -168,7 +168,7 @@ const ProcessingProgressBar: React.FC<ProcessingProgressBarProps> = ({
   }
 
   return (
-    <div className="w-full mt-3 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+    <div className="w-full mt-3 rounded-lg border border-border bg-surface px-4 py-3 shadow-sm">
       <div className="flex flex-col gap-1 text-ui-muted">
         <div className="flex flex-wrap items-center justify-between gap-2 text-foreground">
           {status === 'error' ? (

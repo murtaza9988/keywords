@@ -275,7 +275,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           className={`relative flex items-center justify-center w-full h-10 border border-dashed rounded cursor-pointer transition-colors duration-200 ${
             dragActive
               ? 'border-blue-500 bg-blue-50'
-              : 'border-border bg-white hover:bg-surface-muted'
+              : 'border-border bg-surface hover:bg-surface-muted'
           } ${(isUploadingInternal || disabled) ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           <div className="flex items-center gap-1 w-full justify-center">
